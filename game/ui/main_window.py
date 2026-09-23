@@ -159,6 +159,8 @@ class MainWindow:
         self.status_bar.set_message(
             f"{world.summary()}  |  玩家势力：{pf_name}"
         )
+        # ★ 新增：刷新右侧面板（势力 / 据点 / 人物 / 部队）
+        self.side_panel.refresh_all()
 
     def open_geojson(self):
         path = filedialog.askopenfilename(

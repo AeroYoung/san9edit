@@ -2,7 +2,7 @@
   "version": 1,
   "id": "default",
   "name": "默认剧本",
-  "desc": "十八路诸侯 · 曹操据陈留",
+  "desc": "十八路诸侯 · 曹操据陈留，袁绍据魏郡",
   "start": { "year": 190, "month": 1, "xun": 1 },
   "player_faction": "0001",
 
@@ -12,7 +12,16 @@
       "color": "#1E40AF",
       "prestige": 1000,
       "gold": 5000,
-      "food": 20000
+      "food": 20000,
+      "stance": 0
+    },
+    "0006": {
+      "name": "袁绍",
+      "color": "#7C3AED",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
     }
   },
 
@@ -41,6 +50,37 @@
       "name": "荀彧", "faction": "0001", "node": "130301",
       "leadership": 60, "might": 32, "intelligence": 96,
       "politics": 98, "charisma": 90
+    },
+
+    "0006": {
+      "name": "袁绍", "faction": "0006", "node": "020101",
+      "leadership": 88, "might": 66, "intelligence": 74,
+      "politics": 72, "charisma": 92
+    },
+    "0007": {
+      "name": "颜良", "faction": "0006", "node": "020101",
+      "leadership": 82, "might": 94, "intelligence": 34,
+      "politics": 38, "charisma": 70
+    },
+    "0008": {
+      "name": "文丑", "faction": "0006", "node": "020101",
+      "leadership": 80, "might": 93, "intelligence": 30,
+      "politics": 35, "charisma": 68
+    },
+    "0009": {
+      "name": "张郃", "faction": "0006", "node": "020101",
+      "leadership": 90, "might": 88, "intelligence": 76,
+      "politics": 60, "charisma": 75
+    },
+    "0010": {
+      "name": "田丰", "faction": "0006", "node": "020101",
+      "leadership": 66, "might": 45, "intelligence": 93,
+      "politics": 82, "charisma": 76
+    },
+    "0011": {
+      "name": "沮授", "faction": "0006", "node": "020101",
+      "leadership": 78, "might": 58, "intelligence": 92,
+      "politics": 85, "charisma": 80
     }
   },
 
@@ -61,6 +101,25 @@
     "130317": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
     "130318": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
     "130319": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130320": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 }
+    "130320": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+
+    "020101": { "owner": "0006", "troops": 8000, "gold": 1000, "food": 20000 },
+    "020102": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020104": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020105": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020107": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020108": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020110": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020111": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020113": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020114": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020115": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020116": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020118": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020119": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020120": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
+    "020121": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "020122": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 },
+    "020126": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 }
   }
 }

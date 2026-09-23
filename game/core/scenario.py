@@ -56,6 +56,7 @@ class ScenarioLoader:
             prestige=fdata.get("prestige", 0),
             gold=fdata.get("gold", 0),
             food=fdata.get("food", 0),
+            stance=fdata.get("stance", 0),
         )
 
     @staticmethod

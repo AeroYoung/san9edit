@@ -16,6 +16,15 @@ class MapRenderer:
     POLYGON_TAG = "polygon"
     LINE_TAG    = "line"
     POINT_TAG   = "point"
+    # 从底到顶的图层顺序；越靠后越在上面
+    _LAYER_ORDER = (
+        "polygon",   # 州/郡面
+        "water",     # 水域
+        "road",      # 道路
+        "line",      # 郡界
+        "point",     # 县点
+        "label",     # 文字
+    )
 
     def __init__(self, canvas, viewport, font_family):
         self.canvas = canvas
@@ -79,9 +88,20 @@ class MapRenderer:
             self.render_points()
         self._draw_labels()     # 内部各自再判断
 
-        self.canvas.tag_lower(self.ROAD_TAG, self.LINE_TAG)
-        self.canvas.tag_lower(self.WATER_TAG, self.ROAD_TAG)
-        self.canvas.tag_lower(self.ROAD_TAG, self.POINT_TAG)
+        self._restack() 
+        
+    def _restack(self):
+        """按 _LAYER_ORDER 从底到顶重排所有图层。
+
+        用 tag_raise 而不是 tag_lower：
+            tag_raise(A)        —— A 空则 no-op，不报错；
+            tag_lower(A, B)     —— B（belowThis）空则抛 TclError。
+        从底向顶 raise 一遍，最终层序一定正确，且免疫空图层。
+        """
+        for tag in self._LAYER_ORDER:
+            if self.canvas.find_withtag(tag):
+                self.canvas.tag_raise(tag)
+
 
     def _draw_geometry(self):
         if LAYER_VISIBILITY.get("polygon", True):
