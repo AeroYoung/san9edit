@@ -180,7 +180,18 @@ san9edit/
 
 实例属性：`shapes_polygon`（州面）、`shapes_line`（郡界）、`shapes_point`（县点）、`shapes_water_line`、`shapes_water_polygon`、`roads`（道路）、`labels_state`、`labels_county`、`labels_city`、`bbox`、`feature_count`、`_state_index`、`_county_index`。
 
-`roads` 结构：`[(coords, difficulty, bbox), ...]`，其中 `coords` 为 `[(lon, lat), ...]`，`difficulty` 为 `float`（默认 1.3），`bbox` 为 `(minx, miny, maxx, maxy)`；无数据时为 `[]`。
+**`shapes_point` 元素结构**（与 `renderer._point_lonlat` 约定一致）：
+
+```python
+{
+    "geometry": {"type": "Point", "coordinates": [lon, lat]},
+    "properties": {"县名": name, "level": level},   # level 为已钳制到 1–10 的 int
+}
+```
+
+**`labels_city` 元素结构**：`(lon, lat, name, level)` 四元组。
+
+**`roads` 结构**：`[(coords, difficulty, bbox), ...]`，其中 `coords` 为 `[(lon, lat), ...]`，`difficulty` 为 `float`（默认 1.3），`bbox` 为 `(minx, miny, maxx, maxy)`；无数据时为 `[]`。
 
 | 方法 | 入参 | 返回 | 用途 |
 |---|---|---|---|
@@ -188,7 +199,7 @@ san9edit/
 | `load_water(path)` | 水域 GeoJSON 路径 | `None` | 按几何类型分流为河/湖，计算 `bbox` 与 `size`，再 `_assign_lod` |
 | `load_roads(path)` | 路网 GeoJSON 路径 | `None` | 只解析 `LineString`，提取 `coordinates` + `difficulty`（默认 1.3），逐条算 bbox 存入 `self.roads`。不做空间索引，由 renderer 侧做 bbox 粗筛 |
 | `_classify(states)` | states 列表 | `None` | 生成州标签（`name_coords` 两点取中点）、州面、逐郡转 `_classify_county`，最后统计 `feature_count` |
-| `_classify_county(sname, county)` | 州名 + 郡字典 | `None` | 生成郡标签（单点）、郡界（闭合 LineString）、县点与县标签（带 `level`，**默认 5，并钳制到 1–10**） |
+| `_classify_county(sname, county)` | 州名 + 郡字典 | `None` | 生成郡标签（单点）、郡界（闭合 LineString）、县点与县标签（均带 `level`）。**县点与县标签共用同一个 `level` 值，且该值的解析必须先于 `shapes_point.append`**（见下方警告） |
 | `_compute_bbox()` | — | `None` | 遍历州面/郡界/县点坐标求全局外接矩形 |
 | `_build_index()` | — | `None` | 为州面外环、郡界环建 `(bbox, name, ring)` 索引 |
 | `_ring_bbox(ring)` (static) | 顶点环 | `(minx,miny,maxx,maxy)` | 环的外接矩形 |
@@ -204,8 +215,10 @@ san9edit/
 #### 县 `level` 字段约定
 
 - 取值范围 **1–10**（1 = 最重要/最大据点，10 = 最次要/最小聚落）。
-- 解析时做 `int()` 转换 + `max(1, min(10, level))` 钳制；字段缺失时默认 `5`。
+- 解析时做 `int()` 转换 + `max(1, min(10, level))` 钳制；字段缺失或非法值时默认 `5`。
+- **解析必须先于使用**：在 `_classify_county` 的 `for city in ...` 循环里，`level` 的两行解析（`int()` + 钳制）**必须写在 `shapes_point.append` 之前**。若顺序颠倒（先 append 用 `level`，后解析），Python 会抛 `UnboundLocalError: cannot access local variable 'level'`，且异常会中断整个 `GeoData.from_file`，导致**地图完全不加载**（症状：状态栏提示"自动加载失败"，画布空白）。
 - 钳制的意义：下游 `CITY_LEVEL_MIN_SCALE`、`shape_by_level`、`radius_by_level` 都是定长字典，越界值若不钳制会直接 `KeyError`，而绘制层的 `except Exception` 会静默吞掉，导致整层县点/县名凭空消失、极难排查。
+- `level` 值需在 `shapes_point` 与 `labels_city` 两处保持一致（同一循环内共用），否则会出现"点出、标签不出"或反过来的诡异现象。
 
 ---
 
@@ -238,7 +251,7 @@ san9edit/
 | `__init__(canvas, viewport, font_family)` | 画布/视图/字体 | — | 绑定三者 |
 | `set_data(geo_data)` | `GeoData` | `None` | 注入数据 |
 | `draw_full()` | — | `None` | 全量重绘：`delete("all")` → `_drawn=False` → 重置 `_cum_scale` → `_draw_geometry()` → **`_drawn=True`** → `refresh_dynamic()`。**置位顺序是关键**（见上） |
-| `pan(dx, dy)` | 像素位移 | `None` | 调 `canvas.move("all", ...)`，O(1) 平移 |
+| `pan(dx, dy)` | 像素位移 | `None` | 调 `canvas.move("all", ...)`，O(1) 平移；**不补画新进入视口的静态几何**（详见 6.3 节） |
 | `zoom(factor, mx, my)` | 倍率、锚点 | `None` | 调 `canvas.scale("all", ...)`；累计倍率超出 `[0.5, 2.0]` 时改为 `draw_full()` 消除舍入误差 |
 | `refresh_dynamic()` | — | `None` | `_drawn` 守卫 → 删除 `LABEL_TAG` / `WATER_TAG` / `ROAD_TAG` / `POINT_TAG` → **按 水 → 路 → 点 → 标签 顺序重绘** → `tag_lower` 归位。**绘制顺序决定叠放**（标签最后画故天然在最顶） |
 | `_draw_geometry()` | — | `None` | 只绘**静态层**：州面 → 郡界（湖泊/河流/道路/县点/标签均在 `refresh_dynamic`） |
@@ -249,6 +262,7 @@ san9edit/
 | `render_water_polygon(feat, style)` / `render_water_line(feat, style)` | 要素 + 样式 | `None` | 投影后 `create_polygon` / `create_line`，打 `WATER_TAG` |
 | `render_polygons()` / `render_lines()` | — | `None` | 视口裁剪后逐要素绘制，异常静默跳过 |
 | `render_polygon(feat)` / `render_line(feat)` | 要素 | `None` | 单要素绘制，支持 `properties` 里的 `fill`/`stroke` 覆盖默认样式；分别打 `POLYGON_TAG` / `LINE_TAG` |
+| `_point_lonlat(feat)` | 县点要素 dict | `(lon, lat)` / `(None, None)` | **从 `shapes_point` 元素中提取经纬度**。约定结构为 `{"geometry":{"type":"Point","coordinates":[lon,lat]}, "properties":{...}}`；非法结构返回 `(None, None)` 由调用方跳过 |
 | `_point_radius(level, style)` | level、样式 | `float` | 按当前缩放与 `level` 计算县点像素半径：`clamp(span_px(bbox) / size_divisor × radius_by_level[level], min_radius, max_radius)` |
 | `render_points()` | — | `None` | 视口 bbox 裁剪 + **按 `CITY_LEVEL_MIN_SCALE[level]` 做 LOD 过滤**后逐点绘制，打 `POINT_TAG` 与 `city_lv{level}` 双 tag；单要素异常静默跳过 |
 | `render_point(lon, lat, feat, style)` | 经纬度、要素、样式 | `None` | 取 `level`（缺省 5，钳制 1–10）→ 查 `shape_by_level` / `radius_by_level` → 按形状 `create_oval`（圆）/ `create_polygon`（菱、三角）/ `create_rectangle`（方），支持 `properties.fill` 覆盖；打 `POINT_TAG` + `city_lv{level}` |
@@ -287,7 +301,9 @@ san9edit/
   - 标签**不降**，保持最顶。
 - `pan()` / `zoom()` 使用的 `canvas.move` / `canvas.scale` 不改变对象层级，无需额外处理。
 
-> ⚠️ **维护提示**：`_draw_labels()` 必须保持在 `refresh_dynamic` 末尾调用。若图省事把它挪到开头，标签会沉到几何之下被县点/道路遮挡。
+> ⚠️ **维护提示 1**：`_draw_labels()` 必须保持在 `refresh_dynamic` 末尾调用。若图省事把它挪到开头，标签会沉到几何之下被县点/道路遮挡。
+
+> ⚠️ **维护提示 2**：`_point_lonlat` 是 `render_points` 的必需依赖，**不可省略**。若缺失，`render_points` 会在第一行就抛 `AttributeError`，被 `except Exception: pass` 静默吞掉，症状为"县名标签正常显示，但一个县点都没有"。
 
 ---
 
@@ -355,16 +371,16 @@ san9edit/
 
 ### 3.12 [game/ui/map_canvas.py](game/ui/map_canvas.py)
 
-**类 `MapCanvas(ttk.Frame)`** — 属性 `canvas`、`viewport`、`renderer`、`data`、`_drag`、`_label_job`、`_mouse_job`、`_pending_mouse`、`_location_callback`、`_zoom_callback`、`_need_fit`。常量 `_MIN_VALID_SIZE = 10`。
+**类 `MapCanvas(ttk.Frame)`** — 属性 `canvas`、`viewport`、`renderer`、`data`、`_drag`、`_label_job`、`_mouse_job`、`_pending_mouse`、`_settle_job`、`_location_callback`、`_zoom_callback`、`_need_fit`。常量 `_MIN_VALID_SIZE = 10`。
 
 | 方法 | 入参 | 返回 | 用途 |
 |---|---|---|---|
-| `__init__(master, font_family)` | 父容器、字体 | — | 建内嵌 `tk.Canvas`，建 `Viewport` 与 `MapRenderer`，`_bind_events` |
+| `__init__(master, font_family)` | 父容器、字体 | — | 建内嵌 `tk.Canvas`，建 `Viewport` 与 `MapRenderer`；初始化 `_settle_job = None` 等实例变量；`_bind_events` |
 | `set_location_callback(fn)` / `set_zoom_callback(fn)` | 回调 | `None` | 注册外部回调 |
 | `_notify_zoom()` | — | `None` | 调 `_zoom_callback(viewport.scale)` |
 | `load_geojson(path)` | 路径 | `GeoData` | `GeoData.from_file` → **若 `DEFAULT_ROADS_PATH` 存在则 `data.load_roads(...)`（失败静默忽略）** → `renderer.set_data` → `_need_fit=True` → `_try_fit_now()` |
 | `reset_view()` | — | `None` | 主动复位：尺寸有效则 `fit_to_bbox` + `draw_full`，否则挂起 `_need_fit` |
-| `zoom(factor, anchor=None)` | 倍率、锚点 | `None` | `viewport.zoom` → `_notify_zoom` → `renderer.zoom` → `_schedule_label_refresh` |
+| `zoom(factor, anchor=None)` | 倍率、锚点 | `None` | `viewport.zoom` → `_notify_zoom` → `renderer.zoom` → `_schedule_label_refresh` → **`_schedule_settle_redraw`** |
 | `_try_fit_now()` | — | `None` | 尺寸有效且 `_need_fit` 时执行 `fit_to_bbox` + `draw_full` |
 | `_bind_events()` | — | `None` | 绑定滚轮、Button-4/5、左键按下/拖动/释放、双击、Motion、Leave、Configure |
 | `_on_wheel(event)` | 事件 | `None` | `delta>0` 放大 1.2，否则缩小 |
@@ -376,6 +392,10 @@ san9edit/
 | `_sync_canvas_size()` | — | `None` | 从 `winfo_width/height` 同步到 viewport |
 | `_schedule_label_refresh()` | — | `None` | 30 ms 节流调度 `_do_label_refresh` |
 | `_do_label_refresh()` | — | `None` | 调 `renderer.refresh_dynamic()`（含水域、道路、**县点**、标签） |
+| `_schedule_settle_redraw()` | — | `None` | **滚轮静默 180 ms 后补一次全量重绘**：取消旧 `_settle_job`、挂新的 `after(180, _settle_redraw)`。连续滚动期间计时器被反复重置，不触发重绘 |
+| `_settle_redraw()` | — | `None` | `_settle_job=None`；若 `_need_fit` 或 `data` 为空则直接返回，否则调 `renderer.draw_full()`。用于补齐快速缩放过程中"触发 `draw_full` 的瞬间视图 ≠ 最终稳定视图"造成的边缘州郡缺失 |
+
+> **为什么需要 settle redraw**：`draw_full` 由 `_cum_scale` 累积超阈值触发，触发点按**当时**视口裁剪静态几何。快速放大后又快速缩小，`draw_full` 可能在"视图还比较小"的中间时刻触发，停手后最终视图边缘的州郡面缺失。详见 6.3 节第 22、23 条。
 
 ---
 
@@ -436,6 +456,7 @@ python main.py
       │  │  │  ├─ tk.Canvas(pack fill both)
       │  │  │  ├─ Viewport()
       │  │  │  ├─ MapRenderer(canvas, viewport, font)
+      │  │  │  ├─ __init__ 初始化 _settle_job=None 等
       │  │  │  └─ _bind_events()
       │  │  └─ SidePanel(pane) → add(weight=1)
       │  │     └─ Notebook + FactionPanel / CityPanel / GeneralPanel / TroopPanel
@@ -455,7 +476,8 @@ _auto_load_default()
    ├─ MapCanvas.load_geojson(path)
    │  ├─ GeoData.from_file(path)
    │  │  ├─ _classify(states) → 13 州标签 + 13 州面 + 106 郡标签/郡界 + 1372 县点/县标签
-   │  │  │  （县 level 解析为 1–10 整数，越界钳制，缺省 5）
+   │  │  │  └─ _classify_county 内：先解析 level（int + 钳制 1–10）→ 再 shapes_point.append
+   │  │  │     与 labels_city.append，两处共用同一 level 值
    │  │  ├─ _compute_bbox() → 全局外接矩形
    │  │  └─ _build_index() → 州面/郡界空间索引
    │  ├─ data.load_roads(assets/roads.geojson) ← 若文件存在；失败静默忽略
@@ -472,7 +494,8 @@ _auto_load_default()
    │           ├─ 守卫：if not _drawn: return
    │           ├─ delete(LABEL/WATER/ROAD/POINT)
    │           ├─ _draw_water() → render_roads() → render_points() → _draw_labels()
-   │           │  ├─ 县点层：bbox 裁剪 + CITY_LEVEL_MIN_SCALE[level] 过滤；半径按 span_px 重算
+   │           │  ├─ 县点层：_point_lonlat 取坐标 → bbox 裁剪
+   │           │  │  → CITY_LEVEL_MIN_SCALE[level] 过滤 → 半径按 span_px 重算
    │           │  └─ 县名层：同阈值过滤（与县点同显同隐）
    │           └─ tag_lower 归位（道路/水域降到静态层之下）
    └─ map_canvas.reset_view()              ← 再 fit 一次（幂等）
@@ -483,8 +506,8 @@ _auto_load_default()
 
 | 触发 | 调用链 |
 |---|---|
-| 滚轮 | `_on_wheel` → `MapCanvas.zoom` → `viewport.zoom`（改中心与比例）→ `_notify_zoom` → `StatusBar.set_zoom` → `renderer.zoom` → `canvas.scale("all")` → 30 ms 后 `_do_label_refresh` → `renderer.refresh_dynamic`（重绘**水域 + 道路 + 县点 + 标签**，并 `tag_lower` 恢复层级）；县点与县名随缩放跨过 `CITY_LEVEL_MIN_SCALE` 阈值**同步浮现/消失**，县点半径同步重算 |
-| 左键拖拽 | `_on_press` 记起点 → `_on_drag` → `viewport.pan_pixels` → `renderer.pan` → `canvas.move("all")` → 30 ms 后水域/道路/县点/标签补漏（县点随 `refresh_dynamic` 重建，半径不变，仅位置刷新） |
+| 滚轮 | `_on_wheel` → `MapCanvas.zoom` → `viewport.zoom`（改中心与比例）→ `_notify_zoom` → `StatusBar.set_zoom` → `renderer.zoom`（`canvas.scale("all")`，或 `_cum_scale` 超阈值时改为 `draw_full`）→ 30 ms 后 `_do_label_refresh` → `renderer.refresh_dynamic`（重绘**水域 + 道路 + 县点 + 标签**并 `tag_lower`）；县点与县名随缩放跨过 `CITY_LEVEL_MIN_SCALE` 阈值**同步浮现/消失**，县点半径同步重算；**同时** `_schedule_settle_redraw` 挂起 180 ms 静默计时器，停手后 `draw_full` 一次补齐边缘静态几何 |
+| 左键拖拽 | `_on_press` 记起点 → `_on_drag` → `viewport.pan_pixels` → `renderer.pan` → `canvas.move("all")` → 30 ms 后水域/道路/县点/标签补漏（县点随 `refresh_dynamic` 重建，半径不变，仅位置刷新）。**注**：`pan` 不创建新对象，若拖出原 `draw_full` 的裁剪范围，静态州郡面可能暂时缺失，需滚轮触发下一次 `draw_full`（或等 settle 补绘）后才完整 |
 | 双击 | `_on_press`/`_on_release` + `reset_view()` |
 | 鼠标移动 | `_on_motion` 缓存坐标 → 40 ms 后 `_process_motion` → `viewport.unproject` → `data.find_location` → `_on_location_change` → `StatusBar.set_location` |
 | 鼠标离开 | `_on_leave` → 清空位置栏 |
@@ -547,6 +570,7 @@ main.py
 | `MapRenderer._cum_scale` 阈值 | `(0.5, 2.0)` | 超出则全量重绘以消除 canvas 缩放误差 |
 | `MapRenderer._point_radius` 公式 | `span_px / size_divisor × radius_by_level[level]` | 县点半径计算，钳制在 `[min_radius, max_radius]` |
 | 县点 / 县名共用阈值 | `CITY_LEVEL_MIN_SCALE[level]` | 两者以此为准同显同隐，`level` 越界统一 `.get(level, 0)` 兜底 |
+| `MapCanvas._schedule_settle_redraw` 静默时长 | `180 ms` | 滚轮停手后补绘的等待窗口 |
 | `MAP_STYLE["road"]["width_divisor"]` | `2600` | 道路基准线宽分母；越大越细 |
 | `MAP_STYLE["road"]["min_width"] / ["max_width"]` | `0.3` / `2.0` | 道路线宽绝对上下限（像素） |
 | `MAP_STYLE["point"]["size_divisor"]` | `1100` | 县点基准半径分母；越大越小 |
@@ -588,7 +612,7 @@ main.py
 
 1. **无 LOD 分级（部分改善）**：`render_points` 已按 `CITY_LEVEL_MIN_SCALE[level]` 做 LOD 过滤，`render_lines`（106 条郡界）仍全量重绘、仅 bbox 视口裁剪。**县点因此从静态层移入动态层**：每次 zoom/pan 后 30 ms 都会重建全部可见点（bbox 裁剪后通常数十至数百个），配合县名同步刷新——这是"同显同隐"的必要代价，当前量级可接受；若后续出现卡顿，可让 `pan` 路径跳过县点/标签重建（平移不改变 scale，半径无需重算），只让 `zoom` 触发。
 2. **`<Configure>` 全量重绘**：尺寸变化且非首次 fit 时无条件 `draw_full()`，拖动 PanedWindow 分隔条会触发连续全量重绘，可能卡顿；且**不调整缩放比例**（这是刻意设计，避免视野被重置）。
-3. **异常静默吞掉**：`render_polygon` / `render_line` / `render_point` / `render_roads` / 水域绘制外层 `except Exception: pass`，几何出错时不报错也不提示，排查困难。县 `level` 越界这类问题就属于典型受害场景——因此必须在数据入口钳制、在查表处用 `.get`。
+3. **异常静默吞掉**：`render_polygon` / `render_line` / `render_point` / `render_roads` / 水域绘制外层 `except Exception: pass`，几何出错时不报错也不提示，排查困难。县 `level` 越界、`_point_lonlat` 未实现这类问题都属于典型受害场景——因此必须在数据入口钳制、在查表处用 `.get`、在新方法上补"首次异常打一次日志"的策略。
 4. **标签不做视口预筛**：`render_label_group` 与 `render_city_labels` 对每个标签都调 `project()` 再判断屏幕范围，未先按 bbox 裁剪；且每次 `refresh_dynamic` 都会重建全部标签对象（含每字 4 次描边绘制）。县点层已做 bbox 粗筛（`_visible_bounds`），但 `render_city_labels` 仍逐标签 `project()`，未预筛。
 5. **空间索引为线性扫描**：`find_state_at` / `find_county_at` 遍历全部环做 bbox 粗筛 + 射线法，未建 R 树/网格；鼠标 40 ms 节流下勉强可用但非最优。
 6. **只取外环**：`_build_index` 只用 `polygon[0]`，忽略多边形内环（孔洞），带洞的州面判定可能误判。
@@ -607,12 +631,17 @@ main.py
 19. **县点与县名"同显同隐"依赖同表同判**：两者都读 `CITY_LEVEL_MIN_SCALE`，但分处 `render_points` 与 `render_city_labels` 两处。若日后有人只改一处阈值，就会破坏一致性；建议后续抽出一个 `_visible_by_level(level, scale)` 公共方法统一判定。
 20. **`_drawn` 置位时机是易错点（已修复，但需警惕回归）**：`_drawn` 同时被 `draw_full` 用作"几何层完成"标志、被 `refresh_dynamic` 用作执行守卫。`draw_full` 内**必须**在 `_draw_geometry()` 之后、`refresh_dynamic()` 之前置 `True`；一旦误置于方法末尾，首帧动态层会被守卫 `if not self._drawn: return` 跳过，表现为"开图只有州郡边界，鼠标一动/一缩放才补全"。文档已固化该顺序（见 3.8 节），修改 `draw_full` 时请勿调整这两行的相对位置。
 21. **`refresh_dynamic` 的绘制顺序决定层级（易错点）**：Tk 后画盖先画，标签必须**最后**绘制才能位于最顶。当前正确顺序为 `_draw_water() → render_roads() → render_points() → _draw_labels()`，其中 `_draw_labels()` 保持在末尾。若调整顺序（例如把标签提到最前），标签会被县点/道路/水域遮挡；`tag_lower` 只调整几何层，不会挽救标签被埋的问题。
+22. **`shapes_point` 的 `level` 解析必须先于 `append`（易错点）**：`_classify_county` 里 `level` 的两行解析（`int()` + 钳制）**必须在 `shapes_point.append` 之前**。顺序颠倒会抛 `UnboundLocalError: cannot access local variable 'level'`，异常沿 `GeoData.from_file` 冒泡，导致**地图完全不加载**（状态栏提示"自动加载失败"，画布空白）。Python 逐行执行，`level` 在 `append` 那行时还不存在。
+23. **静态层依赖 `draw_full`，而 `draw_full` 由累计缩放触发（时机问题）**：州面、郡界仅在 `draw_full` 时按当时视口裁剪创建。快速放大后又快速缩小，`draw_full` 可能在"视图还比较小"的中间时刻触发，导致缩回后**最终视图边缘的州郡面缺失**，需再滚一下滚轮（累计缩放再次触发）才补齐。现通过"滚轮停手 180 ms 后补一次 `draw_full`"（`MapCanvas._schedule_settle_redraw`）缓解；根治方案是给静态层做增量补画或改用更大的裁剪留白。
+24. **`_cum_scale` 触发点是"当前视图"，不是"最终视图"**：`draw_full` 按触发瞬间的 `_visible_bounds` 决定创建范围，与用户最终停手时的视口可能不一致。这是"边缘缺失"这类间歇性视觉 bug 的根源。任何"按当前视口裁剪 + 只在特定时机重建"的图层都可能复现同类问题。
+25. **拖拽路径不做静态层补画**：`renderer.pan` 只调 `canvas.move("all", ...)`，不创建新对象。若拖出原 `draw_full` 时的裁剪范围，新进入视口的州面/郡界缺失。当前依赖"滚轮触发 `draw_full`"或"settle redraw"间接触发补画；若需要**拖拽后立即补全**，可在 `_on_release` 里检测位移超阈值后调 `renderer.draw_full()`（代价是松手一瞬间的刷新感）。
 
 ### 6.4 建议的下一步优先级
 
 1. 接入 `water.geojson`（取消 `map_canvas.py` 注释）与 `mountains.geojson`（新增加载分支）。
-2. 为州面/郡界加 `min_scale` LOD；`pan` 路径跳过动态层重建，只在 `zoom` 时刷新，降低拖拽卡顿。
+2. 为州面/郡界加 `min_scale` LOD；`pan` 路径增加"新视口超出已绘制范围则补画"的判断，或让 `_on_release` 位移超阈值时补一次 `draw_full`，降低拖拽后静态层缺失的概率。
 3. 建立 `General` / `City` / `Troop` 数据模型，填充三个列表面板并补 `FactionPanel.refresh()`。
 4. 实现存档序列化（JSON）+ 保存/读取菜单。
 5. 把县点与 `GameState` 的城市数据绑定，使地图点击可选中城市；把县 `level` 作为城市规模/人口/兵力的分级依据。
 6. 给 `GeoData.roads` 建 `id → 县点` / `id → 道路列表` 索引，启用"点击城市高亮其相邻道路"，为行军路径规划做准备。
+7. 给 `render_points` / `render_point` 的 `except Exception` 加上"首次异常打印一次日志"的逻辑（`self._point_err_logged` 标志），避免新 bug 被完全静默吞掉。

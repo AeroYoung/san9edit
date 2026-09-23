@@ -100,6 +100,13 @@ class MapCanvas(ttk.Frame):
         else:
             self._need_fit = True
 
+    def redraw(self):
+        """设置变更后强制全量重绘（不改视图）。"""
+        if not self.data or not self.data.bbox:
+            return
+        self._sync_canvas_size()
+        self.renderer.draw_full()
+
     def zoom(self, factor, anchor=None):
         if not self.data or not self.data.bbox:
             return

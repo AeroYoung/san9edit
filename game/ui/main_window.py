@@ -22,6 +22,8 @@ from game.ui.status_bar import StatusBar
 from game.ui.map_canvas import MapCanvas
 from game.ui.side_panel import SidePanel
 from game.ui.window_utils import maximize, center_on_parent
+from game.config.settings_manager import SettingsManager
+from game.ui.settings_window import SettingsWindow
 
 class MainWindow:
     def __init__(self):
@@ -33,6 +35,10 @@ class MainWindow:
         maximize(self.root)
 
         self.font_family = self._pick_font_family()
+        # 设置管理器必须先于任何读取 style 的部件创建，
+        # 保证 apply() 已经把本地覆盖写回 style 字典。
+        self.settings = SettingsManager()
+        self.settings.apply()
         self.game_state = GameState()
 
         self._setup_theme()
@@ -164,6 +170,8 @@ class MainWindow:
             self._confirm_and_new_game()
         elif action == "load_game":
             self.open_geojson()
+        elif action == "settings":
+            self._open_settings()
         elif action == "save_game":
             self.status_bar.set_message("保存功能尚未实现")
         elif action == "view_zoom_in":
@@ -196,6 +204,38 @@ class MainWindow:
         self.status_bar.set_message(
             f"回合推进 → {self.game_state.date_text()}"
         )
+
+    def _open_settings(self):
+        win = getattr(self, "_settings_win", None)
+        if win is not None and win.winfo_exists():
+            win.lift()
+            win.focus_set()
+            return
+        self._settings_win = SettingsWindow(
+            self.root, self.settings, self.font_family,
+            on_applied=self._on_settings_applied,
+        )
+
+    def _on_settings_applied(self, changed_paths):
+        """设置窗口保存后调用。
+
+        - MAP_STYLE / CITY_LEVEL_MIN_SCALE / LAYER_VISIBILITY：立即重绘地图；
+        - THEME / FONT_SIZES / FONT_CANDIDATES：需重启，窗口自己已提示。
+        """
+        map_dirty = False
+        for p in changed_paths:
+            if p.startswith("MAP_STYLE.") \
+            or p.startswith("CITY_LEVEL_MIN_SCALE") \
+            or p.startswith("LAYER_VISIBILITY."):
+                map_dirty = True
+                break
+        if map_dirty and getattr(self, "map_canvas", None) is not None:
+            try:
+                self.map_canvas.redraw()
+            except Exception:
+                pass
+        self.status_bar.set_message("设置已保存")
+
 
     def _confirm_and_new_game(self):
         if messagebox.askyesno("新游戏",

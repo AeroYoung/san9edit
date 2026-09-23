@@ -7,6 +7,7 @@
 """
 
 from game.config.style import MAP_STYLE, CITY_LEVEL_MIN_SCALE
+from game.config.style import MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY
 
 class MapRenderer:
     LABEL_TAG = "label"     # 文字标签的 tag，用于整体删除/重绘
@@ -70,28 +71,31 @@ class MapRenderer:
         for t in (self.LABEL_TAG, self.WATER_TAG, self.ROAD_TAG, self.POINT_TAG):
             self.canvas.delete(t)
 
-        self._draw_water()      # 最底
-        self.render_roads()
-        self.render_points()
-        self._draw_labels()     # 最后画 → 天然在最顶
+        if LAYER_VISIBILITY.get("water", True):
+            self._draw_water()
+        if LAYER_VISIBILITY.get("road", True):
+            self.render_roads()
+        if LAYER_VISIBILITY.get("point", True):
+            self.render_points()
+        self._draw_labels()     # 内部各自再判断
 
-        self.canvas.tag_lower(self.ROAD_TAG, self.LINE_TAG)   # 道路 → 郡界之下
-        self.canvas.tag_lower(self.WATER_TAG, self.ROAD_TAG)  # 水域 → 道路之下
-        self.canvas.tag_lower(self.ROAD_TAG, self.POINT_TAG)  # 道路 → 县点之下（双保险）
+        self.canvas.tag_lower(self.ROAD_TAG, self.LINE_TAG)
+        self.canvas.tag_lower(self.WATER_TAG, self.ROAD_TAG)
+        self.canvas.tag_lower(self.ROAD_TAG, self.POINT_TAG)
 
     def _draw_geometry(self):
-        self.render_polygons()        # 州面
-        self.render_lines()           # 郡界
-
-        # self.render_water_polygons()  # 湖泊
-        # self.render_water_lines()     # 河流
-        # self.render_roads()           # 道路        
-        # self.render_points()          # 县点
+        if LAYER_VISIBILITY.get("polygon", True):
+            self.render_polygons()
+        if LAYER_VISIBILITY.get("line", True):
+            self.render_lines()
 
     def _draw_labels(self):
-        self.render_state_labels()
-        self.render_county_labels()
-        self.render_city_labels()
+        if LAYER_VISIBILITY.get("label_state", True):
+            self.render_state_labels()
+        if LAYER_VISIBILITY.get("label_county", True):
+            self.render_county_labels()
+        if LAYER_VISIBILITY.get("label_city", True):
+            self.render_city_labels()
 
     def _draw_water(self):
         self.render_water_polygons()
@@ -125,6 +129,8 @@ class MapRenderer:
                 pass
 
     def render_water_lines(self):
+        if not LAYER_VISIBILITY.get("water", True):
+                return
         style = MAP_STYLE["water_line"]
         min_lon, min_lat, max_lon, max_lat = self._visible_bounds()
         scale = self.viewport.scale
@@ -140,6 +146,8 @@ class MapRenderer:
                 pass
 
     def render_water_polygon(self, feat, style):
+        if not LAYER_VISIBILITY.get("water", True):
+                return
         geom = feat["geometry"]
         polys = ([geom["coordinates"]] if geom["type"] == "Polygon"
                  else geom["coordinates"])
@@ -196,6 +204,8 @@ class MapRenderer:
                 pass
 
     def render_points(self):
+        if not LAYER_VISIBILITY.get("point", True):
+                return
         style = MAP_STYLE.get("point", {})
         if not getattr(self.data, "shapes_point", None):
             return
@@ -432,6 +442,8 @@ class MapRenderer:
 
     def render_roads(self):
         """绘制路网线段（不含点、不含标签）。线宽 ∝ 1/difficulty。"""
+        if not LAYER_VISIBILITY.get("road", True):
+                return
         style = MAP_STYLE.get("road")
         roads = getattr(self.data, "roads", None) if self.data else None
         if not style or not roads:

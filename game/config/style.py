@@ -140,3 +140,22 @@ CITY_LEVEL_MIN_SCALE = {
     9: 600,
     10: 700,
 }
+
+# ============================================================
+# 图层显隐总开关
+# ============================================================
+# True = 绘制该图层；False = 完全跳过。
+# 修改后由设置窗口保存即可立即生效（无需重启）。
+# 说明：water / mountain 对应的数据文件当前尚未接入渲染，
+#       默认先置 False，等相应图层接入后会自动生效。
+LAYER_VISIBILITY = {
+    "polygon":      True,    # 州面
+    "line":         True,    # 郡界
+    "point":        True,    # 县点
+    "road":         True,    # 道路
+    "water":        False,   # 水域（湖泊 / 河流）
+    "mountain":     False,   # 山地
+    "label_state":  True,    # 州名标签
+    "label_county": True,    # 郡名标签
+    "label_city":   True,    # 县名标签
+}
