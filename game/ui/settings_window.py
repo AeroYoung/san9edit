@@ -165,9 +165,11 @@ class SettingsWindow(tk.Toplevel):
             for it in items:
                 if it.get("hidden"):
                     continue
+                print("[populate]", g["key"], it["path"])
                 self._add_item_row(sec.body, it)
 
     def _add_item_row(self, parent, item):
+        print("[row]", item["path"])
         row = tk.Frame(parent, bg=THEME["panel_bg"])
         row.pack(fill="x", pady=2)
 
@@ -321,83 +323,84 @@ class SettingsWindow(tk.Toplevel):
                 var.set(labels[vals.index(v)])
         self._rows[path] = {"setter": _set}
 
-        def _build_level_table(self, parent, item):
-            path = item["path"]
-            table = self._get(path) or {}
-            vt = item["value_type"]
+    def _build_level_table(self, parent, item):
+        path = item["path"]
+        table = self._get(path) or {}
+        vt = item["value_type"]
 
-            sub = tk.Frame(parent, bg=THEME["panel_bg"])
-            sub.pack(side="left", fill="x", expand=True)
+        sub = tk.Frame(parent, bg=THEME["panel_bg"])
+        sub.pack(side="left", fill="x", expand=True)
 
-            cols = 5
-            for i, level in enumerate(sorted(table.keys())):
-                r, c = divmod(i, cols)
-                cell = tk.Frame(sub, bg=THEME["panel_bg"])
-                cell.grid(row=r, column=c, padx=4, pady=2, sticky="w")
+        cols = 5
+        for i, level in enumerate(sorted(table.keys())):
+            r, c = divmod(i, cols)
+            cell = tk.Frame(sub, bg=THEME["panel_bg"])
+            cell.grid(row=r, column=c, padx=4, pady=2, sticky="w")
 
-                tk.Label(cell, text=f"Lv{level}", width=4,
-                        bg=THEME["panel_bg"], fg="#666666",
-                        font=(self.font_family, FONT_SIZES["panel_body"] - 1),
-                        ).pack(side="left")
+            tk.Label(cell, text=f"Lv{level}", width=4,
+                    bg=THEME["panel_bg"], fg="#666666",
+                    font=(self.font_family, FONT_SIZES["panel_body"] - 1),
+                    ).pack(side="left")
 
-                cur = table[level]
-                child_path = f"{path}.{level}"
+            cur = table[level]
+            child_path = f"{path}.{level}"
 
-                if vt == "choice":
-                    vals = [c[0] for c in item["choices"]]
-                    labels = [c[1] for c in item["choices"]]
-                    var = tk.StringVar(
-                        value=labels[vals.index(cur)] if cur in vals else labels[0])
-                    cb = ttk.Combobox(cell, textvariable=var, values=labels,
-                                    state="readonly", width=5,
-                                    font=(self.font_family,
-                                            FONT_SIZES["panel_body"] - 1))
-                    cb.pack(side="left")
-                    def _on(_evt=None, cp=child_path, v=var, vs=vals, ls=labels):
-                        self.draft[cp] = vs[ls.index(v.get())]
-                        self._refresh_dirty_label()
-                    cb.bind("<<ComboboxSelected>>", _on)
-                    self._rows[child_path] = {
-                        "setter": lambda v, var=var, vs=vals, ls=labels:
-                            var.set(ls[vs.index(v)] if v in vs else ls[0])}
-                elif vt == "bool":
-                    var = tk.BooleanVar(value=bool(cur))
-                    def _on(cp=child_path, v=var):
-                        self.draft[cp] = bool(v.get())
-                        self._refresh_dirty_label()
-                    tk.Checkbutton(cell, variable=var, command=_on,
-                                bg=THEME["panel_bg"],
-                                activebackground=THEME["panel_bg"],
-                                ).pack(side="left")
-                    self._rows[child_path] = {
-                        "setter": lambda v, var=var: var.set(bool(v))}
-                else:
-                    is_int = (vt == "int")
-                    var = tk.StringVar(value=str(cur))
-                    ent = tk.Entry(cell, textvariable=var, width=6,
+            if vt == "choice":
+                vals = [c[0] for c in item["choices"]]
+                labels = [c[1] for c in item["choices"]]
+                var = tk.StringVar(
+                    value=labels[vals.index(cur)] if cur in vals else labels[0])
+                cb = ttk.Combobox(cell, textvariable=var, values=labels,
+                                state="readonly", width=5,
                                 font=(self.font_family,
                                         FONT_SIZES["panel_body"] - 1))
-                    ent.pack(side="left")
-                    err = tk.Label(cell, text="", fg="#B03A2E",
-                                bg=THEME["panel_bg"])
-                    err.pack(side="left")
-                    def _commit(_evt=None, cp=child_path, v=var, e=err,
-                                ii=is_int, im=item):
-                        raw = v.get().strip()
-                        try:
-                            x = int(raw) if ii else float(raw)
-                        except ValueError:
-                            e.configure(text="!"); return
-                        lo, hi = im.get("min"), im.get("max")
-                        if lo is not None and x < lo: e.configure(text="!"); return
-                        if hi is not None and x > hi: e.configure(text="!"); return
-                        e.configure(text="")
-                        self.draft[cp] = x
-                        self._refresh_dirty_label()
-                    ent.bind("<Return>", _commit)
-                    ent.bind("<FocusOut>", _commit)
-                    self._rows[child_path] = {
-                        "setter": lambda v, var=var: var.set(str(v))}
+                cb.pack(side="left")
+                def _on(_evt=None, cp=child_path, v=var, vs=vals, ls=labels):
+                    self.draft[cp] = vs[ls.index(v.get())]
+                    self._refresh_dirty_label()
+                cb.bind("<<ComboboxSelected>>", _on)
+                self._rows[child_path] = {
+                    "setter": lambda v, var=var, vs=vals, ls=labels:
+                        var.set(ls[vs.index(v)] if v in vs else ls[0])}
+            elif vt == "bool":
+                var = tk.BooleanVar(value=bool(cur))
+                def _on(cp=child_path, v=var):
+                    self.draft[cp] = bool(v.get())
+                    self._refresh_dirty_label()
+                tk.Checkbutton(cell, variable=var, command=_on,
+                            bg=THEME["panel_bg"],
+                            activebackground=THEME["panel_bg"],
+                            ).pack(side="left")
+                self._rows[child_path] = {
+                    "setter": lambda v, var=var: var.set(bool(v))}
+            else:
+                is_int = (vt == "int")
+                var = tk.StringVar(value=str(cur))
+                ent = tk.Entry(cell, textvariable=var, width=6,
+                            font=(self.font_family,
+                                    FONT_SIZES["panel_body"] - 1))
+                ent.pack(side="left")
+                err = tk.Label(cell, text="", fg="#B03A2E",
+                            bg=THEME["panel_bg"])
+                err.pack(side="left")
+                def _commit(_evt=None, cp=child_path, v=var, e=err,
+                            ii=is_int, im=item):
+                    raw = v.get().strip()
+                    try:
+                        x = int(raw) if ii else float(raw)
+                    except ValueError:
+                        e.configure(text="!"); return
+                    lo, hi = im.get("min"), im.get("max")
+                    if lo is not None and x < lo: e.configure(text="!"); return
+                    if hi is not None and x > hi: e.configure(text="!"); return
+                    e.configure(text="")
+                    self.draft[cp] = x
+                    self._refresh_dirty_label()
+                ent.bind("<Return>", _commit)
+                ent.bind("<FocusOut>", _commit)
+                self._rows[child_path] = {
+                    "setter": lambda v, var=var: var.set(str(v))}
+
     # ==========================================================
     # 值读写
     # ==========================================================

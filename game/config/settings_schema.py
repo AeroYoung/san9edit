@@ -138,7 +138,7 @@ ITEMS = [
      "type": "level_table", "label": "各等级空心",
      "desc": "level → 是否空心。空心点中心透明，只留描边。",
      "value_type": "bool"},
-     
+
     # ---------------- 道路 ----------------
     {"path": "MAP_STYLE.road.color",            "group": "road", "type": "color",
      "label": "道路颜色"},
