@@ -227,8 +227,8 @@ class MapRenderer:
                 if scale < CITY_LEVEL_MIN_SCALE.get(level, 0):
                     continue
                 self.render_point(lon, lat, feat, style)
-            except Exception as e:
-                print("[point]", type(e).__name__, e)
+            except Exception :
+                pass
 
     def render_point(self, lon, lat, feat, style):
 

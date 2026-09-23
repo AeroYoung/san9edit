@@ -43,8 +43,7 @@ class SettingsWindow(tk.Toplevel):
 
         self._populate()
         self._refresh_dirty_label()
-        self._bind_configure_recursive(self._content)   # 新增：子控件也参与 scrollregion 重算
-
+        
         # 居中 + 模态
         width, height = 940, 660
         center_on_parent(self, master, width, height)
@@ -88,33 +87,44 @@ class SettingsWindow(tk.Toplevel):
                  ).pack(side="right", padx=10)
 
     def _build_body(self):
-        wrap = tk.Frame(self, bg=THEME["panel_bg"])
-        wrap.pack(fill="both", expand=True)
+        self._notebook = ttk.Notebook(self)
+        self._notebook.pack(fill="both", expand=True)
+        self._notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
-        self._canvas = tk.Canvas(wrap, bg=THEME["panel_bg"],
-                                 highlightthickness=0)
-        vsb = ttk.Scrollbar(wrap, orient="vertical",
-                            command=self._canvas.yview)
-        self._canvas.configure(yscrollcommand=vsb.set)
+        self._tabs = {}   # tab_key -> {"frame","canvas","content","content_id"}
+        for tab_meta in schema.TABS:
+            tab_key = tab_meta["key"]
+            page = tk.Frame(self._notebook, bg=THEME["panel_bg"])
+            self._notebook.add(page, text=tab_meta["title"])
 
-        vsb.pack(side="right", fill="y")
-        self._canvas.pack(side="left", fill="both", expand=True)
+            canvas = tk.Canvas(page, bg=THEME["panel_bg"],
+                               highlightthickness=0)
+            vsb = ttk.Scrollbar(page, orient="vertical",
+                                command=canvas.yview)
+            canvas.configure(yscrollcommand=vsb.set)
+            vsb.pack(side="right", fill="y")
+            canvas.pack(side="left", fill="both", expand=True)
 
-        self._content = tk.Frame(self._canvas, bg=THEME["panel_bg"])
-        self._content_id = self._canvas.create_window(
-            (0, 0), window=self._content, anchor="nw")
+            content = tk.Frame(canvas, bg=THEME["panel_bg"])
+            content_id = canvas.create_window((0, 0), window=content,
+                                              anchor="nw")
 
-        def _on_content_config(_):
-            # 推迟到下一次 idle：此刻布局才真正稳定
-            self._canvas.after_idle(self._update_scrollregion)
-        def _on_canvas_config(e):
-            self._canvas.itemconfigure(self._content_id, width=e.width)
-            self._canvas.after_idle(self._update_scrollregion)
-        self._content.bind("<Configure>", _on_content_config, add="+")
-        self._canvas.bind("<Configure>", _on_canvas_config, add="+")
+            def _on_content_config(_e, tk_=tab_key):
+                td = self._tabs.get(tk_)
+                if td:
+                    td["canvas"].after_idle(
+                        lambda: self._update_scrollregion(tk_))
+            def _on_canvas_config(e, cv=canvas, cid=content_id, tk_=tab_key):
+                cv.itemconfigure(cid, width=e.width)
+                cv.after_idle(lambda: self._update_scrollregion(tk_))
 
-        # 滚轮
-        self._canvas.bind_all("<MouseWheel>", self._on_wheel, add="+")
+            content.bind("<Configure>", _on_content_config, add="+")
+            canvas.bind("<Configure>", _on_canvas_config, add="+")
+
+            self._tabs[tab_key] = {
+                "frame": page, "canvas": canvas,
+                "content": content, "content_id": content_id,
+            }
 
     def _build_footer(self):
         bar = tk.Frame(self, bg=THEME["toolbar_bg"], height=44)
@@ -153,8 +163,14 @@ class SettingsWindow(tk.Toplevel):
             items = schema.items_of_group(g["key"])
             if not items:
                 continue
+            tab_key = g.get("tab", "appearance")
+            tab_data = self._tabs.get(tab_key)
+            if tab_data is None:
+                continue
+            content = tab_data["content"]
+
             sec = CollapsibleSection(
-                self._content, title=g["title"], desc=g.get("desc", ""),
+                content, title=g["title"], desc=g.get("desc", ""),
                 on_reset=self._on_reset_group,
                 expanded=(g["key"] in ("point", "visibility")),
                 font_family=self.font_family,
@@ -165,11 +181,33 @@ class SettingsWindow(tk.Toplevel):
             for it in items:
                 if it.get("hidden"):
                     continue
-                print("[populate]", g["key"], it["path"])
+
                 self._add_item_row(sec.body, it)
 
+        # 空 tab 占位
+        for tab_meta in schema.TABS:
+            tab_key = tab_meta["key"]
+            has_items = any(
+                any(not it.get("hidden")
+                    for it in schema.items_of_group(g["key"]))
+                for g in schema.groups_of_tab(tab_key)
+            )
+            if not has_items:
+                tab_data = self._tabs.get(tab_key)
+                if tab_data:
+                    tk.Label(tab_data["content"],
+                             text="暂无可配置项",
+                             bg=THEME["panel_bg"], fg="#999999",
+                             font=(self.font_family,
+                                   FONT_SIZES["panel_body"] + 2),
+                             ).pack(pady=60)
+
+        # 给每个 tab 的 content 及其后代绑滚轮 / configure
+        for tab_key, tab_data in self._tabs.items():
+            self._bind_wheel_recursive(tab_data["content"])
+
     def _add_item_row(self, parent, item):
-        print("[row]", item["path"])
+        
         row = tk.Frame(parent, bg=THEME["panel_bg"])
         row.pack(fill="x", pady=2)
 
@@ -421,9 +459,15 @@ class SettingsWindow(tk.Toplevel):
     # 筛选
     # ==========================================================
     def _apply_filter(self):
+        tab_key = self._current_tab_key()
+        if tab_key is None:
+            return
         kw = self.filter_var.get().strip().lower()
         only_mod = self.only_modified_var.get()
         for it in schema.ITEMS:
+            g = schema.group_meta(it["group"])
+            if not g or g.get("tab") != tab_key:
+                continue
             row = it.get("_row_widget")
             if row is None:
                 continue
@@ -432,13 +476,23 @@ class SettingsWindow(tk.Toplevel):
                     and kw not in it["path"].lower():
                 visible = False
             if only_mod and it["path"] not in self.draft:
-                # level_table 的 draft key 带 level 后缀，这里模糊匹配
                 if not any(k.startswith(it["path"] + ".") for k in self.draft):
                     visible = False
             if visible:
                 row.pack(fill="x", pady=2)
             else:
                 row.pack_forget()
+
+    def _current_tab_key(self):
+        try:
+            idx = self._notebook.index("current")
+            return schema.TABS[idx]["key"]
+        except Exception:
+            return None
+
+    def _on_tab_changed(self, _event=None):
+        # 切换 tab 时，按当前 tab 重算筛选（搜索词保留，作用域变化）
+        self._apply_filter()
 
     # ==========================================================
     # 恢复默认
@@ -484,21 +538,18 @@ class SettingsWindow(tk.Toplevel):
     # 滚动条
     # ==========================================================
     
-
-    def _update_scrollregion(self):
+    def _update_scrollregion(self, tab_key):
+        tab_data = self._tabs.get(tab_key)
+        if not tab_data:
+            return
+        canvas = tab_data["canvas"]
+        content = tab_data["content"]
         try:
-            self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+            h = content.winfo_reqheight()
+            w = canvas.winfo_width()
+            canvas.configure(scrollregion=(0, 0, w, h))
         except tk.TclError:
             pass
-
-    def _bind_configure_recursive(self, widget):
-        """给 widget 及其所有后代绑 <Configure>，任何子控件尺寸变化
-        都会触发一次 scrollregion 重算。"""
-        widget.bind("<Configure>",
-                    lambda e: self._canvas.after_idle(self._update_scrollregion),
-                    add="+")
-        for c in widget.winfo_children():
-            self._bind_configure_recursive(c)
 
     # ==========================================================
     # 保存 / 关闭
@@ -577,10 +628,20 @@ class SettingsWindow(tk.Toplevel):
         self.destroy()
 
     def _on_wheel(self, event):
-        # 只在鼠标位于本窗口时响应
-        if self.winfo_containing(event.x_root, event.y_root) is None:
+        if event.delta == 0:
             return
-        self._canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+        tab_key = self._current_tab_key()
+        if tab_key is None:
+            return
+        canvas = self._tabs.get(tab_key, {}).get("canvas")
+        if canvas is None:
+            return
+        canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
+
+    def _bind_wheel_recursive(self, widget):    
+        widget.bind("<MouseWheel>", self._on_wheel, add="+")
+        for c in widget.winfo_children():
+            self._bind_wheel_recursive(c)
 
     def _unbind_wheel(self):
         try:

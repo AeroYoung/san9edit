@@ -16,40 +16,48 @@ level_table 附加字段：
 """
 
 # ============================================================
+# Tab（一级分区）
+# ============================================================
+TABS = [
+    {"key": "appearance", "title": "外观"},
+    {"key": "operation",  "title": "操作"},
+    {"key": "game",       "title": "游戏"},
+]
+
+# ============================================================
 # 分组
 # ============================================================
 GROUPS = [
-    {"key": "theme", "title": "界面主题",
+    {"key": "theme", "tab": "appearance", "title": "界面主题",
      "desc": "顶部信息栏 / 状态栏 / 面板 / 画布底色。修改后需重启游戏生效。",
      "restart": True},
-    {"key": "font", "title": "字体与字号",
+    {"key": "font", "tab": "appearance", "title": "字体与字号",
      "desc": "各 UI 元素的字号。修改后需重启游戏生效。",
      "restart": True},
 
-    {"key": "polygon", "title": "州面样式",
+    {"key": "polygon", "tab": "appearance", "title": "州面样式",
      "desc": "各州填充面与描边。"},
-    {"key": "line", "title": "郡界样式",
+    {"key": "line", "tab": "appearance", "title": "郡界样式",
      "desc": "各郡分界线。"},
-    {"key": "point", "title": "县点样式",
+    {"key": "point", "tab": "appearance", "title": "县点样式",
      "desc": "各县治所小点的颜色、大小、描边与形状分级。"},
-    {"key": "road", "title": "道路样式",
+    {"key": "road", "tab": "appearance", "title": "道路样式",
      "desc": "道路线段的颜色与宽度。"},
-    {"key": "water", "title": "水域样式",
+    {"key": "water", "tab": "appearance", "title": "水域样式",
      "desc": "湖泊与河流的颜色（需 water.geojson 接入后生效）。"},
 
-    {"key": "label_state", "title": "州名标签",
+    {"key": "label_state", "tab": "appearance", "title": "州名标签",
      "desc": "州名文字的显隐区间与字号。"},
-    {"key": "label_county", "title": "郡名标签",
+    {"key": "label_county", "tab": "appearance", "title": "郡名标签",
      "desc": "郡名文字的显隐区间与字号。"},
-    {"key": "label_city", "title": "县名标签",
+    {"key": "label_city", "tab": "appearance", "title": "县名标签",
      "desc": "县名文字的显隐区间与字号。县名与县点共用分级阈值。"},
 
-    {"key": "lod", "title": "分级显隐",
+    {"key": "lod", "tab": "appearance", "title": "分级显隐",
      "desc": "县点与县名按 level 决定显示所需的最小缩放。级别越小越重要，越早出现。"},
-    {"key": "visibility", "title": "图层显隐",
+    {"key": "visibility", "tab": "appearance", "title": "图层显隐",
      "desc": "各图层总开关。关闭后该层完全不绘制。"},
 ]
-
 
 # ============================================================
 # 条目
@@ -247,6 +255,11 @@ ITEMS = [
 # ============================================================
 # 便捷查询
 # ============================================================
+
+def groups_of_tab(tab_key):
+    return [g for g in GROUPS if g.get("tab") == tab_key]
+
+
 def items_of_group(group_key):
     return [it for it in ITEMS if it["group"] == group_key]
 
