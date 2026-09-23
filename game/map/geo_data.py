@@ -179,7 +179,13 @@ class GeoData:
 
                 self.shapes_point.append({
                     "geometry": {"type": "Point", "coordinates": coords},
-                    "properties": {"县名": name, "level": level},
+                    "properties": {
+                        "id": city.get("id"),
+                        "县名": name,
+                        "level": level,
+                        "type": city.get("type", "县"),
+                        "is_capital": bool(city.get("is_capital", False)),
+                    },
                 })
                 
                 self.labels_city.append((coords[0], coords[1], name, level))

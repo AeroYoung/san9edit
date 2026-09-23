@@ -218,7 +218,7 @@ class TopBar(tk.Frame):
         m.add_command(label="地图复位", command=lambda: self._emit("view_reset"))
         m.add_separator()
         m.add_command(label="城市列表", command=lambda: self._emit("view_cities"))
-        m.add_command(label="武将列表", command=lambda: self._emit("view_generals"))
+        m.add_command(label="人物列表", command=lambda: self._emit("view_characters"))
         m.add_command(label="部队列表", command=lambda: self._emit("view_troops"))
 
     def _build_help_menu(self, m):

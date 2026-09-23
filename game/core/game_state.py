@@ -1,32 +1,45 @@
 # -*- coding: utf-8 -*-
 """游戏状态：回合、日期、玩家势力、资源。
 
-后续要加武将池、城市数据库、外交关系等，都在这里扩展。
-UI 通过 get_display_items() 拿到信息栏要显示的内容，
-改 UI 时不用动这个文件。
+未加载剧本时处于"未初始化"状态（year=0，各资源=0），信息栏显示 "—"。
+剧本加载后 MainWindow 调用 sync_from_world() 注入 World，
+信息栏改为显示玩家势力的实时数据。
 """
-
-from game.config import constants as C
 
 
 class GameState:
     def __init__(self):
-        self.year = C.INITIAL_YEAR
-        self.month = C.INITIAL_MONTH
-        self.xun = C.INITIAL_XUN       # 1=上旬 2=中旬 3=下旬
+        # 未初始化状态：等剧本/存档注入
+        self.year = 0
+        self.month = 0
+        self.xun = 0
 
-        self.player_faction = C.INITIAL_FACTION
-        self.prestige = C.INITIAL_PRESTIGE
-        self.gold = C.INITIAL_GOLD
-        self.food = C.INITIAL_FOOD
+        self.player_faction = None
+        self.prestige = 0
+        self.gold = 0
+        self.food = 0
+
+        self.world = None
+
+    # ---------- 剧本同步 ----------
+    def sync_from_world(self, world):
+        """剧本加载后调用：绑定 World，并把起始日期同步过来。"""
+        self.world = world
+        if world is not None:
+            self.year = world.year
+            self.month = world.month
+            self.xun = world.xun
 
     # ---------- 日期 ----------
     def date_text(self):
+        if not self.year:
+            return "—"
         xun_name = ("上", "中", "下")[self.xun - 1]
         return f"{self.year}年 {self.month}月{xun_name}旬"
 
     def advance_turn(self):
-        """推进一旬。一个月三旬，三个月一季度。"""
+        if not self.year:
+            return
         self.xun += 1
         if self.xun > 3:
             self.xun = 1
@@ -35,27 +48,53 @@ class GameState:
                 self.month = 1
                 self.year += 1
 
-    # ---------- 资源 ----------
+    # ---------- 资源（写回玩家势力） ----------
     def change_gold(self, delta):
-        self.gold = max(0, self.gold + delta)
+        pf = self._player_faction()
+        if pf is not None:
+            pf.gold = max(0, pf.gold + delta)
+        else:
+            self.gold = max(0, self.gold + delta)
 
     def change_food(self, delta):
-        self.food = max(0, self.food + delta)
+        pf = self._player_faction()
+        if pf is not None:
+            pf.food = max(0, pf.food + delta)
+        else:
+            self.food = max(0, self.food + delta)
 
     def change_prestige(self, delta):
-        self.prestige = max(0, self.prestige + delta)
+        pf = self._player_faction()
+        if pf is not None:
+            pf.prestige = max(0, pf.prestige + delta)
+        else:
+            self.prestige = max(0, self.prestige + delta)
+
+    # ---------- 内部 ----------
+    def _player_faction(self):
+        if self.world is None:
+            return None
+        return self.world.player_faction()
 
     # ---------- 信息栏数据源 ----------
     def get_display_items(self):
-        """返回 [(key, 标签, 值)]，信息栏按顺序渲染。
+        pf = self._player_faction()
 
-        想加新信息项（比如"兵力"、"士气"），在这里加一行即可，
-        信息栏会自动多出一个可点击的项目。
-        """
+        if pf is not None:
+            faction_str = pf.name
+            prestige_str = f"{pf.prestige:,}"
+            gold_str = f"{pf.gold:,}"
+            food_str = f"{pf.food:,}"
+        else:
+            faction_str = "—"
+            prestige_str = "—"
+            gold_str = "—"
+            food_str = "—"
+
         return [
             ("date",     "日期", self.date_text()),
-            ("faction",  "势力", self.player_faction),
-            ("prestige", "威望", f"{self.prestige:,}"),
-            ("gold",     "金钱", f"{self.gold:,}"),
-            ("food",     "军粮", f"{self.food:,}"),
+            ("faction",  "势力", faction_str),
+            ("prestige", "威望", prestige_str),
+            ("gold",     "金钱", gold_str),
+            ("food",     "军粮", food_str),
         ]

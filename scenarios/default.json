@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "id": "default",
+  "name": "默认剧本",
+  "desc": "十八路诸侯 · 曹操据陈留",
+  "start": { "year": 190, "month": 1, "xun": 1 },
+  "player_faction": "0001",
+
+  "factions": {
+    "0001": {
+      "name": "曹操",
+      "color": "#1E40AF",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000
+    }
+  },
+
+  "characters": {
+    "0001": {
+      "name": "曹操", "faction": "0001", "node": "130301",
+      "leadership": 96, "might": 72, "intelligence": 91,
+      "politics": 94, "charisma": 96
+    },
+    "0002": {
+      "name": "夏侯惇", "faction": "0001", "node": "130301",
+      "leadership": 84, "might": 90, "intelligence": 58,
+      "politics": 70, "charisma": 82
+    },
+    "0003": {
+      "name": "夏侯渊", "faction": "0001", "node": "130301",
+      "leadership": 86, "might": 91, "intelligence": 62,
+      "politics": 60, "charisma": 76
+    },
+    "0004": {
+      "name": "曹仁", "faction": "0001", "node": "130301",
+      "leadership": 88, "might": 86, "intelligence": 66,
+      "politics": 65, "charisma": 78
+    },
+    "0005": {
+      "name": "荀彧", "faction": "0001", "node": "130301",
+      "leadership": 60, "might": 32, "intelligence": 96,
+      "politics": 98, "charisma": 90
+    }
+  },
+
+  "nodes": {
+    "130301": { "owner": "0001", "troops": 8000, "gold": 1000, "food": 20000 },
+    "130303": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
+    "130304": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
+    "130305": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "130307": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "130308": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130309": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130310": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "130311": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
+    "130312": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130314": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130315": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130316": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130317": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "130318": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "130319": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "130320": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 }
+  }
+}

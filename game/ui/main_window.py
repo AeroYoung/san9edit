@@ -24,6 +24,7 @@ from game.ui.side_panel import SidePanel
 from game.ui.window_utils import maximize, center_on_parent
 from game.config.settings_manager import SettingsManager
 from game.ui.settings_window import SettingsWindow
+from game.core.scenario import ScenarioLoader
 
 class MainWindow:
     def __init__(self):
@@ -124,7 +125,40 @@ class MainWindow:
                 f"未找到 {path.name}，请按 Ctrl+O 打开文件"
             )
             return
-        self.load_geojson(str(path), silent=True)
+        ok = self.load_geojson(str(path), silent=True)
+        if ok:
+            self._load_default_scenario()
+
+    def _load_default_scenario(self):
+        """地图加载成功后，紧接着加载默认剧本，构造 World。"""
+        path = C.DEFAULT_SCENARIO_PATH
+        if not path.is_file():
+            self.status_bar.set_message(f"未找到剧本 {path.name}")
+            return
+
+        geo = getattr(self, "_geo_data", None)
+        if geo is None:
+            # 兜底：从渲染器里拿
+            geo = getattr(getattr(self.map_canvas, "renderer", None),
+                          "data", None)
+        if geo is None:
+            self.status_bar.set_message("剧本加载失败：GeoData 尚未就绪")
+            return
+
+        try:
+            world = ScenarioLoader.load(str(path), geo)
+        except Exception as e:
+            self.status_bar.set_message(f"剧本加载失败：{e}")
+            return
+
+        self._world = world
+        self.game_state.sync_from_world(world)
+
+        pf = world.player_faction()
+        pf_name = pf.name if pf else "—"
+        self.status_bar.set_message(
+            f"{world.summary()}  |  玩家势力：{pf_name}"
+        )
 
     def open_geojson(self):
         path = filedialog.askopenfilename(
@@ -144,6 +178,7 @@ class MainWindow:
                 messagebox.showerror("加载失败", str(e))
             return False
 
+        self._geo_data = data
         self.map_canvas.reset_view()
         self.status_bar.set_message(
             f"已加载 {os.path.basename(path)}  |  "
@@ -182,7 +217,7 @@ class MainWindow:
             self.map_canvas.reset_view()
         elif action == "view_cities":
             self.side_panel.notebook.select(1)
-        elif action == "view_generals":
+        elif action == "view_characters":
             self.side_panel.notebook.select(2)
         elif action == "view_troops":
             self.side_panel.notebook.select(3)
