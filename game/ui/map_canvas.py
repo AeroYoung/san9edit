@@ -45,7 +45,7 @@ class MapCanvas(ttk.Frame):
         self._location_callback = None
         self._zoom_callback = None
         self._need_fit = False       # 加载数据后等待首次有效尺寸
-
+        self._settle_job = None      # 滚轮静默后补绘的定时器句柄
         self._bind_events()
 
     # ==========================================================
@@ -110,6 +110,7 @@ class MapCanvas(ttk.Frame):
         self._notify_zoom()
         self.renderer.zoom(factor, mx, my)
         self._schedule_label_refresh()
+        self._schedule_settle_redraw()
 
     # ==========================================================
     # 内部：fit 相关
@@ -212,6 +213,21 @@ class MapCanvas(ttk.Frame):
         self.viewport.set_canvas_size(
             self.canvas.winfo_width(), self.canvas.winfo_height()
         )
+
+    def _settle_redraw(self):
+        self._settle_job = None
+        if self._need_fit or not self.data:
+            return
+        self.renderer.draw_full()
+
+    def _schedule_settle_redraw(self):
+        """滚轮停手 180ms 后补一次全量重绘，补齐快速缩放时漏掉的州郡面。"""
+        if self._settle_job is not None:
+            try:
+                self.after_cancel(self._settle_job)
+            except Exception:
+                pass
+        self._settle_job = self.after(180, self._settle_redraw)
 
     def _schedule_label_refresh(self):
         """平移/缩放后节流刷新标签（每 30ms 最多一次）。

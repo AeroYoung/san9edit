@@ -170,12 +170,18 @@ class GeoData:
             coords = city.get("coords")
             name = city.get("name")
             if coords and name:
+                # 先解析 level（含钳制），再 append —— 两处共用同一个值
+                try:
+                    level = int(city.get("level", 5))
+                except (TypeError, ValueError):
+                    level = 5
+                level = max(1, min(10, level))   # 钳制到 1–10，防止脏数据越界
+
                 self.shapes_point.append({
                     "geometry": {"type": "Point", "coordinates": coords},
-                    "properties": {"县名": name},
+                    "properties": {"县名": name, "level": level},
                 })
-                level = int(city.get("level", 5))
-                level = max(1, min(10, level))   # 钳制到 1–10，防止脏数据越界
+                
                 self.labels_city.append((coords[0], coords[1], name, level))
 
     # ---------- 外接矩形 ----------

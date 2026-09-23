@@ -195,8 +195,39 @@ class MapRenderer:
             except Exception:
                 pass
 
+    def render_points(self):
+        style = MAP_STYLE.get("point", {})
+        if not getattr(self.data, "shapes_point", None):
+            return
+        minx, miny, maxx, maxy = self._visible_bounds()
+        scale = self.viewport.scale
+        for feat in self.data.shapes_point:
+            try:
+                lon, lat = self._point_lonlat(feat)
+                if lon is None:
+                    continue
+                if not (minx <= lon <= maxx and miny <= lat <= maxy):
+                    continue
+                props = feat.get("properties", {}) if isinstance(feat, dict) else {}
+                try:
+                    level = int(props.get("level", 5))
+                except (TypeError, ValueError):
+                    level = 5
+                level = max(1, min(10, level))
+                if scale < CITY_LEVEL_MIN_SCALE.get(level, 0):
+                    continue
+                self.render_point(lon, lat, feat, style)
+            except Exception:
+                pass
+
     def render_point(self, lon, lat, feat, style):
-        props = feat.get("properties", {}) if isinstance(feat, dict) else {}
+        # 容错取 props：dict 走 properties，元组尝试第 3 位
+        props = {}
+        if isinstance(feat, dict):
+            props = feat.get("properties") or {}
+        elif isinstance(feat, (list, tuple)) and len(feat) >= 3 and isinstance(feat[2], dict):
+            props = feat[2]
+
         try:
             level = int(props.get("level", 5))
         except (TypeError, ValueError):
@@ -267,32 +298,6 @@ class MapRenderer:
                 pts.extend((x, y))
             if len(pts) >= 4:
                 self.canvas.create_line(*pts, fill=color, width=base["width"],tags=self.LINE_TAG)
-
-    def render_points(self):
-        style = MAP_STYLE.get("point", {})
-        if not getattr(self.data, "shapes_point", None):
-            return
-        minx, miny, maxx, maxy = self._visible_bounds()
-        scale = self.viewport.scale
-        for feat in self.data.shapes_point:
-            try:
-                # ⚠️ 按你现有 shapes_point 元素的实际字段取坐标，下同
-                lon, lat = self._point_lonlat(feat)
-                if lon is None:
-                    continue
-                if not (minx <= lon <= maxx and miny <= lat <= maxy):
-                    continue
-                props = feat.get("properties", {}) if isinstance(feat, dict) else {}
-                try:
-                    level = int(props.get("level", 5))
-                except (TypeError, ValueError):
-                    level = 5
-                level = max(1, min(10, level))
-                if scale < CITY_LEVEL_MIN_SCALE.get(level, 0):
-                    continue
-                self.render_point(lon, lat, feat, style)
-            except Exception:
-                pass
 
     # ==========================================================
     # 文字图层
@@ -381,6 +386,21 @@ class MapRenderer:
     # 县点图层
     # ==========================================================
     
+    def _point_lonlat(self, feat):
+        """从 shapes_point 元素提取 (lon, lat)。当前数据格式为
+        {"geometry": {"type":"Point","coordinates":[lon,lat]}, "properties": {...}}
+        """
+        if isinstance(feat, dict):
+            geom = feat.get("geometry")
+            if isinstance(geom, dict):
+                c = geom.get("coordinates")
+                if isinstance(c, (list, tuple)) and len(c) >= 2:
+                    try:
+                        return float(c[0]), float(c[1])
+                    except (TypeError, ValueError):
+                        return None, None
+        return None, None
+
     def _point_radius(self, level, style):
         """按当前缩放与 level 计算县点像素半径。"""
         span = self.viewport.span_px(self.data.bbox)
