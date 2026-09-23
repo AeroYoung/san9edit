@@ -43,6 +43,7 @@ class SettingsWindow(tk.Toplevel):
 
         self._populate()
         self._refresh_dirty_label()
+        self._bind_configure_recursive(self._content)   # 新增：子控件也参与 scrollregion 重算
 
         # 居中 + 模态
         width, height = 940, 660
@@ -104,12 +105,13 @@ class SettingsWindow(tk.Toplevel):
             (0, 0), window=self._content, anchor="nw")
 
         def _on_content_config(_):
-            self._canvas.configure(
-                scrollregion=self._canvas.bbox("all"))
+            # 推迟到下一次 idle：此刻布局才真正稳定
+            self._canvas.after_idle(self._update_scrollregion)
         def _on_canvas_config(e):
             self._canvas.itemconfigure(self._content_id, width=e.width)
-        self._content.bind("<Configure>", _on_content_config)
-        self._canvas.bind("<Configure>", _on_canvas_config)
+            self._canvas.after_idle(self._update_scrollregion)
+        self._content.bind("<Configure>", _on_content_config, add="+")
+        self._canvas.bind("<Configure>", _on_canvas_config, add="+")
 
         # 滚轮
         self._canvas.bind_all("<MouseWheel>", self._on_wheel, add="+")
@@ -319,73 +321,83 @@ class SettingsWindow(tk.Toplevel):
                 var.set(labels[vals.index(v)])
         self._rows[path] = {"setter": _set}
 
-    def _build_level_table(self, parent, item):
-        path = item["path"]
-        table = self._get(path) or {}
-        vt = item["value_type"]
+        def _build_level_table(self, parent, item):
+            path = item["path"]
+            table = self._get(path) or {}
+            vt = item["value_type"]
 
-        sub = tk.Frame(parent, bg=THEME["panel_bg"])
-        sub.pack(side="left", fill="x", expand=True)
+            sub = tk.Frame(parent, bg=THEME["panel_bg"])
+            sub.pack(side="left", fill="x", expand=True)
 
-        cols = 5
-        for i, level in enumerate(sorted(table.keys())):
-            r, c = divmod(i, cols)
-            cell = tk.Frame(sub, bg=THEME["panel_bg"])
-            cell.grid(row=r, column=c, padx=4, pady=2, sticky="w")
+            cols = 5
+            for i, level in enumerate(sorted(table.keys())):
+                r, c = divmod(i, cols)
+                cell = tk.Frame(sub, bg=THEME["panel_bg"])
+                cell.grid(row=r, column=c, padx=4, pady=2, sticky="w")
 
-            tk.Label(cell, text=f"Lv{level}", width=4,
-                     bg=THEME["panel_bg"], fg="#666666",
-                     font=(self.font_family, FONT_SIZES["panel_body"] - 1),
-                     ).pack(side="left")
+                tk.Label(cell, text=f"Lv{level}", width=4,
+                        bg=THEME["panel_bg"], fg="#666666",
+                        font=(self.font_family, FONT_SIZES["panel_body"] - 1),
+                        ).pack(side="left")
 
-            cur = table[level]
-            child_path = f"{path}.{level}"
+                cur = table[level]
+                child_path = f"{path}.{level}"
 
-            if vt == "choice":
-                vals = [c[0] for c in item["choices"]]
-                labels = [c[1] for c in item["choices"]]
-                var = tk.StringVar(
-                    value=labels[vals.index(cur)] if cur in vals else labels[0])
-                cb = ttk.Combobox(cell, textvariable=var, values=labels,
-                                  state="readonly", width=5,
-                                  font=(self.font_family,
+                if vt == "choice":
+                    vals = [c[0] for c in item["choices"]]
+                    labels = [c[1] for c in item["choices"]]
+                    var = tk.StringVar(
+                        value=labels[vals.index(cur)] if cur in vals else labels[0])
+                    cb = ttk.Combobox(cell, textvariable=var, values=labels,
+                                    state="readonly", width=5,
+                                    font=(self.font_family,
+                                            FONT_SIZES["panel_body"] - 1))
+                    cb.pack(side="left")
+                    def _on(_evt=None, cp=child_path, v=var, vs=vals, ls=labels):
+                        self.draft[cp] = vs[ls.index(v.get())]
+                        self._refresh_dirty_label()
+                    cb.bind("<<ComboboxSelected>>", _on)
+                    self._rows[child_path] = {
+                        "setter": lambda v, var=var, vs=vals, ls=labels:
+                            var.set(ls[vs.index(v)] if v in vs else ls[0])}
+                elif vt == "bool":
+                    var = tk.BooleanVar(value=bool(cur))
+                    def _on(cp=child_path, v=var):
+                        self.draft[cp] = bool(v.get())
+                        self._refresh_dirty_label()
+                    tk.Checkbutton(cell, variable=var, command=_on,
+                                bg=THEME["panel_bg"],
+                                activebackground=THEME["panel_bg"],
+                                ).pack(side="left")
+                    self._rows[child_path] = {
+                        "setter": lambda v, var=var: var.set(bool(v))}
+                else:
+                    is_int = (vt == "int")
+                    var = tk.StringVar(value=str(cur))
+                    ent = tk.Entry(cell, textvariable=var, width=6,
+                                font=(self.font_family,
                                         FONT_SIZES["panel_body"] - 1))
-                cb.pack(side="left")
-                def _on(_evt=None, cp=child_path, v=var, vs=vals, ls=labels):
-                    self.draft[cp] = vs[ls.index(v.get())]
-                    self._refresh_dirty_label()
-                cb.bind("<<ComboboxSelected>>", _on)
-                self._rows[child_path] = {
-                    "setter": lambda v, var=var, vs=vals, ls=labels:
-                        var.set(ls[vs.index(v)] if v in vs else ls[0])}
-            else:
-                is_int = (vt == "int")
-                var = tk.StringVar(value=str(cur))
-                ent = tk.Entry(cell, textvariable=var, width=6,
-                               font=(self.font_family,
-                                     FONT_SIZES["panel_body"] - 1))
-                ent.pack(side="left")
-                err = tk.Label(cell, text="", fg="#B03A2E",
-                               bg=THEME["panel_bg"])
-                err.pack(side="left")
-                def _commit(_evt=None, cp=child_path, v=var, e=err,
-                            ii=is_int, im=item):
-                    raw = v.get().strip()
-                    try:
-                        x = int(raw) if ii else float(raw)
-                    except ValueError:
-                        e.configure(text="!"); return
-                    lo, hi = im.get("min"), im.get("max")
-                    if lo is not None and x < lo: e.configure(text="!"); return
-                    if hi is not None and x > hi: e.configure(text="!"); return
-                    e.configure(text="")
-                    self.draft[cp] = x
-                    self._refresh_dirty_label()
-                ent.bind("<Return>", _commit)
-                ent.bind("<FocusOut>", _commit)
-                self._rows[child_path] = {
-                    "setter": lambda v, var=var: var.set(str(v))}
-
+                    ent.pack(side="left")
+                    err = tk.Label(cell, text="", fg="#B03A2E",
+                                bg=THEME["panel_bg"])
+                    err.pack(side="left")
+                    def _commit(_evt=None, cp=child_path, v=var, e=err,
+                                ii=is_int, im=item):
+                        raw = v.get().strip()
+                        try:
+                            x = int(raw) if ii else float(raw)
+                        except ValueError:
+                            e.configure(text="!"); return
+                        lo, hi = im.get("min"), im.get("max")
+                        if lo is not None and x < lo: e.configure(text="!"); return
+                        if hi is not None and x > hi: e.configure(text="!"); return
+                        e.configure(text="")
+                        self.draft[cp] = x
+                        self._refresh_dirty_label()
+                    ent.bind("<Return>", _commit)
+                    ent.bind("<FocusOut>", _commit)
+                    self._rows[child_path] = {
+                        "setter": lambda v, var=var: var.set(str(v))}
     # ==========================================================
     # 值读写
     # ==========================================================
@@ -464,6 +476,26 @@ class SettingsWindow(tk.Toplevel):
             except Exception:
                 pass
         self._refresh_dirty_label()
+
+    # ==========================================================
+    # 滚动条
+    # ==========================================================
+    
+
+    def _update_scrollregion(self):
+        try:
+            self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        except tk.TclError:
+            pass
+
+    def _bind_configure_recursive(self, widget):
+        """给 widget 及其所有后代绑 <Configure>，任何子控件尺寸变化
+        都会触发一次 scrollregion 重算。"""
+        widget.bind("<Configure>",
+                    lambda e: self._canvas.after_idle(self._update_scrollregion),
+                    add="+")
+        for c in widget.winfo_children():
+            self._bind_configure_recursive(c)
 
     # ==========================================================
     # 保存 / 关闭

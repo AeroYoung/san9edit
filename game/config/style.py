@@ -47,31 +47,58 @@ FONT_SIZES = {
 # ============================================================
 MAP_STYLE = {
     "polygon": {
-        "fill":    "#DCD6C8",
-        "outline": "#8B7355",
+        "fill":    "#E5D9BC",   # 暖米黄：州面底色，偏亮偏暖
+        "outline": "#6B4226",   # 深咖啡：州界用墨线感，最重
         "width":   1,
     },
     "line": {
-        "color": "#8B7355",
+        "color": "#B0A085",     # 浅灰褐：郡界用细线，最轻
         "width": 1,
     },
+    "road": {
+        "color": "#B5442C",     # 暗砖红：道路明显偏暖偏红，一眼区分
+        "width_divisor": 2600,
+        "min_width": 0.2,
+        "max_width": 2.0,
+        "difficulty_floor": 1.0,
+    },
+
     "point": {
-        "fill": "#3b2a1a",          # 原有填充色，保持不变
-        "outline": "#f2e6cc",       # 新增：描边色（浅色，暗底上提亮轮廓）
-        "outline_width": 0.6,       # 新增：描边宽（像素）
-        "size_divisor": 1100,       # 新增：地图总像素宽 ÷ 此值 = 基准半径
-        "min_radius": 0.9,          # 新增：半径下限（像素）
-        "max_radius": 5.5,          # 新增：半径上限（像素）
-        "shape_by_level": {         # 新增：level → 形状
+        "fill": "#3b2a1a",          # 填充色
+        "outline": "#f2e6cc",       # 描边色（浅色，暗底上提亮轮廓）
+        "outline_width": 0.6,       # 描边宽（像素）
+        
+        "hollow_outline": "#000000",        # 新增：空心点的轮廓色
+        "hollow_outline_width": 1.4,        # 新增：空心点的轮廓宽
+        
+        "size_divisor": 820,        # 地图总像素宽 ÷ 此值 = 基准半径
+        "min_radius": 1.3,          # 半径下限（像素）
+        "max_radius": 7.0,          # 半径上限（像素）
+        "shape_by_level": {         # level → 形状
             1: "circle",  2: "circle",  3: "circle",
-            4: "diamond", 5: "diamond", 6: "diamond",
-            7: "square",  8: "square",
+            4: "square",  5: "square",  6: "square",
+            7: "diamond", 8: "diamond",
             9: "triangle", 10: "triangle",
         },
-        "radius_by_level": {        # 新增：level → 半径倍率
-            1: 1.80, 2: 1.60, 3: 1.42, 4: 1.26, 5: 1.12,
-            6: 1.00, 7: 0.90, 8: 0.80, 9: 0.70, 10: 0.62,
+        "radius_by_level": {        # level → 半径倍率
+            1: 2.00, 2: 1.80, 3: 1.60, 4: 1.42, 5: 1.26,
+            6: 1.12, 7: 0.90, 8: 0.80, 9: 0.70, 10: 0.62,
         },
+        "hollow_by_level": {        # True = 空心（只留描边，中心透出底图）
+            1: False, 2: False,  3: False,
+            4: False, 5: False, 6: False,
+            7: False, 8: False,
+            9: False, 10: False,
+        },
+        "ring_by_level": {          # True = 额外套一圈同心外环
+            1: True, 2: True,  3: False,
+            4: False, 5: False, 6: False,
+            7: False, 8: False,
+            9: False, 10: False,
+        },
+        "ring_scale": 1.3,         # 外环半径 = 点半径 × 此值
+        "ring_width": 0.9,          # 外环线宽（像素）
+        "ring_color": "#000000",    # 外环颜色（缺省跟 outline 一致）
     },
     "water_polygon": {
         "fill":    "#A9D2F0",   # 湖泊浅蓝
@@ -82,13 +109,7 @@ MAP_STYLE = {
         "color": "#1E90FF",     # 河流蓝
         "width": 1,
     },
-    "road": {
-        "color": "#a8895f",          # 土黄/驼色，和州面、郡界拉开对比
-        "width_divisor": 2600,        # 地图总像素宽 ÷ 此值 = 基准宽度
-        "min_width": 0.2,            # 绝对下限（像素）
-        "max_width": 2.0,            # 绝对上限（像素）
-        "difficulty_floor": 1.0,     # difficulty 下限，防止极端值把线宽炸掉
-    },
+
 
     # size_divisor 越小字越大。
     # min_scale / max_scale 是显示区间的上下界（像素/度）：
@@ -108,6 +129,7 @@ MAP_STYLE = {
         "color": "#7A3B00", "halo": "#FFFFFF",
         "size_divisor": 140, "min_size": 8, "max_size": 16,
         "min_scale": 30,
+        "point_gap": 6,        # 新增：点边缘到文字中心之间的额外间隙（像素）
     },
 }
 

@@ -134,6 +134,11 @@ ITEMS = [
      "desc": "level → 半径倍率。通常级别越小越大。",
      "value_type": "float", "min": 0.0, "max": 5.0, "step": 0.01},
 
+    {"path": "MAP_STYLE.point.hollow_by_level", "group": "point",
+     "type": "level_table", "label": "各等级空心",
+     "desc": "level → 是否空心。空心点中心透明，只留描边。",
+     "value_type": "bool"},
+     
     # ---------------- 道路 ----------------
     {"path": "MAP_STYLE.road.color",            "group": "road", "type": "color",
      "label": "道路颜色"},

@@ -227,11 +227,11 @@ class MapRenderer:
                 if scale < CITY_LEVEL_MIN_SCALE.get(level, 0):
                     continue
                 self.render_point(lon, lat, feat, style)
-            except Exception:
-                pass
+            except Exception as e:
+                print("[point]", type(e).__name__, e)
 
     def render_point(self, lon, lat, feat, style):
-        # 容错取 props：dict 走 properties，元组尝试第 3 位
+
         props = {}
         if isinstance(feat, dict):
             props = feat.get("properties") or {}
@@ -249,29 +249,52 @@ class MapRenderer:
         if r <= 0:
             return
 
-        fill = props.get("fill", style.get("fill", "#000000"))
-        outline = style.get("outline") or fill
-        ow = style.get("outline_width", 0.6)
+        base_fill = props.get("fill", style.get("fill", "#000000"))
         shape = style.get("shape_by_level", {}).get(level, "circle")
+        hollow = style.get("hollow_by_level", {}).get(level, False)
+
+        # 空心 / 实心：用不同的描边配置
+        if hollow:
+            fill = ""                                        # 透明，底图透出
+            outline = style.get("hollow_outline", "#000000")
+            ow = max(0.8, min(1.4, r * 0.4))
+        else:
+            fill = base_fill
+            outline = style.get("outline") or base_fill
+            ow = style.get("outline_width", 0.6)
+
         lv_tag = f"city_lv{level}"
         tags = (self.POINT_TAG, lv_tag)
 
+        # 外环（黑色粗线）
+        if style.get("ring_by_level", {}).get(level, False):
+            ring_scale = style.get("ring_scale", 1.75)
+            ring_r = r * ring_scale
+            ring_color = style.get("ring_color") or outline
+            ring_w = style.get("ring_width", 1.4)
+            self._draw_point_shape(x, y, ring_r, shape, "", ring_color, ring_w, tags)
+
+        # 主体
+        self._draw_point_shape(x, y, r, shape, fill, outline, ow, tags)    
+
+    def _draw_point_shape(self, cx, cy, r, shape, fill, outline, width, tags):
+        """按 shape 画单个点图形。主形状与外环共用，只是 fill/半径不同。"""
         if shape == "square":
             self.canvas.create_rectangle(
-                x - r, y - r, x + r, y + r,
-                fill=fill, outline=outline, width=ow, tags=tags)
+                cx - r, cy - r, cx + r, cy + r,
+                fill=fill, outline=outline, width=width, tags=tags)
         elif shape == "diamond":
             self.canvas.create_polygon(
-                [x, y - r, x + r, y, x, y + r, x - r, y],
-                fill=fill, outline=outline, width=ow, tags=tags)
+                [cx, cy - r, cx + r, cy, cx, cy + r, cx - r, cy],
+                fill=fill, outline=outline, width=width, tags=tags)
         elif shape == "triangle":
             self.canvas.create_polygon(
-                [x, y - r, x + r * 0.866, y + r * 0.5, x - r * 0.866, y + r * 0.5],
-                fill=fill, outline=outline, width=ow, tags=tags)
+                [cx, cy - r, cx + r * 0.866, cy + r * 0.5, cx - r * 0.866, cy + r * 0.5],
+                fill=fill, outline=outline, width=width, tags=tags)
         else:  # circle
             self.canvas.create_oval(
-                x - r, y - r, x + r, y + r,
-                fill=fill, outline=outline, width=ow, tags=tags)
+                cx - r, cy - r, cx + r, cy + r,
+                fill=fill, outline=outline, width=width, tags=tags)
 
     def render_polygon(self, feat):
         geom = feat["geometry"]
@@ -328,6 +351,10 @@ class MapRenderer:
         if style["size"] <= 0:
             return
 
+        point_style = MAP_STYLE.get("point", {})       # 新增
+        text_half = style["size"] * 0.5                # 新增：中文半高近似
+        gap = base.get("point_gap", 3)                 # 新增
+
         scale = self.viewport.scale
         w = self.viewport.width
         h = self.viewport.height
@@ -342,7 +369,9 @@ class MapRenderer:
             x, y = self.viewport.project(lon, lat)
             if x < -pad or x > w + pad or y < -pad or y > h + pad:
                 continue
-            self.draw_text(x, y, text, style)
+            r = self._point_radius(level, point_style)  # 新增：取该县点当前半径
+            offset = r + text_half + gap                # 新增：总上移量
+            self.draw_text(x, y - offset, text, style)  # 改：y → y - offset
 
     def render_label_group(self, labels, style_key):
         if not labels:
