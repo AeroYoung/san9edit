@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(python -m py_compile main.py game/config/constants.py game/config/style.py game/core/game_state.py game/core/utils.py game/map/geo_data.py game/map/viewport.py game/map/renderer.py game/ui/main_window.py game/ui/menu_bar.py game/ui/info_bar.py game/ui/status_bar.py game/ui/map_canvas.py game/ui/side_panel.py game/ui/panels/faction_panel.py game/ui/panels/city_panel.py game/ui/panels/general_panel.py game/ui/panels/troop_panel.py)",
+      "Bash(PYTHONUTF8=1 python -)",
+      "Bash(PYTHONUTF8=1 python -c ' *)",
+      "Bash(rm -rf game/__pycache__ game/map/__pycache__ game/ui/__pycache__ game/core/__pycache__ game/config/__pycache__ game/ui/panels/__pycache__ __pycache__)",
+      "Bash(python -m py_compile game/ui/status_bar.py game/ui/map_canvas.py game/ui/main_window.py)",
+      "Bash(rm -rf game/__pycache__ game/ui/__pycache__ game/map/__pycache__ game/core/__pycache__ game/config/__pycache__ game/ui/panels/__pycache__)",
+      "Bash(python -m py_compile game/config/style.py game/map/renderer.py)",
+      "Bash(rm -rf game/__pycache__ game/map/__pycache__ game/config/__pycache__ game/core/__pycache__ game/ui/__pycache__)",
+      "Bash(python -m py_compile game/map/renderer.py game/map/geo_data.py game/ui/map_canvas.py)",
+      "Bash(python -m py_compile game/config/constants.py game/config/style.py game/map/geo_data.py game/map/renderer.py game/ui/map_canvas.py)"
+    ]
+  }
+}
