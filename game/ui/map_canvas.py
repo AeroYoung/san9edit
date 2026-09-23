@@ -65,11 +65,12 @@ class MapCanvas(ttk.Frame):
     def load_geojson(self, path):
         data = GeoData.from_file(path)
         # 加载水域（河流、湖泊），文件不存在则跳过
-        # if C.DEFAULT_WATER_PATH.is_file():
-        #     data.load_water(str(C.DEFAULT_WATER_PATH))
-        # if not data.bbox:
-        #     raise ValueError("文件里没有可绘制的坐标")
-        
+        if C.DEFAULT_WATER_PATH.is_file():
+            try:
+                data.load_water(str(C.DEFAULT_WATER_PATH))
+            except Exception:
+                pass     # 与路网一致：加载失败不影响主地图
+
         # 路网随主地图一起加载；失败不影响主地图渲染
         roads_path = DEFAULT_ROADS_PATH
         if roads_path.exists():

@@ -229,7 +229,7 @@ ITEMS = [
     {"path": "LAYER_VISIBILITY.water",        "group": "visibility", "type": "bool",
      "label": "水域（湖泊 / 河流）"},
     {"path": "LAYER_VISIBILITY.mountain",     "group": "visibility", "type": "bool",
-     "label": "山地"},
+     "label": "山地", "hidden": True},
     {"path": "LAYER_VISIBILITY.label_state",  "group": "visibility", "type": "bool",
      "label": "州名标签"},
     {"path": "LAYER_VISIBILITY.label_county", "group": "visibility", "type": "bool",

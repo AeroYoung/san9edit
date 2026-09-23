@@ -1,4 +1,7 @@
 {
   "version": 1,
-  "overrides": {}
+  "overrides": {
+    "LAYER_VISIBILITY.water": true,
+    "LAYER_VISIBILITY.mountain": true
+  }
 }

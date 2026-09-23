@@ -28,6 +28,7 @@ class SettingsWindow(tk.Toplevel):
         self.transient(master)
         self.configure(bg=THEME["panel_bg"])
 
+        self._closing = False    # 防止保存/关闭路径重入
         # 草稿：所有改动都写在这里，不直接写 manager
         self.draft = {}
         self._rows = {}         # path -> {"setter": fn, "kind": ...}
@@ -160,6 +161,8 @@ class SettingsWindow(tk.Toplevel):
             self._sections[g["key"]] = sec
 
             for it in items:
+                if it.get("hidden"):
+                    continue
                 self._add_item_row(sec.body, it)
 
     def _add_item_row(self, parent, item):
@@ -466,8 +469,10 @@ class SettingsWindow(tk.Toplevel):
     # 保存 / 关闭
     # ==========================================================
     def _on_save(self):
+        if self._closing:
+            return
         if not self.draft:
-            self._on_close()
+            self._do_destroy()
             return
 
         # 找出需要重启的分组
@@ -495,15 +500,23 @@ class SettingsWindow(tk.Toplevel):
         except Exception:
             pass
 
+        # 先记住主窗（destroy 后 self.master 依然可读，但提前存更清晰）
+        main = self.master
+
+        # 先销毁自己，避免任何后续焦点事件再往 draft 里写值；
+        # 然后以主窗为 parent 弹出「需重启」提示。
+        self._do_destroy()
         if need_restart:
             messagebox.showinfo(
                 "部分设置需重启生效",
                 "以下分组的设置需要重启游戏后才能完全生效：\n\n  "
                 + "、".join(sorted(need_restart)),
-                parent=self)
-        self._on_close()
+                parent=main,
+            )
 
     def _on_close(self):
+        if self._closing:
+            return
         if self.draft:
             ans = messagebox.askyesnocancel(
                 "未保存的修改",
@@ -514,6 +527,13 @@ class SettingsWindow(tk.Toplevel):
                 self._on_save()
                 return
             # 否则丢弃
+        self._do_destroy()
+
+    def _do_destroy(self):
+        """统一销毁入口：绕过 draft 检查，并加锁防重入。"""
+        if self._closing:
+            return
+        self._closing = True
         self._unbind_wheel()
         try:
             self.grab_release()
