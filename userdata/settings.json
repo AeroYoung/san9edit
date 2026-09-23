@@ -3,7 +3,6 @@
   "overrides": {
     "MAP_STYLE.point.shape_by_level.1": "diamond",
     "MAP_STYLE.point.shape_by_level.7": "square",
-    "LAYER_VISIBILITY.road": false,
     "LAYER_VISIBILITY.water": true,
     "LAYER_VISIBILITY.mountain": true
   }
