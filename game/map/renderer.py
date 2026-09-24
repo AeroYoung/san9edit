@@ -6,8 +6,12 @@
     → render_state_labels → render_county_labels → render_city_labels
 """
 
-from game.config.style import MAP_STYLE, CITY_LEVEL_MIN_SCALE
-from game.config.style import MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY
+from game.config.style import (
+    MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY,
+)
+
+from game.core.utils import lighten_color, darken_color
+from game.core.territory import compute_county_stats  # ★ 新
 
 class MapRenderer:
     LABEL_TAG = "label"     # 文字标签的 tag，用于整体删除/重绘
@@ -16,9 +20,11 @@ class MapRenderer:
     POLYGON_TAG = "polygon"
     LINE_TAG    = "line"
     POINT_TAG   = "point"
+    TERRITORY_TAG = "territory"     # ★ 新：郡面染色
     # 从底到顶的图层顺序；越靠后越在上面
     _LAYER_ORDER = (
         "polygon",   # 州/郡面
+        "territory", # ★ 郡面势力染色（新，在州面之上、水域之下）
         "water",     # 水域
         "road",      # 道路
         "line",      # 郡界
@@ -33,9 +39,20 @@ class MapRenderer:
         self.data = None
         self._drawn = False      # 是否已完整绘制过（move/scale 变换的前提）
         self._cum_scale = 1.0    # 自上次完整重绘以来的累计缩放倍率
+        self._world = None          # ★ World 引用（势力染色用）
+        self._county_stats = {}     # ★ {county_id: CountyStat}
 
     def set_data(self, geo_data):
         self.data = geo_data
+
+    def set_world(self, world):
+        """注入 World。触发郡级势力统计重算。
+
+        不负责重绘；调用方（MainWindow）按需 redraw。
+        """
+        self._world = world
+        self._county_stats = compute_county_stats(world)
+
 
     # ==========================================================
     # 调度
@@ -106,6 +123,8 @@ class MapRenderer:
     def _draw_geometry(self):
         if LAYER_VISIBILITY.get("polygon", True):
             self.render_polygons()
+        if LAYER_VISIBILITY.get("territory", True):    # ★ 新
+            self.render_territory()
         if LAYER_VISIBILITY.get("line", True):
             self.render_lines()
 
@@ -209,6 +228,59 @@ class MapRenderer:
                 continue
             try:
                 self.render_polygon(feat)
+            except Exception:
+                pass
+
+    def render_territory(self):
+        """郡面按主导/主要势力上色。
+
+        - 无 World、无统计：跳过
+        - ratio ≤ 0.5：不画（州面底色透出）
+        - 0.5 < ratio ≤ 0.8：势力色 × TERRITORY_MAJOR_FADE 变浅
+        - ratio > 0.8：势力色原色
+        - 不画 stipple、不画斜线；郡界由 line 层单独画
+        """
+        if not self._world or not self._county_stats or not self.data:
+            return
+
+        vx0, vy0, vx1, vy1 = self._visible_bounds()
+        for feat in self.data.shapes_line:
+            props = feat.get("properties") or {}
+            cid = props.get("郡id")
+            if not cid:
+                continue
+            stat = self._county_stats.get(cid)
+            if stat is None or not stat.is_major:
+                continue
+
+            faction = self._world.faction(stat.owner_id)
+            if faction is None:
+                continue
+
+            if stat.is_dominant:
+                color = faction.color
+            else:
+                fade = MAP_STYLE.get("territory", {}).get("major_fade", 0.4)
+                color = lighten_color(faction.color, fade)
+
+            b = feat["bbox"]
+            if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
+                continue
+
+            ring = feat["geometry"]["coordinates"]
+            if len(ring) < 3:
+                continue
+            try:
+                pts = []
+                for lon, lat in ring:
+                    x, y = self.viewport.project(lon, lat)
+                    pts.extend((x, y))
+                # outline 用同色，避免亚像素缝隙露白
+                self.canvas.create_polygon(
+                    *pts,
+                    fill=color, outline=color, width=1,
+                    tags=self.TERRITORY_TAG,
+                )
             except Exception:
                 pass
 
@@ -359,7 +431,41 @@ class MapRenderer:
         self.render_label_group(self.data.labels_state, "label_state")
 
     def render_county_labels(self):
-        self.render_label_group(self.data.labels_county, "label_county")
+        labels = self.data.labels_county
+        if not labels:
+            return
+        base = MAP_STYLE["label_county"]
+        scale = self.viewport.scale
+        if scale < base.get("min_scale", 0):
+            return
+        if "max_scale" in base and scale >= base["max_scale"]:
+            return
+
+        style = self.resolve_style("label_county")
+        if style["size"] <= 0:
+            return
+
+        w = self.viewport.width
+        h = self.viewport.height
+        pad = style["size"] * 2
+        default_color = style["color"]
+
+        for lon, lat, text, cid in labels:          # ★ 四元组
+            x, y = self.viewport.project(lon, lat)
+            if x < -pad or x > w + pad or y < -pad or y > h + pad:
+                continue
+            color = self._county_label_color(cid, default_color)
+            self.draw_text(x, y, text, {**style, "color": color})
+
+    def _county_label_color(self, cid, default):
+        """郡名颜色：主要势力（>50%）用势力色，否则默认。不变浅。"""
+        if not cid or not self._world:
+            return default
+        stat = self._county_stats.get(cid)
+        if stat is None or not stat.is_major:
+            return default
+        faction = self._world.faction(stat.owner_id)
+        return faction.color if faction else default
 
     def render_city_labels(self):
         labels = self.data.labels_city
@@ -381,7 +487,7 @@ class MapRenderer:
         pad = style["size"] * 2
         default_min = base.get("min_scale", 30)
 
-        for lon, lat, text, level in labels:
+        for lon, lat, text, level, cid in labels:
             # 按县的 level 决定显示名称所需的最小缩放比例
             min_scale = CITY_LEVEL_MIN_SCALE.get(level, default_min)
             if scale < min_scale:
@@ -389,9 +495,25 @@ class MapRenderer:
             x, y = self.viewport.project(lon, lat)
             if x < -pad or x > w + pad or y < -pad or y > h + pad:
                 continue
-            r = self._point_radius(level, point_style)  # 新增：取该县点当前半径
-            offset = r + text_half + gap                # 新增：总上移量
-            self.draw_text(x, y - offset, text, style)  # 改：y → y - offset
+            r = self._point_radius(level, point_style)
+            offset = r + text_half + gap
+            color = self._city_label_color(cid, style["color"])     # ★ 新
+            self.draw_text(x, y - offset, text, {**style, "color": color})
+
+    def _city_label_color(self, cid, default):
+        """据点文本颜色：
+        - 无主 / 无 World → 默认色（与"有主"区分开）
+        - 有主           → 势力色向黑插值（深变体），保可读 + 保色系
+        """
+        if not cid or not self._world:
+            return default
+        node = self._world.node(cid)
+        if node is None or not node.owner:
+            return default
+        faction = self._world.faction(node.owner)
+        if faction is None:
+            return default
+        return darken_color(faction.color, 0.6)
 
     def render_label_group(self, labels, style_key):
         if not labels:
@@ -439,7 +561,6 @@ class MapRenderer:
             size = int(max(base["min_size"],
                            min(base["max_size"], px / base["size_divisor"])))
         return {**base, "size": size}
-
 
     # ==========================================================
     # 县点图层

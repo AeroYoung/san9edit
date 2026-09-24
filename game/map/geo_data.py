@@ -154,14 +154,19 @@ class GeoData:
         # 郡名标签：name_coords 是单点 [lon, lat]
         nc = county.get("name_coords")
         if nc and len(nc) == 2 and isinstance(nc[0], (int, float)):
-            self.labels_county.append((nc[0], nc[1], cname))
+            # ★ 三元组 → 四元组，末尾补郡 id
+            self.labels_county.append((nc[0], nc[1], cname, county.get("id")))
 
         # 郡界（闭合线，首点 == 末点）
         boundary = county.get("boundary")
         if boundary:
             self.shapes_line.append({
                 "geometry": {"type": "LineString", "coordinates": boundary},
-                "properties": {"州名": sname, "郡名": cname},
+                "properties": {
+                    "州名": sname,
+                    "郡名": cname,
+                    "郡id": county.get("id"),       # ★ 新
+                },
                 "bbox": self._coords_bbox(boundary),
             })
 
@@ -188,8 +193,11 @@ class GeoData:
                     },
                 })
                 
-                self.labels_city.append((coords[0], coords[1], name, level))
-
+                # ★ 四元组 → 五元组，末尾补据点 id
+                self.labels_city.append(
+                    (coords[0], coords[1], name, level, city.get("id"))
+                )
+                
     # ---------- 外接矩形 ----------
     def _compute_bbox(self):
         lons, lats = [], []

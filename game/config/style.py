@@ -109,6 +109,10 @@ MAP_STYLE = {
         "color": "#1E90FF",     # 河流蓝
         "width": 1,
     },
+    "territory": {              # ★ 势力染色
+        "major_fade": 0.4,      # 主要势力（50%~80%）郡面的变浅比例。
+                                # 0 = 原色，1 = 纯白。
+    },
 
 
     # size_divisor 越小字越大。
@@ -140,17 +144,6 @@ MAP_STYLE = {
 # 最小缩放比例（像素/度）。初始视野 scale ≈ 27，数值越大越要放大才显示。
 # 注意：无论 level 多少，县的「点位」始终绘制；这里只控制「名称」是否显示。
 CITY_LEVEL_MIN_SCALE = {
-    # 1: 0,
-    # 2: 10,
-    # 3: 25,
-    # 4: 50,
-    # 5: 150,
-    # 6: 250,
-    # 7: 350,
-    # 8: 350,
-    # 9: 350,
-    # 10: 350,
-
     1: 0,
     2: 10,
     3: 25,
@@ -180,4 +173,5 @@ LAYER_VISIBILITY = {
     "label_state":  True,    # 州名标签
     "label_county": True,    # 郡名标签
     "label_city":   True,    # 县名标签
+    "territory": True,      # ★ 郡面势力染色
 }

@@ -55,6 +55,11 @@ GROUPS = [
 
     {"key": "lod", "tab": "appearance", "title": "分级显隐",
      "desc": "县点与县名按 level 决定显示所需的最小缩放。级别越小越重要，越早出现。"},
+
+    {"key": "territory", "tab": "appearance", "title": "势力染色",
+     "desc": "按郡内主导势力给郡面上色。控制力 = 据点(11-level)之和，"
+             "郡治 ×2；势力值 >80% 用原色，50%~80% 用变浅色。"},
+
     {"key": "visibility", "tab": "appearance", "title": "图层显隐",
      "desc": "各图层总开关。关闭后该层完全不绘制。"},
 ]
@@ -230,6 +235,13 @@ ITEMS = [
      "value_type": "int", "min": 0, "max": 5000, "step": 1,
      "value_suffix": " px/度"},
 
+    # ---------------- 势力染色 ----------------
+    {"path": "LAYER_VISIBILITY.territory", "group": "territory", "type": "bool",
+     "label": "启用势力染色"},
+    {"path": "MAP_STYLE.territory.major_fade", "group": "territory", "type": "float",
+     "label": "主要势力郡面变浅比例", "min": 0.0, "max": 1.0, "step": 0.05,
+     "desc": "势力值 50%~80% 的郡，底色 = 势力色向白色插值。0 = 不变浅，1 = 纯白。"},
+
     # ---------------- 图层显隐 ----------------
     {"path": "LAYER_VISIBILITY.polygon",      "group": "visibility", "type": "bool",
      "label": "州面"},
@@ -249,6 +261,7 @@ ITEMS = [
      "label": "郡名标签"},
     {"path": "LAYER_VISIBILITY.label_city",   "group": "visibility", "type": "bool",
      "label": "县名标签"},
+    
 ]
 
 

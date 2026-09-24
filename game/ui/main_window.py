@@ -153,6 +153,10 @@ class MainWindow:
 
         self._world = world
         self.game_state.sync_from_world(world)
+        self.map_canvas.renderer.set_world(world)   # ★ 新
+        self.status_bar.set_message(world.summary() + " | 玩家势力：曹操")
+        self.side_panel.refresh_all()
+        self.map_canvas.redraw()                    # ★ 新：触发一次全量重绘
 
         pf = world.player_faction()
         pf_name = pf.name if pf else "—"

@@ -7,7 +7,7 @@
 | 项目名称 | 暗耻三国志（`APP_TITLE`） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | `main.py` → `MainWindow().run()` |
-| 核心功能 | 中国全图矢量渲染（州/郡/县三级 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、光标反查行政区、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口（外观 / 操作 / 游戏）、剧本系统（NPC/据点初始化 + 玩家势力绑定）、**势力关系分组展示（玩家 / 盟友 / 敌对 / 中立）** |
+| 核心功能 | 中国全图矢量渲染（州/郡/县三级 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、光标反查行政区、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口（外观 / 操作 / 游戏）、剧本系统（NPC/据点初始化 + 玩家势力绑定）、**势力关系分组展示（玩家 / 盟友 / 敌对 / 中立）**、**郡面势力染色（主导 / 主要势力分层着色）** |
 | 运行环境 | Python 3 + 标准库 `tkinter`。仅依赖标准库，**无第三方依赖、无 requirements.txt** |
 | 数据来源 | [assets/map.geojson](assets/map.geojson)：13 州 / 106 郡 / 1372 个据点（`states → counties → cities` 三层嵌套）；[assets/roads.geojson](assets/roads.geojson)：约 600 条道路线段；[assets/water.geojson](assets/water.geojson)：205 条河流/湖泊（已接入渲染）；[assets/mountains.geojson](assets/mountains.geojson)：42 个山地区块（**未接入**） |
 | 剧本来源 | [scenarios/default.json](scenarios/default.json)：默认剧本，启动时自动加载。势力/人物/据点动态数据 |
@@ -19,7 +19,8 @@
 - ✅ 地图查看器（州/郡/县三级渲染 + 道路 + 水域 + 图层显隐 + 县点四级样式 + 县名避让）完整可用
 - ✅ 多 Tab 设置系统（外观 tab 有内容，操作/游戏 tab 空骨架）
 - ✅ 剧本系统：可加载 JSON 剧本，构造 `World`（`factions` / `characters` / `nodes`），顶部信息栏已接入玩家势力数据
-- ✅ **势力面板分组列表**：玩家 / 盟友 / 敌对 / 中立四组，空组保留结构
+- ✅ 势力面板分组列表（玩家 / 盟友 / 敌对 / 中立四组）
+- ✅ **郡面势力染色**：按郡内控制力判定主导 / 主要势力，分别用原色 / 变浅色给郡面上色
 - ⚠️ 回合与资源为骨架（`GameState` 只做推进 + 从 World 读数据）
 - ❌ 内政/军事/外交（仅 `stance` 数据字段，无外交交互）/存档均为空实现
 
@@ -51,12 +52,13 @@ san9edit/
     ├── core/
     │   ├── __init__.py
     │   ├── game_state.py           回合/日期/玩家势力数据源（从 World 同步）
-    │   ├── utils.py                几何通用工具
+    │   ├── utils.py                几何通用工具 + 颜色工具
     │   ├── faction.py              ★ 势力（id = 君主人物 id，含 stance）
     │   ├── character.py            ★ 人物（四位 id，五维）
     │   ├── node.py                 ★ 据点（六位 id，静态 + 动态字段）
     │   ├── world.py                ★ 游戏世界容器（聚合三张表）
-    │   └── scenario.py             ★ 剧本加载器（JSON + GeoData → World）
+    │   ├── scenario.py             ★ 剧本加载器（JSON + GeoData → World）
+    │   └── territory.py            ★ 势力控制范围（郡级统计）
     ├── map/
     │   ├── __init__.py
     │   ├── geo_data.py             GeoJSON 解析、图层分类、空间索引
@@ -82,7 +84,7 @@ san9edit/
             └── troop_panel.py      部队列表 Treeview（空数据）
 ```
 
-> 标 ★ 的为剧本系统 + 本轮新增加。
+> 标 ★ 的为剧本系统 + 势力染色系统新增。
 > `general_panel.py` / `city_panel.py` 已被 `character_panel.py` / `node_panel.py` 取代，可删。
 > `.claude/`、`__pycache__` 为工具/环境产物，不属于项目源码。
 > `userdata/` 属于运行期产物：删掉即可"恢复出厂设置"。
@@ -209,6 +211,41 @@ stance >  80  → 盟友
 - 剧本引用不存在的据点 id **静默忽略**，不报错
 - `stance` 缺省为 0（中立）；老剧本不加字段也能加载
 
+### 3.7 郡级控制力统计（CountyStat）
+
+**渲染层专用**，不是游戏状态的一部分，由 `compute_county_stats(world)` 按需算出。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `county_id` | str | 郡 id（四位） |
+| `owner_id` | str \| None | 控制力最高的有主势力；无主郡为 `None` |
+| `ratio` | float | `owner_id` 的势力值（含无主据点作分母） |
+
+**派生属性**：
+
+- `is_dominant` — `owner_id` 非空 **且** `ratio > 0.8`（主导势力）
+- `is_major` — `owner_id` 非空 **且** `ratio > 0.5`（主要势力）
+
+**控制力算法**（见 §5.20 `territory.py`）：
+
+```
+单个据点权重 = (11 - level)          # level 1→10 分，level 10→1 分
+郡治据点再 × 2.0                     # CAPITAL_BONUS
+势力 F 在郡内控制力 = Σ 权重(归 F 的据点)
+郡内总控制力         = Σ 权重(全部据点，含无主)
+势力 F 的势力值      = 控制力_F / 总控制力
+```
+
+**分档语义**：
+
+```
+ratio > 0.8         → 主导势力（dominant）
+0.5 < ratio ≤ 0.8   → 主要势力（major）
+其余                 → 无（郡面不上色）
+```
+
+> `is_dominant` 是 `is_major` 的子集。无主据点计入分母——否则一个 2/2 据点被占、其余 8 个无主的郡会被算成"主导势力"，误导人。
+
 ---
 
 ## 4. 数据格式参考
@@ -301,7 +338,6 @@ stance >  80  → 盟友
       "leadership": 96, "might": 72, "intelligence": 91,
       "politics": 94, "charisma": 96
     },
-    "...": "...",
     "0006": {
       "name": "袁绍", "faction": "0006", "node": "020101",
       "leadership": 88, "might": 66, "intelligence": 74,
@@ -380,7 +416,7 @@ Character.node    → Node.id
 | `WINDOW_SIZE` | `"1440x900"` | 保留常量，未使用 |
 | `MIN_WINDOW_SIZE` | `(1024, 640)` | 窗口最小尺寸 |
 
-> **注意**：`INITIAL_YEAR` / `INITIAL_FACTION` / `INITIAL_GOLD` 等常量**已删除**。初始状态一律来自剧本或存档。
+> **注意**：`INITIAL_YEAR` / `INITIAL_FACTION` / `INITIAL_GOLD` 等常量**已删除**。
 
 ### 5.3 `game/core/faction.py`
 
@@ -462,13 +498,36 @@ Character.node    → Node.id
 | `walk_coords(coords)` | 递归展开 GeoJSON 坐标 |
 | `midpoint_of_line(coords)` | **死代码** |
 | `point_in_polygon(x, y, ring)` | 射线法 |
+| `lighten_color(hex_color, factor=0.4)` | **新**。`#RRGGBB` 向白色线性插值；`factor` 0→原色，1→纯白。非法输入原样返回 |
 
-### 5.10 `game/map/geo_data.py`
+### 5.10 `game/core/territory.py`（新文件）
 
-`_classify_county` 中 `shapes_point.append(...)` 的 `properties` 五个字段：
+**数据类 `CountyStat`**：`county_id` / `owner_id` / `ratio`；派生属性 `is_dominant` / `is_major`。见 §3.7。
+
+**模块函数 `compute_county_stats(world)`**：遍历 `world.nodes`，按郡聚合控制力，返回 `{county_id: CountyStat}`。`world` 为 `None` 时返回 `{}`。
+
+**模块常量 `CAPITAL_BONUS = 2.0`**：郡治据点的控制力倍率。
+
+**设计定位**：**渲染层专用**，是唯一独立于 `World` 之外的计算。将来若 `World` 也想要郡级控制度（比如弹窗显示），可以下沉成 `World` 的属性缓存。
+
+### 5.11 `game/map/geo_data.py`
+
+`_classify_county` 的改动（**本轮新增**）：
+
+**① 郡界 `shapes_line` properties 加 `郡id`**：
 
 ```python
-"properties": {
+{
+    "州名": sname,
+    "郡名": cname,
+    "郡id": county.get("id"),    # ★ 新（势力染色用）
+}
+```
+
+**② `shapes_point.properties` 五个字段**（沿用上轮）：
+
+```python
+{
     "id": city.get("id"),
     "县名": name,
     "level": level,
@@ -477,57 +536,82 @@ Character.node    → Node.id
 }
 ```
 
-**为什么必须补**：Node 构造**依赖 `id`**（作为字典 key），且需要 `type` / `is_capital` 才能区分据点类别与郡治。
+**③ `labels_county` 三元组 → 四元组**：
 
-`labels_city` 保持四元组 `(lon, lat, name, level)`，渲染层不受影响。
+```python
+self.labels_county.append((nc[0], nc[1], cname, county.get("id")))    # ★
+```
+
+**④ `labels_city` 四元组 → 五元组**：
+
+```python
+self.labels_city.append((coords[0], coords[1], name, level, city.get("id")))    # ★
+```
+
+**兼容性**：
+
+- `find_nearest_label` 用索引 `c[0]/c[1]/c[2]` 访问，`labels_city` 五元组不破
+- `labels_county` 从三元组变四元组会破 `render_label_group` 里的 `for lon, lat, text in labels`，所以 **`render_county_labels` 已改为独立实现**（见 §5.13）
+- `labels_state` **仍是三元组**，继续走通用 `render_label_group`
 
 > 维护要点：`level` 的两行解析仍必须**写在 `shapes_point.append` 之前**（否则抛 `UnboundLocalError`，地图完全不加载）。
 
-### 5.11 `game/map/viewport.py`
+### 5.12 `game/map/viewport.py`
 
 **未改动**（参照前版文档 §3.9）。
 
-### 5.12 `game/map/renderer.py`（本轮修改）
+### 5.13 `game/map/renderer.py`
 
-**改动点：用 `_LAYER_ORDER` + `_restack()` 替代硬编码的三条 `tag_lower`。**
+**本轮改动集中在"势力染色 + 分层上色"**。
 
-**新增类常量**：
+#### 类常量
 
 ```python
+LABEL_TAG     = "label"
+WATER_TAG     = "water"
+ROAD_TAG      = "road"
+POLYGON_TAG   = "polygon"
+LINE_TAG      = "line"
+POINT_TAG     = "point"
+TERRITORY_TAG = "territory"    # ★ 新：郡面势力染色
+
 # 从底到顶的图层顺序；越靠后越在上面
 _LAYER_ORDER = (
-    "polygon",   # 州/郡面
-    "water",     # 水域
-    "road",      # 道路
-    "line",      # 郡界
-    "point",     # 县点
-    "label",     # 文字
+    "polygon",      # 州/郡面
+    "territory",    # ★ 郡面势力染色（新，在州面之上、水域之下）
+    "water",        # 水域
+    "road",         # 道路
+    "line",         # 郡界
+    "point",        # 县点
+    "label",        # 文字
 )
 ```
 
-**新增方法**：
+#### 实例属性
 
-```python
-def _restack(self):
-    """按 _LAYER_ORDER 从底到顶重排所有图层。
+`__init__` 新增：
 
-    用 tag_raise 而不是 tag_lower：
-        tag_raise(A)        —— A 空则 no-op，不报错；
-        tag_lower(A, B)     —— B（belowThis）空则抛 TclError。
-    从底向顶 raise 一遍，最终层序一定正确，且免疫空图层。
-    """
-    for tag in self._LAYER_ORDER:
-        if self.canvas.find_withtag(tag):
-            self.canvas.tag_raise(tag)
-```
+- `self._world = None` — World 引用
+- `self._county_stats = {}` — `{county_id: CountyStat}` 缓存
 
-**`refresh_dynamic` 末尾**：原三条 `tag_lower` → 一行 `self._restack()`。
+#### 方法
 
-**为什么改**：见 §8.3 第 50–52 条。
+| 方法 | 说明 |
+|---|---|
+| `set_world(world)` | **新**。注入 World，触发 `_county_stats` 重算。**不负责重绘** |
+| `_restack()` | **上轮新增**。按 `_LAYER_ORDER` 从底到顶 `tag_raise` 一遍。用 `tag_raise` 而非 `tag_lower`，免疫空图层 |
+| `_draw_geometry()` | 中间插入 `if LAYER_VISIBILITY.get("territory", True): self.render_territory()` |
+| `render_territory()` | **新**。遍历 `shapes_line`，从 `properties["郡id"]` 找 `CountyStat`，`is_major` 才上色。`is_dominant` 用原色，否则 `lighten_color(faction.color, MAP_STYLE.territory.major_fade)`。同色描边防亚像素缝 |
+| `render_county_labels()` | **重写**。不再调 `render_label_group`；遍历 `(lon, lat, text, cid)` 四元组，调 `_county_label_color(cid, default)` 决定字色 |
+| `_county_label_color(cid, default)` | **新**。`is_major` 用势力色，否则默认。**不变浅** |
+| `render_city_labels()` | 循环变量加 `cid`（改读五元组）；`draw_text` 前调 `_city_label_color(cid, style["color"])` 替换字色 |
+| `_city_label_color(cid, default)` | **新**。有主 → 势力色；无主 / 无 World → 默认 |
 
-**未改动**：`draw_full` / `pan` / `zoom` / 各 `render_*` / `_point_radius` / `_road_width` 等主体逻辑不变。
+**`refresh_dynamic()` 末尾**：上轮起由三条 `tag_lower` 改为一行 `self._restack()`。
 
-### 5.13 `game/ui/main_window.py`
+**`_LAYER_ORDER` 是自文档的**：一眼看清叠放结构，加新图层只需往表里插一行。
+
+### 5.14 `game/ui/main_window.py`
 
 **关键改动**：
 
@@ -535,7 +619,7 @@ def _restack(self):
 |---|---|
 | `load_geojson(path)` | 在 `self.map_canvas.reset_view()` 之前保存 `self._geo_data = data` |
 | `_auto_load_default()` | 加载地图成功后接着调 `_load_default_scenario()` |
-| `_load_default_scenario()` | **末尾新增 `self.side_panel.refresh_all()`**：让右侧面板在剧本加载后立即填充数据（原本只在回合推进时刷新，启动后不主动刷） |
+| `_load_default_scenario()` | **本轮新增两步**：`self.map_canvas.renderer.set_world(world)` + `self.map_canvas.redraw()`（触发一次全量重绘，让染色生效）。原先已有 `side_panel.refresh_all()` |
 | `_on_menu_action()` | 动作 `view_cities` → `view_nodes`，`view_generals` → `view_characters` |
 
 **启动加载链**：
@@ -548,21 +632,23 @@ root.after(120, _auto_load_default)
     ├── ScenarioLoader.load(DEFAULT_SCENARIO_PATH, self._geo_data)
     ├── self._world = world
     ├── self.game_state.sync_from_world(world)
+    ├── self.map_canvas.renderer.set_world(world)   ← ★ 本轮：注入 World 并重算郡级统计
     ├── self.status_bar.set_message(world.summary() + " | 玩家势力：曹操")
-    └── self.side_panel.refresh_all()   ← ★ 本轮新增
+    ├── self.side_panel.refresh_all()
+    └── self.map_canvas.redraw()                    ← ★ 本轮：触发染色生效
 ```
 
-### 5.14 `game/ui/top_bar.py`
+### 5.15 `game/ui/top_bar.py`
 
 菜单项改名：`城市列表` → `据点列表`（`view_nodes`），`武将列表` → `人物列表`（`view_characters`）。`TopBar` 其余逻辑不变（200ms 轮询 `game_state.get_display_items()`）。
 
-### 5.15 `game/ui/side_panel.py`
+### 5.16 `game/ui/side_panel.py`
 
 Tab 顺序：势力(0) / 据点(1) / 人物(2) / 部队(3)。
 
-`refresh_all()`：遍历每个 Tab，有 `refresh` 方法就调一次。**本轮起被 `MainWindow._load_default_scenario()` 主动调用**。
+`refresh_all()`：遍历每个 Tab，有 `refresh` 方法就调一次。被 `MainWindow._load_default_scenario()` 主动调用。
 
-### 5.16 `game/ui/panels/faction_panel.py`（本轮重写）
+### 5.17 `game/ui/panels/faction_panel.py`
 
 **类 `FactionPanel`** — 分组式 `Treeview`。
 
@@ -577,7 +663,7 @@ _GROUPS = [
 ]
 ```
 
-**列**：`势力` / `君主` / `威望` / `金` / `粮` / `关系`（`ruler` / `prestige` / `gold` / `food` / `stance`）。
+**列**：`势力` / `君主` / `威望` / `金` / `粮` / `关系`。
 
 **分组规则**（`_bucket_factions`）：
 
@@ -589,24 +675,64 @@ f.stance <  0                   → hostile 组
 ```
 
 **展示**：
-- 组头是顶级节点，文本形如 `盟友 (2)`，**空组也显示**（如 `盟友 (0)`），结构稳定
+
+- 组头是顶级节点，文本形如 `盟友 (2)`，**空组也显示**
 - 组头配置不同背景色 tag（`group_player` 蓝 / `group_ally` 绿 / `group_hostile` 红 / `group_neutral` 灰）
 - 子节点以势力名为主列，其余列展示数值
 - 组内按 **威望降序** 排（次键姓名）
 
 **`refresh()`**：清空后从 `game_state.world.factions` 重建；`world` 为 `None` 时安全返回（`__init__` 即调一次，此时是空列表）。
 
-### 5.17 `game/ui/panels/node_panel.py`（沿用）
+### 5.18 `game/ui/panels/node_panel.py` / `character_panel.py`
 
-8 列 Treeview：`id / name / type / level / owner / troops / gold / food`。
-
-### 5.18 `game/ui/panels/character_panel.py`（沿用）
-
-9 列 Treeview：`id / name / faction / node / lead / might / int / pol / cha`。势力/据点列显示名称而非 id。
+沿用：8 列 / 9 列 Treeview，从 `game_state.world` 读数据。
 
 ### 5.19 其他 UI 模块
 
 `status_bar.py` / `map_canvas.py` / `settings_window.py` / `window_utils.py` / `widgets/collapsible.py` / `panels/troop_panel.py` **未改动**。
+
+### 5.20 `game/config/style.py`
+
+**本轮新增**：
+
+```python
+MAP_STYLE = {
+    ...
+    "territory": {              # ★ 势力染色
+        "major_fade": 0.4,      # 主要势力郡面的变浅比例。0=原色，1=纯白
+    },
+    ...
+}
+
+LAYER_VISIBILITY = {
+    ...
+    "territory": True,          # ★ 郡面势力染色
+}
+```
+
+> **为什么 `major_fade` 放进 `MAP_STYLE` 而不是做模块级标量**：`SettingsManager` 只支持"名字.子键"或"顶层字典"两种 path 形式，不支持裸标量。放进 `MAP_STYLE` 可直接复用现成的嵌套字典读写机制；语义上也更贴切（染色样式就是地图样式的一部分）。
+
+### 5.21 `game/config/settings_schema.py`
+
+**本轮新增**：
+
+**`GROUPS` 加一组**（在 `lod` 和 `visibility` 之间）：
+
+```python
+{"key": "territory", "tab": "appearance", "title": "势力染色",
+ "desc": "按郡内主导势力给郡面上色。控制力 = 据点(11-level)之和，"
+         "郡治 ×2；势力值 >80% 用原色，50%~80% 用变浅色。"},
+```
+
+**`ITEMS` 加两条**（在 `# --- 图层显隐 ---` 段之前）：
+
+```python
+{"path": "LAYER_VISIBILITY.territory", "group": "territory", "type": "bool",
+ "label": "启用势力染色"},
+{"path": "MAP_STYLE.territory.major_fade", "group": "territory", "type": "float",
+ "label": "主要势力郡面变浅比例", "min": 0.0, "max": 1.0, "step": 0.05,
+ "desc": "势力值 50%~80% 的郡，底色 = 势力色向白色插值。0 = 不变浅，1 = 纯白。"},
+```
 
 ---
 
@@ -642,6 +768,7 @@ _auto_load_default()
 ├─ load_geojson(assets/map.geojson, silent=True)
 │  └─ MapCanvas.load_geojson(path)
 │     ├─ GeoData.from_file(path) → 13 州 / 106 郡 / 1372 据点
+│     │  └─ _classify_county：shapes_line 带 郡id / labels_county 四元组
 │     ├─ load_water(...) / load_roads(...)
 │     ├─ renderer.set_data(data)
 │     └─ _try_fit_now() → viewport.fit_to_bbox → renderer.draw_full()
@@ -657,8 +784,10 @@ _auto_load_default()
       └─ 返回 World
    ├─ self._world = world
    ├─ game_state.sync_from_world(world)
-   ├─ status_bar.set_message(world.summary() + " | 玩家势力：曹操")
-   └─ side_panel.refresh_all()   ★ 势力/据点/人物/部队面板一次填满
+   ├─ renderer.set_world(world)                    ★ 本轮：注入 World + 重算 CountyStat
+   ├─ status_bar.set_message(...)
+   ├─ side_panel.refresh_all()                     （上轮加入）
+   └─ map_canvas.redraw()                          ★ 本轮：触发染色生效
 ```
 
 ### 6.3 主循环交互
@@ -675,7 +804,8 @@ _auto_load_default()
 | 菜单"部队列表" | `view_troops` → `notebook.select(3)` |
 | 菜单"游戏设置" | `_open_settings` |
 | 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()` |
-| 图层显隐切换 | 立即 `refresh_dynamic` → `_restack()`（**本轮起不再报错**） |
+| 图层显隐切换 | 立即 `refresh_dynamic` → `_restack()`（空图层免疫） |
+| 染色参数修改 | `MAP_STYLE.territory.major_fade` 改后 → `redraw` → `render_territory` 用新值 |
 
 ### 6.4 模块协作关系
 
@@ -692,6 +822,8 @@ main.py
                     ├─ ui.status_bar
                     ├─ ui.map_canvas ─── map.viewport ─┐
                     │                   map.renderer ─┴─ map.geo_data ─ core.utils
+                    │                   │                └ core.territory（郡级统计）
+                    │                   └─ core.world（set_world 注入）
                     ├─ ui.settings_window ─ ui.widgets.collapsible
                     │                    └─ ui.window_utils
                     └─ ui.side_panel ────┬─ panels.faction_panel（分组列表）
@@ -723,6 +855,7 @@ main.py
 | `MAP_STYLE` 全部子项 | 否 |
 | `CITY_LEVEL_MIN_SCALE` | 否 |
 | `LAYER_VISIBILITY`（`mountain` 已 UI 隐藏） | 否 |
+| **`MAP_STYLE.territory.major_fade`** | 否 |
 
 ### 7.3 代码内常量
 
@@ -730,13 +863,17 @@ main.py
 |---|---|---|
 | `MapCanvas._MIN_VALID_SIZE` | `10` | 布局未完成阈值 |
 | `TopBar._REFRESH_INTERVAL_MS` | `200` | 信息栏轮询周期 |
-| `MapRenderer._LAYER_ORDER` | 见 §5.12 | 图层底→顶顺序 |
-| `MapRenderer` 各 TAG | `"label"/"water"/"road"/"point"/"polygon"/"line"` | 图层锚点 |
+| `MapRenderer._LAYER_ORDER` | 见 §5.13 | 图层底→顶顺序 |
+| `MapRenderer` 各 TAG | `"label"/"water"/"road"/"point"/"polygon"/"line"/"territory"` | 图层锚点 |
 | 据点 `level` 范围 | `1–10` | 越界兜底 |
 | 人物 id 范围 | `0001–9999` | 四位字符串 |
 | 五维上限 | `100` | 约定（代码不强制） |
-| **势力 `stance` 范围** | `-100 ～ 100` | 约定（代码不强制） |
-| **势力 `stance` 分档** | `<0` / `>80` / 其余 | 敌对 / 盟友 / 中立 |
+| 势力 `stance` 范围 | `-100 ～ 100` | 约定（代码不强制） |
+| 势力 `stance` 分档 | `<0` / `>80` / 其余 | 敌对 / 盟友 / 中立 |
+| **郡控制力 `CAPITAL_BONUS`** | `2.0` | 郡治据点权重倍率（`territory.py`） |
+| **郡主导阈值** | `> 0.8` | 主导势力（郡面用原色） |
+| **郡主要阈值** | `> 0.5` | 主要势力（郡面用变浅色、郡名用原色） |
+| `MAP_STYLE.territory.major_fade` | `0.4` | 主要势力郡面变浅比例 |
 | `MAP_STYLE.label_city.point_gap` | `6` | 县名与县点间隙 |
 | `MAP_STYLE.point.ring_scale` | `1.30` | 外环半径倍率 |
 | `GeoData.find_nearest_label` 上限 | `0.4°` | 县名匹配 |
@@ -760,6 +897,7 @@ main.py
 | 部队面板 | `refresh()` 只清空 |
 | **type 决定能力** | 全部 type 建成 Node 对象，但代码层未区分能力 |
 | 设置窗口「操作」「游戏」tab | 骨架就位，内容为空 |
+| **郡面染色 hover / 点击** | 染色层不做交互；据点 hover 也尚未实现 |
 
 ### 8.2 数据层缺失
 
@@ -768,8 +906,8 @@ main.py
 - `assets/roads.geojson` 只做视觉呈现：`difficulty` 仅影响线宽
 - 路网与据点/郡界无拓扑关联
 - **据点 `level` / `type` 驱动渲染但未挂游戏逻辑**
-- `labels_city` 经纬度与据点坐标相同，标签避让靠渲染层计算
 - **势力间无关系矩阵**：`stance` 单向，只表达"该势力相对玩家"
+- **郡面染色是渲染层近似**：一个郡的 `CountyStat` 只有"主导势力+势力值"，不保留第二、第三势力的信息。多势力混战看据点色点
 
 ### 8.3 逻辑与性能限制
 
@@ -782,7 +920,7 @@ main.py
 7. 县名匹配用固定 0.4° 距离
 8. `midpoint_of_line` 死代码
 9. Tab 索引硬编码在 `MainWindow._on_menu_action`
-10. `FactionPanel` 由占位改为分组列表后，**暂无选中交互**（点势力不做事）
+10. `FactionPanel` 分组列表无选中交互
 11. `WINDOW_SIZE` 定义了但从未使用
 12. `_cum_scale` 复位时机导致周期性全量重绘停顿
 13. 无测试、无打包、无 lint 配置
@@ -792,7 +930,7 @@ main.py
 17. 四张 `*_by_level` 表同样问题
 18. 县点与县名"同显同隐"依赖同表同判，分处两处
 19. `_drawn` 置位时机是易错点
-20. `refresh_dynamic` 绘制顺序决定层级（**本轮起由 `_LAYER_ORDER` 显式表达**）
+20. `refresh_dynamic` 绘制顺序决定层级（由 `_LAYER_ORDER` 显式表达）
 21. `shapes_point` 的 `level` 解析必须先于 `append`
 22. 静态层依赖 `draw_full`；快速缩放可能边缘州郡缺失，靠 180 ms settle 缓解
 23. `_cum_scale` 触发点是"当前视图"，不是"最终视图"
@@ -815,19 +953,27 @@ main.py
 40. `scrollregion` 用 `winfo_reqheight()` 而不是 `bbox("all")`
 41. 多 Tab 结构下，`_apply_filter` / 滚轮 / `scrollregion` 都按"当前 tab"作用
 42. `center_on_parent` 必须分多轮延迟设位置
-43. 方法缩进事故高发：`render_point` / `_build_level_table` / `_bind_wheel_recursive` 等新加方法曾多次因复制粘贴导致缩进跑出类外
-44. `tag_lower(tag)` 要求 tag 下至少有一个 item
+43. 方法缩进事故高发
+44. `tag_lower(tag)` 要求 tag 下至少有一个 item（**该坑已被 `_restack` 根治**）
 45. `load_geojson` 必须在 `reset_view()` 之前保存 `self._geo_data`
 46. 剧本加载依赖 `shapes_point` 的 `id` 字段
 47. 势力 id = 君主 id 是硬约定
 48. `GameState.__init__` 处于"未初始化"状态（year=0）
 49. `change_gold/food/prestige` 有双路径
-50. ★ **`tag_lower(A, B)` 的 `belowThis` 参数 B 必须非空**：Tk 文档明示，B 空则抛 `TclError: tagOrId "xxx" doesn't match any items`。**A 空只是 no-op**。本项目旧代码三条 `tag_lower` 里 `tag_lower(WATER_TAG, ROAD_TAG)` 以 `road` 为参照物，一旦用户在设置里关掉 road 图层，`render_roads` 直接 `return` → `ROAD_TAG` 无 item → 每帧刷屏报错。**这是本轮修复的 bug**。
-51. ★ **`_restack()` 用 `tag_raise` 而不是 `tag_lower`**：`tag_raise(A)` 空 tag 是 no-op，不报错；`tag_raise` 从底到顶一遍，最终层序一定正确，且不需要"参照物"概念。**空图层免疫**。
-52. ★ **图层"内容"与图层"层序"解耦**：`LAYER_VISIBILITY` 控制要不要画（内容），`_LAYER_ORDER` 控制画在哪（结构）。两者不应互相影响。旧代码把"画不画"（`if LAYER_VISIBILITY...`）和"层序"（`tag_lower`）写在同一段里，导致内容开关一改，层序就崩。以后新增图层（例如 `mountains`）**只需**：往 `_LAYER_ORDER` 加一行 + 加 `if LAYER_VISIBILITY` 判断 + 加对应的 `render_*`。
-53. ★ **`FactionPanel.__init__` 会先调一次 `refresh()`**：此时 `game_state.world` 还是 `None`，列表为空但结构（4 个空组）已建。真正的数据填充发生在 `MainWindow._load_default_scenario()` 末尾的 `side_panel.refresh_all()`。
-54. ★ **`FactionPanel._bucket_factions` 是纯函数**：不读 `self`，只吃 `world`。将来若把分组逻辑下沉到 `World`，直接搬过去即可。
-55. ★ **`stance` 默认 0**：老剧本不写 `stance` 也不会报错，一律按"中立"处理。玩家自身的 `stance` 值无意义（面板恒归"玩家势力"组）。
+50. **`tag_lower(A, B)` 的 `belowThis` 参数 B 必须非空**：Tk 文档明示，B 空则抛 `TclError: tagOrId "xxx" doesn't match any items`。**A 空只是 no-op**
+51. **`_restack()` 用 `tag_raise` 而不是 `tag_lower`**：`tag_raise(A)` 空 tag 是 no-op，从底到顶一遍最终层序一定正确，且不需要"参照物"概念。**空图层免疫**
+52. **图层"内容"与图层"层序"解耦**：`LAYER_VISIBILITY` 控制要不要画，`_LAYER_ORDER` 控制画在哪。新增图层（如 `mountains`）只需三步：往 `_LAYER_ORDER` 加一行 + 加 `if LAYER_VISIBILITY` 判断 + 加对应 `render_*`
+53. **`FactionPanel.__init__` 会先调一次 `refresh()`**：此时 `game_state.world` 还是 `None`。真正的数据填充发生在 `MainWindow._load_default_scenario()` 末尾的 `side_panel.refresh_all()`
+54. **`FactionPanel._bucket_factions` 是纯函数**：不读 `self`，只吃 `world`。将来若把分组逻辑下沉到 `World`，直接搬过去
+55. **`stance` 默认 0**：老剧本不写也能加载，一律按"中立"。玩家自身 `stance` 值无 UI 意义
+56. ★ **`settings_schema.ITEMS` 每项必须含 `group`**：`items_of_group` 和 `_apply_filter` 都读 `it["group"]`，漏一个就 KeyError 到天荒地老。加新项时务必写全 `path` / `group` / `type` / `label` 四个字段
+57. ★ **`SettingsManager` 只支持"名字.子键"或"顶层字典"两种 path 形式**：不支持裸标量。想加可编辑的标量（如"变浅比例"），必须塞进已有的嵌套字典（如 `MAP_STYLE.territory.major_fade`），不要建 `TERRITORY_MAJOR_FADE = 0.4` 这种模块级标量
+58. ★ **`labels_county` 是四元组、`labels_city` 是五元组**：末位都是 id。`render_county_labels` 和 `render_city_labels` 是独立实现，**不再走通用的 `render_label_group`**。`labels_state` 仍是三元组，继续走通用逻辑
+59. ★ **`render_territory` 的 `outline=color` 是刻意的**：Tk 相邻多边形之间常留一像素缝，用同色描边盖掉；郡界描边由 `line` 层单独负责，视觉上仍有深色界线
+60. ★ **`set_world` 不负责重绘**：只注入 World 并重算 `_county_stats`，触发重绘是调用方（`MainWindow`）的事。这样的分工避免渲染层反向依赖 UI 生命周期
+61. ★ **`CountyStat` 是渲染层缓存，不进 `World`**：游戏逻辑若将来也要用（弹窗显示"某郡控制度"），可以下沉成 `World` 的懒加载属性；现在独立在 `territory.py` 里，职责清晰
+62. ★ **无主据点计入控制力分母**：若不算分母，一个郡 2/2 据点被占、其余 8 个无主，会被算成 100% 主导势力——上色误导。算入分母后，这种郡会正确显示为"<50% 不上色"
+63. ★ **`style.py` 里 `LAYER_VISIBILITY` 段的注释和缩进不齐**：不影响运行，但风格上待整理
 
 ### 8.4 建议的下一步
 
@@ -835,70 +981,85 @@ main.py
 2. **据点交互**：点击地图上的据点 → 弹出据点详情（兵力/金钱/军粮/所属势力/驻守人物）
 3. **人物面板联动**：点击人物 → 弹出人物详情（五维 + 所属 + 所在据点）
 4. **势力面板交互**：点击势力 → 弹势力详情 / 或地图上高亮其领地
-5. **外交入口**：让 `stance` 可被用户修改（菜单项、或势力面板的右键菜单），并做边界（-100～100）
-6. **接入 `mountains.geojson`**：新增 `GeoData.load_mountains` + `MapRenderer.render_mountains` + 往 `_LAYER_ORDER` 插一行，把 `LAYER_VISIBILITY["mountain"]` 挂上，然后删掉 schema 里 `hidden=True`
+5. **外交入口**：让 `stance` 可被用户修改（菜单项、或势力面板右键菜单），并做边界（-100～100）
+6. **接入 `mountains.geojson`**：`GeoData.load_mountains` + `MapRenderer.render_mountains` + 往 `_LAYER_ORDER` 插一行，把 `LAYER_VISIBILITY["mountain"]` 挂上，删掉 schema 里 `hidden=True`
 7. **type 能力矩阵**：定义每种 type 的"能否驻兵 / 能否征粮 / 能否被占领 / 是否交通节点"
-8. **存档系统**：序列化 World（`factions` / `characters` / `nodes`）+ GameState，写 `userdata/saves/`
+8. **存档系统**：序列化 World + GameState，写 `userdata/saves/`
 9. **新游戏流程**：菜单"新游戏"→ 弹窗选剧本 → 加载
-10. 给绘制方法的 `except Exception` 加"首次异常打印一次日志"
-11. 设置系统扩展（同前版文档）
+10. **势力染色细化**：hover 郡面显示"控制度"浮窗；或加势力图例
+11. 给绘制方法的 `except Exception` 加"首次异常打印一次日志"
+12. 设置系统扩展（同前版文档）
 
 ---
 
 ## 9. 变更日志
 
-### 9.1 上一轮 · 剧本系统（摘要）
+### 9.1 前两轮（摘要）
 
-新增 `scenarios/`、`scenarios/default.json`、`Faction` / `Character` / `Node` / `World` / `ScenarioLoader`、`NodePanel` / `CharacterPanel`。
+**剧本系统**：新增 `scenarios/` / `Faction` / `Character` / `Node` / `World` / `ScenarioLoader` / `NodePanel` / `CharacterPanel`。删除 `INITIAL_*` 常量，加 `SCENARIOS_DIR` / `DEFAULT_SCENARIO_PATH`。术语：武将→人物 / 城市→据点 / 势力 id = 君主人物 id。
 
-删除全部 `INITIAL_*` 常量，新增 `SCENARIOS_DIR` / `DEFAULT_SCENARIO_PATH`。
+**外交分组 + 层序修复**：`Faction.stance` 字段 + `stance_label()`；`MapRenderer._LAYER_ORDER` + `_restack()`；`FactionPanel` 整文件重写为分组 Treeview；`default.json` 加袁绍势力（冀州魏郡 18 据点）+ 6 人物。
 
-术语：武将→人物 / 城市→据点 / 势力 id = 君主人物 id。
-
-### 9.2 本轮 · 外交分组 + 层序修复
+### 9.2 本轮 · 势力染色
 
 #### 新增
 
-- **`Faction.stance` 字段**（`game/core/faction.py`）：相对玩家的关系值，整数 -100～100，默认 0
-- **`Faction.stance_label()` 方法**：返回 `"敌对"` / `"盟友"` / `"中立"`
-- **`MapRenderer._LAYER_ORDER` 类常量**：从底到顶的图层顺序表
-- **`MapRenderer._restack()` 方法**：按 `_LAYER_ORDER` 从底到顶 `tag_raise` 一遍
+- **`game/core/territory.py`**：`CountyStat` 数据类 + `compute_county_stats(world)` 函数 + `CAPITAL_BONUS = 2.0`
+- **`game/core/utils.lighten_color(hex_color, factor=0.4)`**：向白色线性插值
+- **`game/map/geo_data.py`**：
+  - `shapes_line` 的 properties 加 `郡id`
+  - `labels_county` 三元组 → **四元组**（末尾补郡 id）
+  - `labels_city` 四元组 → **五元组**（末尾补据点 id）
+- **`game/map/renderer.py`**：
+  - `TERRITORY_TAG` 类常量
+  - `_LAYER_ORDER` 加 `territory`（在 `polygon` 之上、`water` 之下）
+  - `set_world(world)` 方法
+  - `render_territory()` 方法
+  - `_county_label_color(cid, default)` / `_city_label_color(cid, default)` 方法
+- **`game/config/style.py`**：
+  - `MAP_STYLE.territory.major_fade = 0.4`
+  - `LAYER_VISIBILITY.territory = True`
+- **`game/config/settings_schema.py`**：
+  - `GROUPS` 加 `territory` 分组
+  - `ITEMS` 加两条（开关 + 变浅比例）
 
 #### 修改
 
-- **`scenarios/default.json`**：
-  - 新增袁绍势力 `0006`（冀州魏郡 `0201` 全部 18 个据点）
-  - 新增袁绍方人物 `0007`–`0011`（颜良 / 文丑 / 张郃 / 田丰 / 沮授）
-  - 曹操势力补 `stance: 0`，袁绍 `stance: -50`
-- **`game/core/scenario.py`**：
-  - `_build_faction` 读 `stance`（默认 0）
-- **`game/ui/panels/faction_panel.py`**：**整文件重写**
-  - 由"占位信息表格"改为**分组式 Treeview**
-  - 4 个分组：玩家势力 / 盟友 / 敌对 / 中立（**空组也显示**）
-  - 分组规则见 §5.16
-  - 组头带背景色 tag；子节点按威望降序
 - **`game/map/renderer.py`**：
-  - `refresh_dynamic` 末尾三条 `tag_lower` → 一行 `self._restack()`
-  - 详见 §5.12
+  - `__init__` 加 `self._world = None` / `self._county_stats = {}`
+  - `_draw_geometry()` 中间插入 `render_territory()` 调用
+  - `render_county_labels()` **重写**：不再走通用 `render_label_group`，按郡 id 查控制度上色
+  - `render_city_labels()`：循环变量加 `cid`（改读五元组），`draw_text` 前替换字色
+  - import 去掉 `TERRITORY_MAJOR_FADE`，改从 `MAP_STYLE.territory.major_fade` 读
 - **`game/ui/main_window.py`**：
-  - `_load_default_scenario()` 末尾新增 `self.side_panel.refresh_all()`
+  - `_load_default_scenario()` 里 `sync_from_world` 之后加 `renderer.set_world(world)`
+  - 末尾加 `map_canvas.redraw()`
 
 #### 修复
 
-- **`tag_lower(A, B)` 空参照物导致 TclError**（详见 §8.3 第 50 条）
-  - 触发场景：用户在设置里关闭 `road` 图层
-  - 症状：每次标签刷新 + settle 重绘都抛 `TclError: tagOrId "road" doesn't match any items`
-  - 修复：`_restack()` 用 `tag_raise`，不再需要参照物
+- **`settings_schema.ITEMS` 缺少 `group` 字段导致 KeyError**（详见 §8.3 第 56 条）
+  - 症状：打开游戏设置窗口立刻抛 `KeyError: 'group'`
+  - 原因：加 `territory` 项时只写了 `path` / `label`，漏了 `group` 和 `type`
+  - 修复：写全四字段，`path` 大小写也改正（`territory` 小写）
+
+#### 设计决策（本轮定稿）
+
+- **"变浅"用向白插值，不用 stipple、不用斜线**：Tk 的 polygon 只能有一个 stipple，透明填色画不了纹样，斜纹要手绘成本高、和点阵叠加视觉会脏
+- **`major_fade` 放进 `MAP_STYLE` 而不做模块级标量**：`SettingsManager` 只支持嵌套 path，加模块级标量要在 `settings_manager` 里加 setattr 分支，逻辑更杂
+- **郡面染色是"背景层"近似，不是"事实层"**：只有"主导势力 + 势力值"，不表达"第二势力是谁"。多势力混战看据点色点
+- **控制力权重 = `(11 - level)`，郡治 ×2，无主据点计入分母**：见 §3.7
 
 #### 数据约定（本轮新增）
 
-- 势力 `stance`：整数 -100～100，默认 0
-  - `<0` → 敌对
-  - `>80` → 盟友
-  - 其余 → 中立
-- `stance` **单向**，只表达"该势力相对玩家"；不做势力间关系矩阵
-- 玩家自身 `stance` 无 UI 意义
+- 郡级控制力分档：
+  - `ratio > 0.8` → 主导势力（郡面用原色）
+  - `0.5 < ratio ≤ 0.8` → 主要势力（郡面用变浅色，郡名用原色）
+  - `≤ 0.5` → 无（郡面不上色，郡名用默认色）
+- 郡名用色只区分"是否主要势力"（>50% 用势力色，不变浅）
+- 据点文本用色：有主 → 势力色；无主 → 默认
+- 据点**点位**颜色：始终黑色（用户明确要求）
+- 势力染色独立图层开关：`LAYER_VISIBILITY.territory`
 
 ---
 
-**变更核心集中在 §3.2（Faction.stance）**、**§4.3（default.json 加袁绍）**、**§5.3 / 5.12 / 5.16**、**§6.2（加 side_panel.refresh_all）**、**§8.3 第 50–55 条**、**§9.2**。
+**本轮核心变动集中在 §3.7（CountyStat）**、**§5.10（territory.py）/ 5.11（geo_data.py 元组结构）/ 5.13（renderer.py）/ 5.20（style.py）/ 5.21（settings_schema.py）**、**§6.2（set_world + redraw）**、**§8.3 第 56–63 条**、**§9.2**。

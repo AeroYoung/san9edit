@@ -2,14 +2,14 @@
   "version": 1,
   "id": "default",
   "name": "默认剧本",
-  "desc": "十八路诸侯 · 曹操据陈留，袁绍据魏郡",
+  "desc": "十八路诸侯 · 曹操据陈留，袁绍据魏郡；东郡为两家争夺之地",
   "start": { "year": 190, "month": 1, "xun": 1 },
   "player_faction": "0001",
 
   "factions": {
     "0001": {
       "name": "曹操",
-      "color": "#1E40AF",
+      "color": "#2928EF",
       "prestige": 1000,
       "gold": 5000,
       "food": 20000,
@@ -17,7 +17,7 @@
     },
     "0006": {
       "name": "袁绍",
-      "color": "#7C3AED",
+      "color": "#FFFF00",
       "prestige": 1000,
       "gold": 5000,
       "food": 20000,
@@ -120,6 +120,22 @@
     "020120": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
     "020121": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
     "020122": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 },
-    "020126": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 }
+    "020126": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 },
+
+    "090201": { "owner": "0006", "troops": 8000, "gold": 1000, "food": 20000 },
+    "090202": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "090205": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "090211": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "090216": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+    "090219": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
+
+    "090206": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090210": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090212": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090215": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090217": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090222": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
+    "090223": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
+    "090224": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 }
   }
 }
