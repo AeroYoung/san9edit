@@ -17,7 +17,22 @@
       "Bash(env)",
       "Bash(ls -la .claude/)",
       "Bash(git check-ignore *)",
-      "Bash(git ls-tree *)"
+      "Bash(git ls-tree *)",
+      "Bash(python -c \"import json; d=json.load\\(open\\('assets/characters.json',encoding='utf-8'\\)\\); c=d.get\\('characters',d\\); print\\('0521' in c, c.get\\('0521',{}\\).get\\('name'\\)\\); print\\('keys_type', type\\(next\\(iter\\(c\\)\\)\\)\\)\")",
+      "Bash(python -m pytest tests/ -q)",
+      "Bash(git -C \"c:\\\\Users\\\\杨尧\\\\Desktop\\\\san9edit\" status --short)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m '阶段1：编辑框架核心层（Command/EditSession/ScenarioWriter + Faction派生值 + 测试） *)",
+      "Bash(git commit -q -m '阶段2：数据驱动编辑弹窗（Field/EditDialog/NodeFields/FactionFields） *)",
+      "Bash(git commit -q -m '阶段3：面板接入编辑（右键编辑项 + _edit + session 注入） *)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" python /tmp/smoke_gui.py)",
+      "Bash(git commit -q -m '阶段4：主窗口接入（菜单栏/快捷键/编辑会话/保存/未保存拦截） *)",
+      "Bash(cp scenarios/default.json /tmp/default.json.bak)",
+      "Bash(python tools/build_scenario_190.py)",
+      "Bash(git show *)",
+      "Bash(rm old_default.json)",
+      "Bash(git checkout *)",
+      "Bash(git commit -q -m '阶段5：收尾（去 factions gold/food + 重生成剧本 + README §9.17） *)"
     ]
   }
 }
