@@ -1,13 +1,148 @@
 {
-  "version": 1,
+  "version": 2,
   "id": "default",
-  "name": "默认剧本",
-  "desc": "十八路诸侯 · 曹操据陈留，袁绍据魏郡；东郡为两家争夺之地",
-  "start": { "year": 190, "month": 1, "xun": 1 },
-  "player_faction": "0001",
-
+  "name": "十八路诸侯 · 190",
+  "desc": "190年正月，关东诸侯起兵讨董；曹操据陈留，袁绍据渤海，刘关张在平原。",
+  "start": {
+    "year": 190,
+    "month": 1,
+    "xun": 1
+  },
+  "player_faction": "0521",
+  "character_id_range": [
+    1,
+    1000
+  ],
   "factions": {
-    "0001": {
+    "0736": {
+      "name": "董卓",
+      "color": "#5B2B2B",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -80
+    },
+    "0047": {
+      "name": "王匡",
+      "color": "#7A6F50",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0771": {
+      "name": "马腾",
+      "color": "#B87A40",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0166": {
+      "name": "韩遂",
+      "color": "#8B5F3F",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0592": {
+      "name": "段煨",
+      "color": "#9B7F5F",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0081": {
+      "name": "于夫罗",
+      "color": "#9070A0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0661": {
+      "name": "张杨",
+      "color": "#A08B5F",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0169": {
+      "name": "韩暹",
+      "color": "#6B5F3F",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0932": {
+      "name": "刘虞",
+      "color": "#80B880",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0266": {
+      "name": "公孙瓒",
+      "color": "#C8C8C8",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0268": {
+      "name": "公孙度",
+      "color": "#6B8B8B",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 30
+    },
+    "0035": {
+      "name": "袁绍",
+      "color": "#E8C500",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 30
+    },
+    "0182": {
+      "name": "韩馥",
+      "color": "#7A8B99",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0601": {
+      "name": "张燕",
+      "color": "#9B5F8B",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0018": {
+      "name": "于毒",
+      "color": "#704050",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0470": {
+      "name": "眭固",
+      "color": "#8B5F70",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0521": {
       "name": "曹操",
       "color": "#2928EF",
       "prestige": 1000,
@@ -15,127 +150,6307 @@
       "food": 20000,
       "stance": 0
     },
-    "0006": {
-      "name": "袁绍",
-      "color": "#FFFF00",
+    "0653": {
+      "name": "张邈",
+      "color": "#B8A080",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0209": {
+      "name": "桥瑁",
+      "color": "#A08B60",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0947": {
+      "name": "刘岱",
+      "color": "#8B7A5F",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0024": {
+      "name": "袁遗",
+      "color": "#D0B860",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0826": {
+      "name": "鲍信",
+      "color": "#5F7AA0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0062": {
+      "name": "应劭",
+      "color": "#708B80",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0952": {
+      "name": "刘备",
+      "color": "#3B8B3B",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0280": {
+      "name": "孔融",
+      "color": "#B0C0D0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 30
+    },
+    "0710": {
+      "name": "田楷",
+      "color": "#90A0C0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0165": {
+      "name": "管承",
+      "color": "#607090",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0724": {
+      "name": "陶谦",
+      "color": "#A05060",
       "prestige": 1000,
       "gold": 5000,
       "food": 20000,
       "stance": -50
+    },
+    "0647": {
+      "name": "张超",
+      "color": "#C08080",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0270": {
+      "name": "孔伷",
+      "color": "#6090B0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0090": {
+      "name": "何仪",
+      "color": "#905040",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0958": {
+      "name": "刘辟",
+      "color": "#806040",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0963": {
+      "name": "刘繇",
+      "color": "#80A0B0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0933": {
+      "name": "刘勋",
+      "color": "#7080A0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0080": {
+      "name": "王朗",
+      "color": "#90C0A0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0091": {
+      "name": "华歆",
+      "color": "#5F8B70",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0239": {
+      "name": "严白虎",
+      "color": "#A0A050",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0364": {
+      "name": "周昕",
+      "color": "#6090A0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0953": {
+      "name": "刘表",
+      "color": "#5090B0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0551": {
+      "name": "孙坚",
+      "color": "#C83030",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0032": {
+      "name": "袁术",
+      "color": "#D0A040",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -50
+    },
+    "0360": {
+      "name": "沙摩柯",
+      "color": "#D08030",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": -10
+    },
+    "0642": {
+      "name": "张羡",
+      "color": "#A07060",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0925": {
+      "name": "刘焉",
+      "color": "#408070",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0666": {
+      "name": "张鲁",
+      "color": "#C0A070",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0310": {
+      "name": "吴懿",
+      "color": "#50A090",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0272": {
+      "name": "高定",
+      "color": "#C09060",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0855": {
+      "name": "雍闿",
+      "color": "#B07040",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0391": {
+      "name": "朱褒",
+      "color": "#A06070",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0341": {
+      "name": "士燮",
+      "color": "#60A0A0",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0332": {
+      "name": "士壹",
+      "color": "#709090",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
+    },
+    "0334": {
+      "name": "士徽",
+      "color": "#507070",
+      "prestige": 1000,
+      "gold": 5000,
+      "food": 20000,
+      "stance": 0
     }
   },
-
   "characters": {
-    "0001": {
-      "name": "曹操", "faction": "0001", "node": "130301",
-      "leadership": 96, "might": 72, "intelligence": 91,
-      "politics": 94, "charisma": 96
+    "0987": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
     },
-    "0002": {
-      "name": "夏侯惇", "faction": "0001", "node": "130301",
-      "leadership": 84, "might": 90, "intelligence": 58,
-      "politics": 70, "charisma": 82
+    "0343": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
     },
-    "0003": {
-      "name": "夏侯渊", "faction": "0001", "node": "130301",
-      "leadership": 86, "might": 91, "intelligence": 62,
-      "politics": 60, "charisma": 76
+    "0477": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
     },
-    "0004": {
-      "name": "曹仁", "faction": "0001", "node": "130301",
-      "leadership": 88, "might": 86, "intelligence": 66,
-      "politics": 65, "charisma": 78
+    "0782": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0727": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0234": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0401": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0471": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0258": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0743": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0144": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0428": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0097": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0331": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0254": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0885": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0199": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0507": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0907": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0301": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0559": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0922": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0188": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0456": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0638": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0326": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0908": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0042": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0786": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0193": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0663": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0893": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "一般"
+    },
+    "0736": {
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
+      "role": "君主"
+    },
+    "0047": {
+      "faction": "0047",
+      "node": "070601",
+      "location": "070601",
+      "role": "君主"
+    },
+    "0602": {
+      "faction": "0047",
+      "node": "070601",
+      "location": "070601",
+      "role": "一般"
+    },
+    "0818": {
+      "faction": "0047",
+      "node": "070601",
+      "location": "070601",
+      "role": "一般"
+    },
+    "0835": {
+      "faction": "0047",
+      "node": "070601",
+      "location": "070601",
+      "role": "一般"
+    },
+    "0867": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0758": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0693": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0609": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0847": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0771": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "君主"
+    },
+    "0759": {
+      "faction": "0771",
+      "node": "050201",
+      "location": "050201",
+      "role": "一般"
+    },
+    "0166": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "君主"
+    },
+    "0474": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "一般"
+    },
+    "0074": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "一般"
+    },
+    "0701": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "一般"
+    },
+    "0969": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "一般"
+    },
+    "0475": {
+      "faction": "0166",
+      "node": "050415",
+      "location": "050415",
+      "role": "一般"
+    },
+    "0887": {
+      "faction": "0592",
+      "node": "050801",
+      "location": "050801",
+      "role": "一般"
+    },
+    "0592": {
+      "faction": "0592",
+      "node": "050801",
+      "location": "050801",
+      "role": "君主"
+    },
+    "0931": {
+      "faction": "0592",
+      "node": "050801",
+      "location": "050801",
+      "role": "一般"
+    },
+    "0687": {
+      "faction": "0592",
+      "node": "050801",
+      "location": "050801",
+      "role": "一般"
+    },
+    "0212": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "一般"
+    },
+    "0563": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "一般"
+    },
+    "0043": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "一般"
+    },
+    "0174": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "一般"
+    },
+    "0306": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "一般"
+    },
+    "0081": {
+      "faction": "0081",
+      "node": "010801",
+      "location": "010801",
+      "role": "君主"
+    },
+    "0519": {
+      "faction": "0661",
+      "node": "010101",
+      "location": "010101",
+      "role": "一般"
+    },
+    "0661": {
+      "faction": "0661",
+      "node": "010101",
+      "location": "010101",
+      "role": "君主"
+    },
+    "0865": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0169": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "君主"
+    },
+    "0894": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0297": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0880": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0874": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0815": {
+      "faction": "0169",
+      "node": "010601",
+      "location": "010601",
+      "role": "一般"
+    },
+    "0712": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0201": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0141": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0196": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0031": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0932": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "君主"
+    },
+    "0490": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0740": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0927": {
+      "faction": "0932",
+      "node": "120401",
+      "location": "120401",
+      "role": "一般"
+    },
+    "0269": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0883": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0473": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0233": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0202": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0784": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0168": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0813": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0830": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0261": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0266": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "君主"
+    },
+    "0252": {
+      "faction": "0266",
+      "node": "120601",
+      "location": "120601",
+      "role": "一般"
+    },
+    "0264": {
+      "faction": "0268",
+      "node": "120901",
+      "location": "120901",
+      "role": "一般"
+    },
+    "0263": {
+      "faction": "0268",
+      "node": "120901",
+      "location": "120901",
+      "role": "一般"
+    },
+    "0268": {
+      "faction": "0268",
+      "node": "120901",
+      "location": "120901",
+      "role": "君主"
+    },
+    "0983": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0812": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0464": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0160": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0217": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0281": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0454": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0105": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0914": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0966": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0186": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0713": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0822": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0006": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0248": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0936": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0535": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0035": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "君主"
+    },
+    "0184": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0465": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0395": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0984": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0466": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0177": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0410": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0618": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0037": {
+      "faction": "0035",
+      "node": "020801",
+      "location": "020801",
+      "role": "一般"
+    },
+    "0222": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0797": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0182": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "君主"
+    },
+    "0599": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0275": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0312": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0277": {
+      "faction": "0182",
+      "node": "020101",
+      "location": "020101",
+      "role": "一般"
+    },
+    "0601": {
+      "faction": "0601",
+      "node": "020301",
+      "location": "020301",
+      "role": "君主"
+    },
+    "0018": {
+      "faction": "0018",
+      "node": "020401",
+      "location": "020401",
+      "role": "君主"
+    },
+    "0754": {
+      "faction": "0018",
+      "node": "020401",
+      "location": "020401",
+      "role": "一般"
+    },
+    "0149": {
+      "faction": "0018",
+      "node": "020401",
+      "location": "020401",
+      "role": "一般"
+    },
+    "0108": {
+      "faction": "0018",
+      "node": "020401",
+      "location": "020401",
+      "role": "一般"
+    },
+    "0606": {
+      "faction": "0018",
+      "node": "020401",
+      "location": "020401",
+      "role": "一般"
+    },
+    "0470": {
+      "faction": "0470",
+      "node": "020501",
+      "location": "020501",
+      "role": "君主"
+    },
+    "0673": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0355": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0748": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0735": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0392": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0357": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0728": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "1000": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0518": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0014": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0980": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0077": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0424": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0172": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0308": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0913": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0386": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0709": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0279": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0911": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0402": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0317": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0215": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0327": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0763": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0689": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0514": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0844": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0016": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0926": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0253": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0409": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0460": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0095": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0102": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0021": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0485": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0192": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0608": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0071": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0387": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0511": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0318": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0429": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0159": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0816": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0525": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0999": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0150": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0702": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0124": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0393": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0133": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0615": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0353": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0505": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0441": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0545": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0197": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0521": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "君主"
+    },
+    "0842": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0114": {
+      "faction": "0521",
+      "node": "130301",
+      "location": "130301",
+      "role": "一般"
+    },
+    "0191": {
+      "faction": "0653",
+      "node": "130310",
+      "location": "130310",
+      "role": "一般"
+    },
+    "0653": {
+      "faction": "0653",
+      "node": "130310",
+      "location": "130310",
+      "role": "君主"
+    },
+    "0512": {
+      "faction": "0653",
+      "node": "130310",
+      "location": "130310",
+      "role": "一般"
+    },
+    "0688": {
+      "faction": "0653",
+      "node": "130310",
+      "location": "130310",
+      "role": "一般"
+    },
+    "0094": {
+      "faction": "0653",
+      "node": "130310",
+      "location": "130310",
+      "role": "一般"
+    },
+    "0209": {
+      "faction": "0209",
+      "node": "090201",
+      "location": "090201",
+      "role": "君主"
+    },
+    "0156": {
+      "faction": "0209",
+      "node": "090201",
+      "location": "090201",
+      "role": "一般"
+    },
+    "0469": {
+      "faction": "0209",
+      "node": "090201",
+      "location": "090201",
+      "role": "一般"
+    },
+    "0947": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "君主"
+    },
+    "0320": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0651": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0416": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0956": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0030": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0067": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0884": {
+      "faction": "0947",
+      "node": "090301",
+      "location": "090301",
+      "role": "一般"
+    },
+    "0024": {
+      "faction": "0024",
+      "node": "090401",
+      "location": "090401",
+      "role": "君主"
+    },
+    "0178": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0216": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0826": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "君主"
+    },
+    "0635": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0287": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0359": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0513": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0829": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0417": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0655": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0347": {
+      "faction": "0826",
+      "node": "090701",
+      "location": "090701",
+      "role": "一般"
+    },
+    "0062": {
+      "faction": "0062",
+      "node": "090801",
+      "location": "090801",
+      "role": "君主"
+    },
+    "0793": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0795": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0450": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0442": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0371": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0683": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0127": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0231": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0236": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0552": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0147": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
     },
     "0005": {
-      "name": "荀彧", "faction": "0001", "node": "130301",
-      "leadership": 60, "might": 32, "intelligence": 96,
-      "politics": 98, "charisma": 90
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
     },
-
-    "0006": {
-      "name": "袁绍", "faction": "0006", "node": "020101",
-      "leadership": 88, "might": 66, "intelligence": 74,
-      "politics": 72, "charisma": 92
+    "0073": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
     },
-    "0007": {
-      "name": "颜良", "faction": "0006", "node": "020101",
-      "leadership": 82, "might": 94, "intelligence": 34,
-      "politics": 38, "charisma": 70
+    "0968": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0734": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0271": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0674": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0684": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0185": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0715": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0596": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0952": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "君主"
+    },
+    "0285": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0056": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0472": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0250": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0656": {
+      "faction": "0952",
+      "node": "060101",
+      "location": "060101",
+      "role": "一般"
+    },
+    "0819": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0594": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0631": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0057": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0780": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0003": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0877": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0280": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "君主"
+    },
+    "0798": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0617": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0063": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0314": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0462": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0994": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0467": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0524": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0944": {
+      "faction": "0280",
+      "node": "060501",
+      "location": "060501",
+      "role": "一般"
+    },
+    "0710": {
+      "faction": "0710",
+      "node": "060301",
+      "location": "060301",
+      "role": "君主"
+    },
+    "0075": {
+      "faction": "0710",
+      "node": "060301",
+      "location": "060301",
+      "role": "一般"
+    },
+    "0493": {
+      "faction": "0710",
+      "node": "060301",
+      "location": "060301",
+      "role": "一般"
+    },
+    "0165": {
+      "faction": "0165",
+      "node": "060601",
+      "location": "060601",
+      "role": "君主"
+    },
+    "0920": {
+      "faction": "0165",
+      "node": "060601",
+      "location": "060601",
+      "role": "一般"
+    },
+    "0486": {
+      "faction": "0165",
+      "node": "060601",
+      "location": "060601",
+      "role": "一般"
     },
     "0008": {
-      "name": "文丑", "faction": "0006", "node": "020101",
-      "leadership": 80, "might": 93, "intelligence": 30,
-      "politics": 35, "charisma": 68
+      "faction": "0165",
+      "node": "060601",
+      "location": "060601",
+      "role": "一般"
     },
-    "0009": {
-      "name": "张郃", "faction": "0006", "node": "020101",
-      "leadership": 90, "might": 88, "intelligence": 76,
-      "politics": 60, "charisma": 75
+    "0134": {
+      "faction": "0165",
+      "node": "060601",
+      "location": "060601",
+      "role": "一般"
     },
-    "0010": {
-      "name": "田丰", "faction": "0006", "node": "020101",
-      "leadership": 66, "might": 45, "intelligence": 93,
-      "politics": 82, "charisma": 76
+    "0498": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
     },
-    "0011": {
-      "name": "沮授", "faction": "0006", "node": "020101",
-      "leadership": 78, "might": 58, "intelligence": 92,
-      "politics": 85, "charisma": 80
+    "0749": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0136": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0181": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0323": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0785": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0002": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0213": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0527": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0600": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0007": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0751": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0681": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0678": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0747": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0724": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "君主"
+    },
+    "0399": {
+      "faction": "0724",
+      "node": "080401",
+      "location": "080401",
+      "role": "一般"
+    },
+    "0647": {
+      "faction": "0647",
+      "node": "080501",
+      "location": "080501",
+      "role": "君主"
+    },
+    "0671": {
+      "faction": "0647",
+      "node": "080501",
+      "location": "080501",
+      "role": "一般"
+    },
+    "0270": {
+      "faction": "0270",
+      "node": "130101",
+      "location": "130101",
+      "role": "君主"
+    },
+    "0451": {
+      "faction": "0270",
+      "node": "130101",
+      "location": "130101",
+      "role": "一般"
+    },
+    "0090": {
+      "faction": "0090",
+      "node": "130401",
+      "location": "130401",
+      "role": "君主"
+    },
+    "0208": {
+      "faction": "0958",
+      "node": "130421",
+      "location": "130421",
+      "role": "一般"
+    },
+    "0958": {
+      "faction": "0958",
+      "node": "130421",
+      "location": "130421",
+      "role": "君主"
+    },
+    "0667": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0783": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0487": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0831": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0019": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0963": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "君主"
+    },
+    "0228": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0882": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0586": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0668": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0598": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0330": {
+      "faction": "0963",
+      "node": "100604",
+      "location": "100604",
+      "role": "一般"
+    },
+    "0933": {
+      "faction": "0933",
+      "node": "100701",
+      "location": "100701",
+      "role": "君主"
+    },
+    "0225": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0432": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0997": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0971": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0080": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "君主"
+    },
+    "0055": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0426": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0731": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0235": {
+      "faction": "0080",
+      "node": "100201",
+      "location": "100201",
+      "role": "一般"
+    },
+    "0091": {
+      "faction": "0091",
+      "node": "100101",
+      "location": "100101",
+      "role": "君主"
+    },
+    "0696": {
+      "faction": "0091",
+      "node": "100101",
+      "location": "100101",
+      "role": "一般"
+    },
+    "0335": {
+      "faction": "0091",
+      "node": "100101",
+      "location": "100101",
+      "role": "一般"
+    },
+    "0699": {
+      "faction": "0091",
+      "node": "100101",
+      "location": "100101",
+      "role": "一般"
+    },
+    "0448": {
+      "faction": "0091",
+      "node": "100101",
+      "location": "100101",
+      "role": "一般"
+    },
+    "0239": {
+      "faction": "0239",
+      "node": "100501",
+      "location": "100501",
+      "role": "君主"
+    },
+    "0240": {
+      "faction": "0239",
+      "node": "100501",
+      "location": "100501",
+      "role": "一般"
+    },
+    "0365": {
+      "faction": "0364",
+      "node": "100401",
+      "location": "100401",
+      "role": "一般"
+    },
+    "0364": {
+      "faction": "0364",
+      "node": "100401",
+      "location": "100401",
+      "role": "君主"
+    },
+    "0367": {
+      "faction": "0364",
+      "node": "100401",
+      "location": "100401",
+      "role": "一般"
+    },
+    "0595": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0260": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0325": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0625": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0539": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0929": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0223": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0642": {
+      "faction": "0642",
+      "node": "040201",
+      "location": "040201",
+      "role": "君主"
+    },
+    "0654": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0807": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0167": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0982": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0321": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0040": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0319": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0084": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0324": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0092": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0427": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0085": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0951": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0158": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0840": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0949": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0296": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "一般"
+    },
+    "0953": {
+      "faction": "0953",
+      "node": "040501",
+      "location": "040501",
+      "role": "君主"
+    },
+    "0390": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0551": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "君主"
+    },
+    "0703": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0567": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0645": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0292": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0986": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0572": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0179": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0543": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0537": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0289": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0443": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0373": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0985": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0574": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0538": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0176": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0247": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0412": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0973": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0494": {
+      "faction": "0551",
+      "node": "040401",
+      "location": "040401",
+      "role": "一般"
+    },
+    "0400": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0226": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0028": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0211": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0146": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0583": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0214": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0032": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "君主"
+    },
+    "0036": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0218": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0861": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0670": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0970": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0614": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0025": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0219": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0919": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0206": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0098": {
+      "faction": "0032",
+      "node": "040701",
+      "location": "040701",
+      "role": "一般"
+    },
+    "0360": {
+      "faction": "0360",
+      "node": "040301",
+      "location": "040301",
+      "role": "君主"
+    },
+    "0721": {
+      "faction": "0642",
+      "node": "040201",
+      "location": "040201",
+      "role": "一般"
+    },
+    "0148": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0366": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0849": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0744": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0928": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0938": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0925": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "君主"
+    },
+    "0961": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0632": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0637": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0190": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0888": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0719": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0078": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0627": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0286": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0823": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0904": {
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
+      "role": "一般"
+    },
+    "0869": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0597": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0876": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0868": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0038": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0666": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "君主"
+    },
+    "0750": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0862": {
+      "faction": "0666",
+      "node": "110104",
+      "location": "110104",
+      "role": "一般"
+    },
+    "0315": {
+      "faction": "0310",
+      "node": "110301",
+      "location": "110301",
+      "role": "一般"
+    },
+    "0310": {
+      "faction": "0310",
+      "node": "110301",
+      "location": "110301",
+      "role": "君主"
+    },
+    "0241": {
+      "faction": "0310",
+      "node": "110301",
+      "location": "110301",
+      "role": "一般"
+    },
+    "0886": {
+      "faction": "0310",
+      "node": "110301",
+      "location": "110301",
+      "role": "一般"
+    },
+    "0646": {
+      "faction": "0310",
+      "node": "110301",
+      "location": "110301",
+      "role": "一般"
+    },
+    "0691": {
+      "faction": "0272",
+      "node": "110801",
+      "location": "110801",
+      "role": "一般"
+    },
+    "0207": {
+      "faction": "0272",
+      "node": "110801",
+      "location": "110801",
+      "role": "一般"
+    },
+    "0076": {
+      "faction": "0272",
+      "node": "110801",
+      "location": "110801",
+      "role": "一般"
+    },
+    "0274": {
+      "faction": "0855",
+      "node": "111101",
+      "location": "111101",
+      "role": "一般"
+    },
+    "0854": {
+      "faction": "0855",
+      "node": "111101",
+      "location": "111101",
+      "role": "一般"
+    },
+    "0340": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0853": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0337": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0354": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0187": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0341": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "君主"
+    },
+    "0705": {
+      "faction": "0341",
+      "node": "030601",
+      "location": "030601",
+      "role": "一般"
+    },
+    "0332": {
+      "faction": "0332",
+      "node": "030401",
+      "location": "030401",
+      "role": "君主"
+    },
+    "0243": {
+      "faction": "0332",
+      "node": "030401",
+      "location": "030401",
+      "role": "一般"
+    },
+    "0334": {
+      "faction": "0334",
+      "node": "030101",
+      "location": "030101",
+      "role": "君主"
     }
   },
-
   "nodes": {
-    "130301": { "owner": "0001", "troops": 8000, "gold": 1000, "food": 20000 },
-    "130303": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
-    "130304": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
-    "130305": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130307": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130308": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130309": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130310": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130311": { "owner": "0001", "troops": 3000, "gold": 300,  "food": 5000 },
-    "130312": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130314": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130315": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130316": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130317": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "130318": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130319": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "130320": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-
-    "020101": { "owner": "0006", "troops": 8000, "gold": 1000, "food": 20000 },
-    "020102": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020104": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020105": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020107": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020108": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020110": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020111": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020113": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020114": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020115": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020116": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020118": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020119": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020120": { "owner": "0006", "troops": 2000, "gold": 200,  "food": 3000 },
-    "020121": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "020122": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 },
-    "020126": { "owner": "0006", "troops": 1000, "gold": 100,  "food": 2000 },
-
-    "090201": { "owner": "0006", "troops": 8000, "gold": 1000, "food": 20000 },
-    "090202": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "090205": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "090211": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "090216": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-    "090219": { "owner": "0006", "troops": 1500, "gold": 150,  "food": 2500 },
-
-    "090206": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090210": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090212": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090215": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090217": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090222": { "owner": "0001", "troops": 2000, "gold": 200,  "food": 3000 },
-    "090223": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 },
-    "090224": { "owner": "0001", "troops": 1000, "gold": 100,  "food": 2000 }
+    "070701": {
+      "owner": "0736",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070301": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070101": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070201": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070218": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070308": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070401": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070429": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070501": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070507": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070510": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070711": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070723": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070728": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070730": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070102": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070104": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070105": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070106": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070107": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070108": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070109": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070110": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070111": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070112": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070113": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070114": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070115": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070120": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070121": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070124": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070202": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070203": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070204": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070205": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070206": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070207": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070209": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070210": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070211": {
+      "owner": "0736",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070601": {
+      "owner": "0047",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070603": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070606": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070607": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070608": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070614": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070616": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070617": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070619": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070622": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070623": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070627": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070629": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070630": {
+      "owner": "0047",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050201": {
+      "owner": "0771",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "050208": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050301": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050214": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050202": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050205": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050206": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050209": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050210": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050211": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050213": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050215": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050216": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050218": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050302": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050303": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050304": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050306": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050308": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050310": {
+      "owner": "0771",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050415": {
+      "owner": "0166",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "050401": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050406": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050407": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050408": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050409": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050410": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050411": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050412": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050421": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050403": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050413": {
+      "owner": "0166",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050801": {
+      "owner": "0592",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "051001": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050802": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050803": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050804": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050805": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050806": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050807": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051002": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051003": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051005": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051006": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051008": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "051004": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010801": {
+      "owner": "0081",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "010701": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010901": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010702": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010703": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010704": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010802": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010803": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010804": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010805": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010806": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010807": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010808": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010809": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010810": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010811": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010902": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010903": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010904": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010906": {
+      "owner": "0081",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010101": {
+      "owner": "0661",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "010106": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010110": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010102": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010103": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010104": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010105": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010108": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010111": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010112": {
+      "owner": "0661",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010601": {
+      "owner": "0169",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "010602": {
+      "owner": "0169",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010603": {
+      "owner": "0169",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010606": {
+      "owner": "0169",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010607": {
+      "owner": "0169",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "010608": {
+      "owner": "0169",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120401": {
+      "owner": "0932",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "120304": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120501": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120406": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120302": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120305": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120306": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120307": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120402": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120403": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120404": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120405": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120502": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120503": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120504": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120505": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120506": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120507": {
+      "owner": "0932",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120601": {
+      "owner": "0266",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "120701": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120704": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120602": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120603": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120604": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120702": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120703": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120706": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120707": {
+      "owner": "0266",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120901": {
+      "owner": "0268",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "121101": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121001": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120902": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120903": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120904": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120905": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120906": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120907": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120908": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120909": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120910": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "120911": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121002": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121003": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121004": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121006": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121102": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121103": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121104": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121105": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121106": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121107": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121108": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "121109": {
+      "owner": "0268",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020801": {
+      "owner": "0035",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "020802": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020803": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020804": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020805": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020806": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020807": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020808": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020809": {
+      "owner": "0035",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020101": {
+      "owner": "0182",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "020102": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020104": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020105": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020107": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020108": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020110": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020111": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020113": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020114": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020115": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020116": {
+      "owner": "0182",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020301": {
+      "owner": "0601",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "020311": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020312": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020302": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020303": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020304": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020305": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020306": {
+      "owner": "0601",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020401": {
+      "owner": "0018",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "020402": {
+      "owner": "0018",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020403": {
+      "owner": "0018",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020404": {
+      "owner": "0018",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020405": {
+      "owner": "0018",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020501": {
+      "owner": "0470",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "020502": {
+      "owner": "0470",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020503": {
+      "owner": "0470",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020504": {
+      "owner": "0470",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "020505": {
+      "owner": "0470",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130301": {
+      "owner": "0521",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "130601": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130303": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130304": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130305": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130307": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130308": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130309": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130312": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130602": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130603": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130604": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130605": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130606": {
+      "owner": "0521",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130310": {
+      "owner": "0653",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "130311": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130314": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130315": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130316": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130317": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130318": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130319": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130320": {
+      "owner": "0653",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090201": {
+      "owner": "0209",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "090202": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090205": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090206": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090210": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090211": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090212": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090215": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090216": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090217": {
+      "owner": "0209",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090301": {
+      "owner": "0947",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "090303": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090305": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090306": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090307": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090311": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090312": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090316": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090317": {
+      "owner": "0947",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090401": {
+      "owner": "0024",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "090402": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090403": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090404": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090405": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090406": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090407": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090408": {
+      "owner": "0024",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090701": {
+      "owner": "0826",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "090703": {
+      "owner": "0826",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090704": {
+      "owner": "0826",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090706": {
+      "owner": "0826",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090707": {
+      "owner": "0826",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090708": {
+      "owner": "0826",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090801": {
+      "owner": "0062",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "090802": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090803": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090804": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090805": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090806": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090809": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "090810": {
+      "owner": "0062",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060101": {
+      "owner": "0952",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "060501": {
+      "owner": "0280",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "060502": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060503": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060504": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060505": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060506": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060507": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060508": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060509": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060510": {
+      "owner": "0280",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060301": {
+      "owner": "0710",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "060302": {
+      "owner": "0710",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060303": {
+      "owner": "0710",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060304": {
+      "owner": "0710",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060601": {
+      "owner": "0165",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "060602": {
+      "owner": "0165",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060603": {
+      "owner": "0165",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060604": {
+      "owner": "0165",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060605": {
+      "owner": "0165",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060607": {
+      "owner": "0165",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080401": {
+      "owner": "0724",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "080201": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080101": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080102": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080103": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080104": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080105": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080106": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080107": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080108": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080109": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080110": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080111": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080112": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080114": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080115": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080202": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080203": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080204": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080205": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080206": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080402": {
+      "owner": "0724",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080501": {
+      "owner": "0647",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "080502": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080503": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080504": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080505": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080506": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080507": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "080508": {
+      "owner": "0647",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130101": {
+      "owner": "0270",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "130118": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130501": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130505": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130102": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130103": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130104": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130105": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130106": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130107": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130108": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130110": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130111": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130112": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130113": {
+      "owner": "0270",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130401": {
+      "owner": "0090",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "130402": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130404": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130405": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130406": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130407": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130408": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130409": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130410": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130411": {
+      "owner": "0090",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130421": {
+      "owner": "0958",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "130422": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130423": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130430": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130431": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130432": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "130434": {
+      "owner": "0958",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100604": {
+      "owner": "0963",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100601": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100603": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100615": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100602": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100605": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100607": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100608": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100609": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100610": {
+      "owner": "0963",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100701": {
+      "owner": "0933",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100702": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100703": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100705": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100706": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100707": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100708": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100709": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100710": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100711": {
+      "owner": "0933",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100201": {
+      "owner": "0080",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100204": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100202": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100203": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100205": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100206": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100207": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100209": {
+      "owner": "0080",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100101": {
+      "owner": "0091",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100102": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100103": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100104": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100105": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100108": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100109": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100110": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100111": {
+      "owner": "0091",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100501": {
+      "owner": "0239",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100502": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100503": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100504": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100505": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100506": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100507": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100508": {
+      "owner": "0239",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100401": {
+      "owner": "0364",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "100402": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100403": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100405": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100406": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100407": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100408": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100409": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "100410": {
+      "owner": "0364",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040501": {
+      "owner": "0953",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "040512": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040601": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040506": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040502": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040504": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040505": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040508": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040509": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040510": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040511": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040513": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040514": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040515": {
+      "owner": "0953",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040401": {
+      "owner": "0551",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "040101": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040102": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040103": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040104": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040105": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040106": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040107": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040108": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040109": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040402": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040403": {
+      "owner": "0551",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040701": {
+      "owner": "0032",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "040702": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040704": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040703": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040705": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040706": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040708": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040709": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040710": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040712": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040713": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040714": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040716": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040717": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040718": {
+      "owner": "0032",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040301": {
+      "owner": "0360",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "040310": {
+      "owner": "0360",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040302": {
+      "owner": "0360",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040303": {
+      "owner": "0360",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040304": {
+      "owner": "0360",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040305": {
+      "owner": "0360",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040201": {
+      "owner": "0642",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "040202": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040203": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040204": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040205": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040206": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "040208": {
+      "owner": "0642",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110501": {
+      "owner": "0925",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "110401": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110601": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110402": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110403": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110404": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110405": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110406": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110407": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110408": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110410": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110502": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110503": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110504": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110505": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110506": {
+      "owner": "0925",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110104": {
+      "owner": "0666",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "050101": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050105": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050102": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050103": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050104": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050107": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "050108": {
+      "owner": "0666",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110301": {
+      "owner": "0310",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "110303": {
+      "owner": "0310",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110304": {
+      "owner": "0310",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110305": {
+      "owner": "0310",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110306": {
+      "owner": "0310",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110307": {
+      "owner": "0310",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110801": {
+      "owner": "0272",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "110803": {
+      "owner": "0272",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110805": {
+      "owner": "0272",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110806": {
+      "owner": "0272",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110807": {
+      "owner": "0272",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110808": {
+      "owner": "0272",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111101": {
+      "owner": "0855",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "111102": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111103": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111104": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111105": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111106": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "111107": {
+      "owner": "0855",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110901": {
+      "owner": "0391",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "110902": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110903": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110904": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110905": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110907": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "110908": {
+      "owner": "0391",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030601": {
+      "owner": "0341",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "030701": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030801": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030603": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030604": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030605": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030606": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030607": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030608": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030609": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030702": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030703": {
+      "owner": "0341",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030401": {
+      "owner": "0332",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "030402": {
+      "owner": "0332",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030403": {
+      "owner": "0332",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030404": {
+      "owner": "0332",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030101": {
+      "owner": "0334",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "030102": {
+      "owner": "0334",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030103": {
+      "owner": "0334",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030105": {
+      "owner": "0334",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030106": {
+      "owner": "0334",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "030108": {
+      "owner": "0334",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    }
   }
 }

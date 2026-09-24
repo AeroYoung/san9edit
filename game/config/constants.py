@@ -11,6 +11,7 @@ ASSETS_DIR = PROJECT_ROOT / "assets"
 DEFAULT_MAP_PATH = ASSETS_DIR / "map.geojson"
 DEFAULT_WATER_PATH = ASSETS_DIR / "water.geojson"
 DEFAULT_ROADS_PATH = ASSETS_DIR / "roads.geojson"
+DEFAULT_CHARACTERS_PATH = ASSETS_DIR / "characters.json"      # ★ 新增
 
 # 剧本目录（与 assets/ 并列）
 SCENARIOS_DIR = PROJECT_ROOT / "scenarios"

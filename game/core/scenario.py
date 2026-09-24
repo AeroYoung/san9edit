@@ -1,12 +1,17 @@
 # -*- coding: utf-8 -*-
-"""剧本加载：读 JSON + 合并 GeoData，构造 World。
+"""剧本加载：基础数据 + 剧本覆盖 + 按年份筛选 + GeoData 合并。
 
-剧本 JSON 结构见 scenarios/default.json。
+三层人物加载：
+    1. assets/characters.json  → 全量静态数据（五维 / 关系 / 生卒…）
+    2. scenarios/*.json        → 剧本覆盖（faction / node / role / …）
+    3. 按年份筛选              → 只保留该年满 16 岁且已出生未死的人
+
 约定：势力 id = 君主的人物 id。
 """
 
 import json
 
+from game.config.constants import DEFAULT_CHARACTERS_PATH
 from game.core.faction import Faction
 from game.core.character import Character
 from game.core.node import Node
@@ -39,8 +44,10 @@ class ScenarioLoader:
         for fid, fdata in (raw.get("factions") or {}).items():
             world.factions[fid] = cls._build_faction(fid, fdata)
 
-        for cid, cdata in (raw.get("characters") or {}).items():
-            world.characters[cid] = cls._build_character(cid, cdata)
+        # ---- ★ 三层人物加载 ----
+        cls._load_base_characters(world, raw.get("character_id_range"))
+        cls._apply_character_overrides(world, raw.get("characters") or {})
+        cls._filter_by_year(world, world.year)
 
         cls._build_nodes_from_geo(world, geo_data)
         cls._build_region_names(world, geo_data)
@@ -48,6 +55,9 @@ class ScenarioLoader:
 
         return world
 
+    # ============================================================
+    # 势力
+    # ============================================================
     @staticmethod
     def _build_faction(fid, fdata):
         return Faction(
@@ -60,27 +70,67 @@ class ScenarioLoader:
             stance=fdata.get("stance", 0),
         )
 
-    @staticmethod
-    def _build_character(cid, cdata):
-        return Character(
-            cid=cid,
-            name=cdata.get("name", cid),
-            faction=cdata.get("faction"),
-            node=cdata.get("node"),
-            leadership=cdata.get("leadership", 50),
-            might=cdata.get("might", 50),
-            intelligence=cdata.get("intelligence", 50),
-            politics=cdata.get("politics", 50),
-            charisma=cdata.get("charisma", 50),
-        )
+    # ============================================================
+    # 人物：第一层 基础数据
+    # ============================================================
+    @classmethod
+    def _load_base_characters(cls, world, id_range=None):
+        if not DEFAULT_CHARACTERS_PATH.is_file():
+            return
+        with open(DEFAULT_CHARACTERS_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
 
+        if id_range:
+            lo, hi = int(id_range[0]), int(id_range[1])
+        else:
+            lo, hi = 1, 9999   # 默认不过滤
+
+        for cid, cdata in (raw.get("characters") or {}).items():
+            try:
+                n = int(cid)
+            except ValueError:
+                continue
+            if not (lo <= n <= hi):
+                continue
+            world.characters[cid] = Character.from_dict(cid, cdata)
+
+    # ============================================================
+    # 人物：第二层 剧本覆盖
+    # ============================================================
+    @staticmethod
+    def _apply_character_overrides(world, overrides):
+        for cid, od in overrides.items():
+            ch = world.characters.get(cid)
+            if ch is None:
+                print(f"[Scenario] 警告：剧本人物 {cid} 在基础数据中不存在，已忽略")
+                continue
+            ch.apply_override(od)
+            
+    # ============================================================
+    # 人物：第三层 按年份筛选（满 16 岁 + 已出生 + 未死）
+    # ============================================================
+    @staticmethod
+    def _filter_by_year(world, year):
+        if not year:
+            return
+        survivors = {}
+        for cid, ch in world.characters.items():
+            if ch.birth_year:
+                if year - ch.birth_year < 16:
+                    continue
+                if ch.death_year and year > ch.death_year:
+                    continue
+            else:
+                if ch.appear_year and ch.appear_year > year:
+                    continue
+            survivors[cid] = ch
+        world.characters = survivors
+
+    # ============================================================
+    # 以下三个方法保持不变（原样照抄）
+    # ============================================================
     @staticmethod
     def _build_region_names(world, geo_data):
-        """从 geo_data.shapes_line 填州/郡名字表。
-
-        shapes_line 的 properties 里有 {州名, 郡名, 郡id}，
-        是唯一同时含州名和郡 id 的地方（labels_state 无 id，不能用）。
-        """
         if geo_data is None:
             return
         for feat in getattr(geo_data, "shapes_line", []):
@@ -97,10 +147,6 @@ class ScenarioLoader:
 
     @staticmethod
     def _build_nodes_from_geo(world, geo_data):
-        """遍历 geo_data.shapes_point，为每个城/关/津/... 建 Node。
-
-        依赖 shapes_point[i].properties 里有 id/县名/level/type/is_capital。
-        """
         if geo_data is None:
             return
         for feat in getattr(geo_data, "shapes_point", []):
@@ -109,11 +155,9 @@ class ScenarioLoader:
             coords = geom.get("coordinates") or []
             if len(coords) < 2:
                 continue
-
             nid = props.get("id")
             if not nid:
                 continue
-
             world.nodes[nid] = Node(
                 nid=nid,
                 name=props.get("县名", ""),

@@ -24,10 +24,10 @@ class SidePanel(ttk.Frame):
         self.notebook.add(FactionPanel(self.notebook, self.game_state),
                           text=" 势力 ")
         self.notebook.add(
-            NodePanel(self.notebook, self.game_state, self.map_controller),  # ★
+            NodePanel(self.notebook, self.game_state, self.map_controller),  
             text=" 据点 ",
         )
-        self.notebook.add(CharacterPanel(self.notebook, self.game_state),
+        self.notebook.add(CharacterPanel(self.notebook, self.game_state, self.map_controller),
                           text=" 人物 ")
         self.notebook.add(TroopPanel(self.notebook, self.game_state),
                           text=" 部队 ")

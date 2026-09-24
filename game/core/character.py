@@ -8,7 +8,14 @@ id 为四位数字字符串（"0001"–"1049"），全局唯一。
         基础信息 / 五维 / 生卒年 / 相性 / 关系（id 引用）/
         个性 / 阵型 / 战法
     动态 剧本 scenarios/*.json 覆盖：
-        势力 / 据点 / 所在 / 所属 / 身份
+        势力 / 所属 / 所在 / 身份
+
+所属 vs 所在（★ 核心概念，勿混）：
+    所属（node）     编制上隶属哪个据点，6 位据点 id。
+                     除非归属变更，否则不变。
+    所在（location） 人当前在哪个据点，6 位据点 id。
+                     剧本初始 = 所属；运行时随出征 / 调动 / 流亡变化。
+    两者都是据点 id，不是城池名。
 """
 
 _DEFAULT_STAT = 50   # 五维缺省值
@@ -66,10 +73,10 @@ class Character:
         tactics=None,             # 战法：字符串列表，如 ["突击", "牵制"]
         # ---------- 剧本动态字段 ----------
         faction=None,             # 势力 id（= 君主人物 id），None = 在野
-        node=None,                # 据点 id（六位），None = 无所属据点
-        location_name=None,       # 所在：城池名（原始表里的文本，供调试 / 展示）
-        affiliation=None,         # 所属：所属城池名（原始表里的文本）
-        role=None,                # 身份：「君主」/「一般」/「太守」/「未发现」等
+        node=None,                # 所属：编制上隶属的据点 id（六位），None = 无所属
+        location=None,            # 所在：人物当前所在地的据点 id（六位）
+                                  #       初始 = 所属；运行时随出征 / 调动变化，不改所属
+        role=None,                # 身份：「君主」/「一般」/「太守」等
     ):
         # ---------------- 标识 ----------------
         self.id = cid                       # 人物 id，四位字符串，如 "0147"
@@ -111,9 +118,8 @@ class Character:
 
         # ---------------- 剧本动态字段 ----------------
         self.faction = faction               # 势力 id
-        self.node = node                     # 据点 id
-        self.location_name = location_name   # 所在城池名
-        self.affiliation = affiliation       # 所属城池名
+        self.node = node                     # 所属（据点 id）
+        self.location = location             # 所在（据点 id）
         self.role = role                     # 身份
 
     # ============================================================
@@ -179,9 +185,8 @@ class Character:
             formations=d.get("formations"),                   # 阵型列表
             tactics=d.get("tactics"),                         # 战法列表
             faction=d.get("faction"),                         # 势力 id
-            node=d.get("node"),                               # 据点 id
-            location_name=d.get("location_name"),             # 所在
-            affiliation=d.get("affiliation"),                 # 所属
+            node=d.get("node"),                               # 所属
+            location=d.get("location"),                       # 所在
             role=d.get("role"),                               # 身份
         )
 
@@ -214,9 +219,8 @@ class Character:
             "formations": list(self.formations),              # 阵型列表
             "tactics": list(self.tactics),                    # 战法列表
             "faction": self.faction,                          # 势力 id
-            "node": self.node,                                # 据点 id
-            "location_name": self.location_name,              # 所在
-            "affiliation": self.affiliation,                  # 所属
+            "node": self.node,                                # 所属
+            "location": self.location,                        # 所在
             "role": self.role,                                # 身份
         }
 

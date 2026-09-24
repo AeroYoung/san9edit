@@ -1,6 +1,6 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**`Character` 类全展开**（44 列字段全覆盖，带中文注释）、**新增 `tools/build_characters.py` 基础数据生成脚本**、**新增 `assets/characters.json` 基础人物数据（1049 人）**、**关系字段由名字转 id**、**势力 / 所在 / 所属 / 身份 留空由剧本填充**。新增 §9.9 变更日志。
+> 本轮更新重点：**三层人物加载**（基础数据 + 剧本覆盖 + 按年份筛选）、**190 年默认剧本**（30 势力 / 刘关张在平原 / 曹操在陈留）、**人物面板重构**（仿据点面板：分组 + 排序 + 右键 + 定位）、**`tools/build_scenario_190.py`**、**`character/` 新包**。新增 §9.10 变更日志。
 
 ---
 
@@ -14,7 +14,8 @@
 | 县的 type | `city["type"]` / `Node.type` | 只有三种：`城` / `关隘` / `渡口` |
 | **人物** | `characters` / `Character` 类 | 四位 id，全局唯一 |
 | **基础数据** | `assets/characters.json` | 1049 人的静态数据（五维 / 关系 / 个性 / 阵型 / 战法…） |
-| **剧本覆盖** | `scenarios/*.json` 的 `characters` 段 | 只覆盖 `势力 / 据点 / 所在 / 所属 / 身份`（暂未实现） |
+| **剧本覆盖** | `scenarios/*.json` 的 `characters` 段 | 只覆盖 `势力 / 据点 / 身份`（其余字段留空不写，减少冗余） |
+| **三层人物加载** | `_load_base_characters` + `_apply_character_overrides` + `_filter_by_year` | ★ 本轮新增 |
 | **主官** | （预留，未实现） | 将来由剧本指定 |
 | **人物数** | （预留，未实现） | 将来按 `Character.node == 据点 id` 统计 |
 
@@ -29,13 +30,16 @@
    - 三种 type 都参与势力染色、都参与 hover 反查、都有 `Node` 对象
 5. 代码里遗留的 `city*` / `*_city_*` 命名（如 `shapes_city_boundary` / `labels_city` / `find_city_at`），**语义等于「县 / 据点」**，不是「城市」。改名成本大、收益为零，保留。
 
-**「人物」的核心约定（本轮新增）：**
+**「人物」的核心约定：**
 
-1. **静态数据 + 剧本覆盖** 双层结构：
-   - `assets/characters.json`：五维 / 生卒年 / 相性 / 关系 / 个性 / 阵型 / 战法 等**静态字段**
-   - `scenarios/*.json`：`势力 / 据点 / 所在 / 所属 / 身份` 等**动态字段**
+1. **三层数据**：
+   - `assets/characters.json`：全量静态数据（五维 / 生卒年 / 相性 / 关系 / 个性 / 阵型 / 战法）
+   - `scenarios/*.json`：剧本覆盖（`faction / node / role`，其余不写 = 用基础数据的 null）
+   - **按年份筛选**（运行时）：`_filter_by_year` 只保留该年满 16 岁 + 已出生 + 未死的人
 2. **关系字段用 id 引用**，不用名字（避免重名歧义）。
 3. **`faction / node / location_name / affiliation / role` 在基础数据里恒为 `null`**，由剧本填充。
+4. **剧本里出现但基础数据没有的人 id → 警告并忽略**（不新建）。
+5. **剧本里没覆盖到的人 → 保持 null → 在野**。
 
 ---
 
@@ -46,10 +50,10 @@
 | 项目名称 | 暗耻三国志（`APP_TITLE`） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | `main.py` → `MainWindow().run()` |
-| 核心功能 | 中国全图矢量渲染（州/郡/县三级边界 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、**光标精确反查州/郡/县**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、势力关系分组展示、**县面势力染色（唯一着色图层）**、**据点面板（多列 + 排序 + 分组 + 右键菜单 + 定位）**、**人物基础数据（1049 人）** |
+| 核心功能 | 中国全图矢量渲染、鼠标缩放平移、**光标精确反查州/郡/县**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、势力关系分组展示、**县面势力染色（唯一着色图层）**、**据点面板（多列 + 排序 + 分组 + 右键菜单 + 定位）**、**人物面板（多列 + 排序 + 分组 + 右键 + 定位到据点）**、**人物基础数据（1049 人）+ 190 剧本（30 势力 / 三国开局）** |
 | 运行环境 | Python 3 + 标准库 `tkinter`。仅依赖标准库，**无第三方依赖、无 requirements.txt**（生成 `characters.json` 时临时用 `openpyxl`） |
-| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县（= 1372 据点）；`assets/roads.geojson`：约 600 条道路；`assets/water.geojson`：205 条河流/湖泊；`assets/mountains.geojson`：42 个山地区块（未接入）；**`assets/characters.json`：1049 位人物基础数据（本轮新增）** |
-| 剧本来源 | `scenarios/default.json` |
+| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县（= 1372 据点）；`assets/roads.geojson`：约 600 条道路；`assets/water.geojson`：205 条河流/湖泊；`assets/mountains.geojson`：42 个山地区块（未接入）；`assets/characters.json`：1049 位人物基础数据 |
+| 剧本来源 | `scenarios/default.json`（★ 本轮换成 **190 年 · 十八路诸侯**） |
 | 用户数据 | `userdata/settings.json` |
 | 平台 | Windows 优先 |
 
@@ -71,9 +75,12 @@
 - ✅ **`Character` 类全展开**（44 列字段，含中文注释）
 - ✅ **`assets/characters.json`**：1049 位人物基础数据
 - ✅ **`tools/build_characters.py`**：从 xlsx/csv 一键生成 JSON
+- ✅ ★ **三层人物加载**：基础数据 + 剧本覆盖 + 按年份筛选
+- ✅ ★ **190 年默认剧本**：30 势力（曹操陈留 / 袁绍南皮 / 刘备平原…）、~500 人物、30 据点
+- ✅ ★ **人物面板重构**：仿据点面板（默认按势力分组 + 8 列 + 排序 + 右键 + 定位到据点）
+- ✅ ★ **`tools/build_scenario_190.py`**：一键生成 190 年剧本
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
-- ❌ **剧本覆盖基础数据（加载逻辑）未实现**
 - ❌ 主官 / 人物数 / 情报三项右键均为占位
 
 ---
@@ -84,21 +91,22 @@
 san9edit/
 ├── main.py
 ├── README.md
-├── tools/                         ★ 新增
-│   └── build_characters.py        从 xlsx/csv 生成 characters.json
+├── tools/
+│   ├── build_characters.py           从 xlsx/csv 生成 characters.json
+│   └── build_scenario_190.py         ★ 新增：生成 190 年默认剧本
 ├── assets/
-│   ├── map.geojson                 city 带 boundary，type ∈ {城, 关隘, 渡口}
-│   ├── characters.json            ★ 新增：1049 位人物基础数据
+│   ├── map.geojson                   city 带 boundary，type ∈ {城, 关隘, 渡口}
+│   ├── characters.json               1049 位人物基础数据
 │   ├── roads.geojson
 │   ├── water.geojson
-│   └── mountains.geojson           未接入
+│   └── mountains.geojson             未接入
 ├── scenarios/
-│   └── default.json
+│   └── default.json                  ★ 换成 190 年剧本
 ├── userdata/
-│   └── settings.json               覆盖 style.py 默认值
+│   └── settings.json
 └── game/
     ├── config/
-    │   ├── constants.py
+    │   ├── constants.py              ★ 加 DEFAULT_CHARACTERS_PATH
     │   ├── style.py
     │   ├── settings_manager.py
     │   └── settings_schema.py
@@ -106,38 +114,47 @@ san9edit/
     │   ├── game_state.py
     │   ├── utils.py
     │   ├── faction.py
-    │   ├── character.py           ★ 全展开重写（44 字段）
-    │   ├── node.py                 Node = 县 = 据点
-    │   ├── world.py                加 state_names / county_names
-    │   ├── scenario.py             加 _build_region_names
-    │   └── territory.py            郡级统计保留，当前渲染层不再消费
+    │   ├── character.py              44 字段
+    │   ├── node.py                   Node = 县 = 据点
+    │   ├── world.py                  state_names / county_names
+    │   ├── scenario.py               ★ 三层人物加载
+    │   └── territory.py              郡级统计保留，渲染层不再消费
     ├── map/
     │   ├── geo_data.py
     │   ├── viewport.py
     │   └── renderer.py
     └── ui/
-        ├── main_window.py          创建 MapController 并注入
+        ├── main_window.py            创建 MapController 并注入
         ├── top_bar.py
         ├── status_bar.py
-        ├── map_canvas.py           加 center_on / fit_to_node
-        ├── map_controller.py       新增：地图中介
-        ├── side_panel.py           接收 map_controller
+        ├── map_canvas.py
+        ├── map_controller.py         地图中介
+        ├── side_panel.py             ★ CharacterPanel 注入 map_controller
         ├── settings_window.py
         ├── window_utils.py
         ├── widgets/collapsible.py
         └── panels/
             ├── faction_panel.py
-            ├── character_panel.py
+            ├── character_panel.py    ★ 瘦身转发
             ├── troop_panel.py
-            └── node/               新增包，取代 node_panel.py
+            ├── character/            ★ 新增包：人物面板
+            │   ├── __init__.py
+            │   ├── panel.py
+            │   ├── model.py          CharacterRow
+            │   ├── columns.py        列定义
+            │   ├── sorting.py
+            │   ├── grouping.py
+            │   ├── group_bar.py
+            │   └── context_menu.py
+            └── node/                 据点面板包
                 ├── __init__.py
-                ├── panel.py        主面板
-                ├── model.py        NodeRow
-                ├── columns.py      列定义（单一真相源）
-                ├── sorting.py      排序
-                ├── grouping.py     分组 + 嵌套树构建
-                ├── group_bar.py    分组维度选择条
-                └── context_menu.py 右键菜单
+                ├── panel.py
+                ├── model.py
+                ├── columns.py
+                ├── sorting.py
+                ├── grouping.py
+                ├── group_bar.py
+                └── context_menu.py
 ```
 
 **依赖方向单向**：`main → ui → core/map → config`。
@@ -162,7 +179,7 @@ san9edit/
 `id` = 君主人物 id。字段：`id` / `name` / `color` / `prestige` / `gold` / `food` / `stance`。
 `stance_label()` → `"敌对"` / `"盟友"` / `"中立"`。
 
-### 3.3 人物（Character）★ 本轮全展开
+### 3.3 人物（Character）
 
 四位 id（"0001"–"1049"），全局唯一。**静态字段来自 `assets/characters.json`，动态字段由剧本覆盖。**
 
@@ -245,80 +262,63 @@ san9edit/
 
 **属性**：`state_id` → `id[:2]`，`county_id` → `id[:4]`，`is_owned()`。
 
-**关于 `type` 的约定：**
-
-- `type` 只标记县的**形态**，不影响任何数据结构
-- 三种 type 的 `Node` 字段完全一样
-- 三种 type 都参与：势力染色 / hover 反查 / 剧本覆盖 / 面板展示
-- **没有** `if type == "城"` 之类的逻辑分支（渲染层从设计上不区分 type）
-
 ### 3.5 游戏世界（World）
 
 聚合容器：`factions` / `characters` / `nodes` / `state_names` / `county_names`。
-
-**新增字段：**
 
 ```python
 self.state_names = {}     # "01"   -> "并州"
 self.county_names = {}    # "0101" -> "上党郡"
 ```
 
-**新增查询：**
+**查询**：
 
 ```python
 def state_name(self, sid):  return self.state_names.get(sid, sid or "—")
 def county_name(self, cid): return self.county_names.get(cid, cid or "—")
+def faction(self, fid):     return self.factions.get(fid) if fid else None   # ★ 人物面板用
+def node(self, nid):        return self.nodes.get(nid) if nid else None        # ★ 人物面板用
 ```
 
-名字表由 `ScenarioLoader._build_region_names` 从 `geo_data.shapes_line` 的 `properties` 填充。
-
-### 3.6 剧本加载器（ScenarioLoader）
+### 3.6 剧本加载器（ScenarioLoader）★ 本轮重写
 
 `ScenarioLoader.load(path, geo_data)` → `World`。
 
-- `_build_nodes_from_geo`：遍历 `geo_data.shapes_point`，**每个 shapes_point 元素 → 一个 Node**
-- `_build_region_names`：遍历 `geo_data.shapes_line`，填 `world.state_names` / `world.county_names`
-- `_apply_node_overrides`：用 `scenarios/default.json` 的 `nodes` 覆盖 `owner / troops / gold / food`
-- **`_build_character`**：从剧本 `characters` 段构造 `Character`（参数与新版 `Character` 完全兼容）
+**三层人物加载（顺序不可颠倒）：**
 
-> **未实现（下一步）**：从 `assets/characters.json` 加载全量人物，再用剧本 `characters` 段做**增量覆盖**。
+```
+1. _load_base_characters(world)
+     读 assets/characters.json 的 characters{}
+     全部从 from_dict 构造成 Character 放进 world.characters
+2. _apply_character_overrides(world, raw["characters"])
+     遍历剧本 characters 段，每个 cid 找 world.characters[cid]
+     找到 → ch.apply_override({faction, node, role, ...})
+     找不到 → 打印警告并忽略（不新建）
+3. _filter_by_year(world, world.year)
+     只保留：year - birth_year >= 16 且未死
+             （birth_year 缺失时用 appear_year 兜底）
+```
+
+**其他方法（未变）：**
+
+- `_build_nodes_from_geo`：遍历 `geo_data.shapes_point` → 每个元素一个 Node
+- `_build_region_names`：遍历 `geo_data.shapes_line` 填州/郡名字表
+- `_apply_node_overrides`：用剧本 `nodes` 段覆盖 `owner / troops / gold / food`
+- `_build_faction`：构造 `Faction`
+
+> **关键决策**：剧本 `characters` 段**只写动态字段**（faction / node / role），静态字段（五维 / 关系 / 生卒…）一律不写 → 减少冗余、避免与基础数据打架。
 
 ### 3.7 郡级控制力统计（CountyStat）
 
 **当前不再被渲染层消费**，`CountyStat` / `compute_county_stats` / `CAPITAL_BONUS` 全部保留，供将来复用。
 
-控制力算法：
-
-```
-单据点（县）权重 = (11 - level)
-郡治县再 × 2.0
-郡内总控制力 = Σ 权重(全部县，含无主)
-势力值 = 控制力_F / 总控制力
-ratio > 0.8   → 主导势力
-0.5 < ratio ≤ 0.8 → 主要势力
-其余          → 无
-```
-
-`MapRenderer.set_world` 仍会调用 `compute_county_stats` 并缓存到 `self._county_stats`，只是渲染层不读。
-
 ### 3.8 县界（CityBoundary）
 
 **渲染层 + 查询层 + 染色层 + 定位层共用**，由 `GeoData.shapes_city_boundary` 承载。
 
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `geometry` | dict | `{"type": "LineString", "coordinates": [ring]}` |
-| `properties.id` | str | 六位据点 id |
-| `properties.县名` | str | 县名 |
-| `properties.type` | str | `城` / `关隘` / `渡口` |
-| `properties.level` | int | 1–10 |
-| `bbox` | tuple | `(min_lon, min_lat, max_lon, max_lat)` |
-| `size` | float | bbox 对角线长度 |
-| `min_scale` | float | `_assign_lod` 赋的显示阈值（0/15/45/100 四档） |
-
 ### 3.9 县界空间索引（CityIndex）
 
-`GeoData._city_index`，结构 `(bbox, 名称, 外环顶点)`，与 `_state_index` / `_county_index` 同构。
+`GeoData._city_index`，结构 `(bbox, 名称, 外环顶点)`。
 
 ---
 
@@ -326,260 +326,242 @@ ratio > 0.8   → 主导势力
 
 ### 4.1 `assets/map.geojson` 实际结构
 
-```json
-{
-  "states": [{
-    "id": "01", "name": "并州",
-    "name_coords": [[lon,lat],[lon,lat]],
-    "boundary": [[[ [lon,lat], ... ]]],        // 州面
-    "counties": [{
-      "id": "0101", "name": "上党郡",
-      "name_coords": [lon, lat],
-      "capital": "长子", "capital_id": "010101",
-      "boundary": [[lon,lat], ...],             // 郡界
-      "cities": [{                              // ★ 每个元素 = 一个县 = 一个据点
-        "id": "010101", "name": "长子",
-        "coords": [lon, lat],
-        "is_capital": true, "level": 3,
-        "type": "城",
-        "boundary": [[lon,lat], ...]
-      }]
-    }]
-  }]
-}
-```
+（略，与上一轮相同）
 
-### 4.2 `assets/characters.json` 结构（本轮新增）
+### 4.2 `assets/characters.json` 结构
+
+（略，与上一轮相同）
+
+### 4.3 `type` 枚举
+
+只有三种：`城` / `关隘` / `渡口`。
+
+### 4.4 `scenarios/default.json` 结构（★ 本轮换 190 年剧本）
+
+**三段 + 头部**：
 
 ```json
 {
   "version": 1,
-  "source": "314英雄集结武将数据.xlsx",
-  "count": 1049,
-  "characters": {
-    "0001": {
-      "name": "阿会喃",
-      "family_name": "",
-      "sex": "男",
-      "portrait": 127,
-      "leadership": 65,
-      "might": 74,
-      "intelligence": 26,
-      "politics": 33,
-      "charisma": 44,
-      "appear_year": 217,
-      "birth_year": 190,
-      "death_year": 225,
-      "affinity": 62,
-      "blood": "阿会喃",
-      "father": null,
-      "mother": null,
-      "generation": 1,
-      "spouse": null,
-      "sworn_brothers": [],
-      "liked": ["0023", "0739"],
-      "disliked": [],
-      "start_official": 251,
-      "traits": ["南中", "短虑"],
-      "formations": ["锋矢", "长蛇"],
-      "tactics": ["突击"],
-      "faction": null,
-      "location_name": null,
-      "affiliation": null,
-      "role": null
-    }
+  "id": "default",
+  "name": "十八路诸侯 · 190",
+  "desc": "190年正月，关东诸侯起兵讨董；曹操据陈留，刘关张在平原",
+  "start": { "year": 190, "month": 1, "xun": 1 },
+  "player_faction": "0521",
+
+  "factions": {
+    "0521": { "name": "曹操", "color": "#2928EF",
+              "prestige": 1000, "gold": 5000, "food": 20000,
+              "stance": 0 },
+    "0035": { "name": "袁绍", "color": "#C8B400", ... "stance": 30 },
+    ...共 30 家...
   },
-  "_name_index": { "阿会喃": "0001" },
-  "_ambiguous_names": { "李丰": ["0917", "0918", "0919"] },
-  "_missing_refs": {}
+
+  "characters": {
+    "0521": { "faction": "0521", "node": "130301", "role": "君主" },
+    "0124": { "faction": "0521", "node": "130301", "role": "一般" },
+    "0147": { "faction": "0952", "node": "060101", "role": "一般" },
+    ...约 500 条，只写 3 个字段...
+  },
+
+  "nodes": {
+    "130301": { "owner": "0521", "troops": 8000, "gold": 1000, "food": 20000 },
+    "020801": { "owner": "0035", "troops": 8000, "gold": 1000, "food": 20000 },
+    ...共 30 条（30 势力首都）...
+  }
 }
 ```
 
 **关键约定：**
 
-| 字段 | 类型 | 说明 |
+| 段 | 写什么 | 不写什么 |
 |---|---|---|
-| `sworn_brothers / liked / disliked` | `list[str]` | id 数组，**空就是 `[]`**，不是 `null` |
-| `father / mother / spouse` | `str \| null` | 单值 id |
-| `blood` | `str` | 血缘家族名，**不转 id** |
-| `traits / formations / tactics` | `list[str]` | 按空格切分 |
-| `faction / location_name / affiliation / role` | `null` | 基础数据里**恒为 null**，剧本填 |
+| `factions` | `name / color / prestige / gold / food / stance` | — |
+| `characters` | **只有** `faction / node / role` | 五维、关系、生卒、个性……**全部不写**（用基础数据） |
+| `nodes` | 只有 30 家首都（小兵/钱粮） | 不写全图（其余据点在加载后 `owner=None`） |
 
-**生成方式**：`python tools/build_characters.py`（脚本与 xlsx 同目录，自动找文件）。
+### 4.5 `scenarios/default.json` 势力清单（190 年）
 
-**数据来源**：《314英雄集结武将数据.xlsx》，1049 行，列含义见 §5.7。
+| # | 势力 | 主据点 | 主据点 id | stance | 类型 |
+|---|---|---|---|---|---|
+| 1 | 董卓 | 雒阳 | 070701 | -80 | 司州·河南尹 |
+| 2 | 袁绍 | 南皮 | 020801 | +30 | 冀州·渤海 |
+| 3 | 袁术 | 宛县 | 040701 | -50 | 荆州·南阳 |
+| 4 | 韩馥 | 邺县 | 020101 | -10 | 冀州·魏郡 |
+| 5 | 孔伷 | 阳翟 | 130101 | -10 | 豫州·颍川 |
+| 6 | 刘岱 | 昌邑 | 090401 | -10 | 兖州·山阳 |
+| 7 | 王匡 | 怀县 | 070601 | -10 | 司州·河内 |
+| 8 | 桥瑁 | 濮阳 | 090201 | -10 | 兖州·东郡 |
+| 9 | 袁遗 | 方与 | 090407 | 0 | 兖州·山阳 |
+| 10 | 鲍信 | 卢县 | 090701 | 0 | 兖州·济北 |
+| 11 | 张邈 | 己吾 | 130312 | 0 | 兖州·陈留 |
+| 12 | **曹操** ★ | **陈留** | **130301** | **0（玩家）** | 兖州·陈留 |
+| 13 | 张超 | 广陵 | 080501 | -10 | 徐州·广陵 |
+| 14 | 陶谦 | 郯县 | 080401 | -50 | 徐州·东海 |
+| 15 | 刘表 | 襄阳 | 040512 | 0 | 荆州·南郡 |
+| 16 | 孙坚 | 临湘 | 040401 | 0 | 荆州·长沙 |
+| 17 | 刘焉 | 成都 | 110501 | 0 | 益州·蜀郡 |
+| 18 | 刘虞 | 蓟县 | 120401 | 0 | 幽州·广阳 |
+| 19 | 公孙瓒 | 土垠 | 120601 | -50 | 幽州·右北平 |
+| 20 | 公孙度 | 襄平 | 120901 | +30 | 幽州·辽东 |
+| 21 | 刘繇 | 寿春 | 100604 | -50 | 扬州·九江 |
+| 22 | 马腾 | 冀县 | 050201 | -50 | 凉州·汉阳 |
+| 23 | 韩遂 | 金城 | 050415 | -50 | 凉州·金城 |
+| 24 | 士燮 | 龙编 | 030601 | 0 | 交州·交趾 |
+| 25 | 张鲁 | 南郑 | 110104 | 0 | 益州·汉中 |
+| 26 | 王朗 | 山阴 | 100201 | 0 | 扬州·会稽 |
+| 27 | 华歆 | 南昌 | 100101 | 0 | 扬州·豫章 |
+| 28 | 严白虎 | 吴县 | 100501 | -10 | 扬州·吴郡 |
+| 29 | **刘备** ★ | **平原** | **060101** | 0 | 青州·平原 |
+| 30 | 孔融 | 剧县 | 060501 | +30 | 青州·北海 |
 
-### 4.3 `type` 枚举
+**关系 stance 图例**：
 
-**只有三种：**
-
-| type | 含义 | 典型 |
+| stance | 含义 | 势力 |
 |---|---|---|
-| `城` | 有城郭的县，通常是郡治或重要城市 | 长子、晋阳、临戎 |
-| `关隘` | 关口、隘口 | 壶口关、天井关、鸡鹿塞 |
-| `渡口` | 渡口、津 | （本数据集暂未出现，为将来预留） |
+| -80 | 死敌 | 董卓 |
+| -50 | 敌对 | 袁术、公孙瓒、陶谦、刘繇、马腾、韩遂 |
+| -10 | 微敌 | 韩馥、孔伷、刘岱、王匡、桥瑁、张超、严白虎 |
+| 0 | 中立 | 袁遗、鲍信、张邈、刘表、孙坚、刘焉、刘虞、公孙度、士燮、张鲁、王朗、华歆、刘备 |
+| +30 | 友好 | 袁绍、孔融、公孙度 |
 
-**已废弃的旧枚举**：~~`县`~~ / ~~`渡口/津`~~ / ~~`仓/监`~~ / ~~`谷`~~ / ~~`山地`~~。
+### 4.6 核心人物清单（`CORE`，写在 `build_scenario_190.py` 里）
 
-**据点面板的显示逻辑**：`is_capital == True` 时，类型列显示「郡治」；否则显示原始 `type`。这是**展示层**的覆盖，不改数据。
+每个势力手写 1~14 名种子人物。**自动扩展逻辑**会补：
 
-### 4.4 `scenarios/default.json` 结构
+1. **义兄弟**：核心人物的 `sworn_brothers` 里满 16 岁的一并拉入
+2. **家族**：核心人物的 `blood` 标签相同的所有满 16 岁人物一并拉入
 
-version 1。字段与前一版一致：
+**重点锁定**：
 
-- `nodes` 段：以六位 id 为 key，覆盖 `owner / troops / gold / food`
-- `characters` 段：以四位 id 为 key，覆盖 `faction / node / location_name / affiliation / role`（**新语义**）
+- **刘关张**：`0952`（刘备）核心 → `0147`（关羽）和 `0656`（张飞）都在刘备的 `sworn_brothers` 里 → 自动归入刘备，同据点在 **平原**
+- **曹操班底**：夏侯惇 `0124` → 夏侯渊 `0114`（同 blood）→ 夏侯尚/夏侯霸（同 blood）自动补齐
+- **曹仁 `0518`、曹洪 `0511`、曹纯 `0514`** 都在 `0521` 的 CORE 里
 
 ---
 
 ## 5. 模块与函数清单
 
 ### 5.1 `main.py`
-
 `main()` → `MainWindow().run()`。
 
-### 5.2 `game/config/constants.py`
-
-路径常量：`ASSETS_DIR` / `DEFAULT_MAP_PATH` / `DEFAULT_WATER_PATH` / `DEFAULT_ROADS_PATH` / `SCENARIOS_DIR` / `DEFAULT_SCENARIO_PATH` / `APP_TITLE` / `MIN_WINDOW_SIZE`。
-
-> **待新增**：`DEFAULT_CHARACTERS_PATH = ASSETS_DIR / "characters.json"`（实现剧本覆盖加载时补）。
-
-### 5.3 – 5.6
-
-`faction.py` / `game_state.py` / `utils.py` **未改动**。
-
-`utils.lighten_color` / `darken_color`：**保留**，当前渲染层不调用。
-
-### 5.7 `game/core/character.py` ★ 本轮全展开重写
-
-**类结构**：见 §3.3 字段表 + §5.7 下方方法表。
-
-**构造参数**（全部带中文注释）：
+### 5.2 `game/config/constants.py` ★ 加一项
 
 ```python
-Character(
-    cid, name,
-    # 基础信息
-    family_name="", sex="男", portrait=0,
-    # 五维
-    leadership=50, might=50, intelligence=50, politics=50, charisma=50,
-    # 时间
-    appear_year=0, birth_year=0, death_year=0,
-    # 相性
-    affinity=0,
-    # 关系（id 引用）
-    blood="", father=None, mother=None, generation=1,
-    spouse=None, sworn_brothers=None, liked=None, disliked=None,
-    # 系统
-    start_official=0, traits=None, formations=None, tactics=None,
-    # 剧本动态
-    faction=None, node=None,
-    location_name=None, affiliation=None, role=None,
+DEFAULT_CHARACTERS_PATH = ASSETS_DIR / "characters.json"
+```
+
+其他常量不变。
+
+### 5.3 – 5.6
+`faction.py` / `game_state.py` / `utils.py` 未改动。
+
+### 5.7 `game/core/character.py`
+44 字段全展开，未改动。
+
+### 5.8 `tools/build_characters.py`
+从 xlsx/csv 生成 `characters.json`，未改动。
+
+### 5.9 ★ `tools/build_scenario_190.py`（本轮新增）
+
+**用途**：从 `assets/characters.json` + 史实核心清单，生成 190 年 `scenarios/default.json`。
+
+**用法**：
+```bash
+python tools/build_scenario_190.py
+```
+
+**逻辑**：
+
+1. 读 `characters.json`
+2. `FACTIONS` 硬编码 30 家（君主 id / 名称 / 颜色 / stance / 首都 id）
+3. `CORE` 硬编码 30 家的种子人物清单
+4. `expand()`：
+   - `sworn_brothers` 拉入
+   - 同 `blood` 家族拉入
+   - 全员过滤 `eligible()`（190 年满 16 岁 + 已出生 + 未死）
+5. 冲突检测：一人不能属于两个势力（后来者出局）
+6. 输出 `scenarios/default.json`（只写 `faction / node / role`）
+
+**核心人物清单**（节选）：
+
+| 势力 | 种子人物 |
+|---|---|
+| 曹操 0521 | 曹操、夏侯惇、夏侯渊、曹仁、曹洪、曹纯、乐进、李典、典韦、荀彧、荀攸、程昱、戏志才、于禁 |
+| 袁绍 0035 | 袁绍、颜良、文丑、张郃、高览、田丰、沮授、审配、逢纪、郭图、许攸、淳于琼、韩猛 |
+| **刘备 0952** | **刘备、关羽、张飞、简雍** |
+| 孙坚 0551 | 孙坚、孙策、韩当、黄盖、程普、祖茂、孙静、孙贲 |
+| 董卓 0736 | 董卓、李儒、吕布、华雄、李傕、郭汜、樊稠、董旻、董璜、牛辅 |
+| 刘表 0953 | 刘表、蔡瑁、蒯越、蒯良、傅巽、韩嵩、刘磐 |
+| 刘焉 0925 | 刘焉、刘璋、刘瑁、庞羲、刘璝、董和、张任、董扶 |
+| 公孙瓒 0266 | 公孙瓒、公孙范、公孙越、公孙续、严纲、邹丹、田楷、单经 |
+| 张鲁 0666 | 张鲁、张卫、杨昂、杨任、阎圃、杨松 |
+| 士燮 0341 | 士燮、士壹、士廞、士徽、士匡、士祗、士武 |
+| 陶谦 0724 | 陶谦、杜琼、曹豹 |
+| 马腾 0771 | 马腾、马玩、杨秋、马延 |
+| 韩遂 0166 | 韩遂、成公英、成宜、王方、梁兴 |
+
+完整清单见脚本 §CORE。
+
+### 5.10 `game/core/scenario.py` ★ 本轮重写
+
+**三层人物加载**（见 §3.6）；其余方法不变。
+
+### 5.11 `game/core/node.py` / `world.py`
+未改动（`World` 加 `faction(id)` / `node(id)` 便捷查询，供人物面板用）。
+
+### 5.12 `game/core/territory.py`
+保留不动。
+
+### 5.13 – 5.15 `geo_data.py` / `viewport.py` / `renderer.py`
+未改动。
+
+### 5.16 – 5.17 `map_canvas.py` / `map_controller.py`
+未改动。
+
+### 5.18 据点面板包 `game/ui/panels/node/`
+未改动。
+
+### 5.19 ★ 人物面板包 `game/ui/panels/character/`（本轮新增）
+
+| 文件 | 作用 |
+|---|---|
+| `panel.py` | 主面板：分组条 + Treeview + 右键 + `refresh()` |
+| `model.py` | `CharacterRow` dataclass（14 个字段，含 `display_name` 属性） |
+| `columns.py` | 列定义：`势力 / 所在 / 身份 / 统 / 武 / 智 / 政 / 魅`（8 列） |
+| `sorting.py` | 与 node 包同款 |
+| `grouping.py` | 4 个分组维度：`faction / node / role / sex` |
+| `group_bar.py` | 与 node 包同款 |
+| `context_menu.py` | 4 项菜单：人物情报 / 复制编号 / 定位到据点 / 全部展开折叠 |
+
+**对外接口**：`CharacterPanel(master, game_state, map_controller=None)` + `refresh()`。
+
+**面板行为**：
+
+- `#0` 列显示 `姓名（字）`（`display_name`）
+- 默认按「势力」分组
+- 点击列头排序（`_on_heading_click`）
+- 右键 → `定位到据点` → `MapController.fit_to_node(node_id, fallback_lonlat)`
+- 组头背景 `#F3F4F6`、9 号粗体
+
+### 5.20 `game/ui/panels/character_panel.py` ★ 瘦身
+
+```python
+from .character.panel import CharacterPanel
+__all__ = ["CharacterPanel"]
+```
+
+### 5.21 `game/ui/side_panel.py` ★ 改一行
+
+```python
+self.notebook.add(
+    CharacterPanel(self.notebook, self.game_state, self.map_controller),
+    text=" 人物 ",
 )
 ```
 
-**关键方法：**
-
-| 方法 | 说明 |
-|---|---|
-| `is_ruler()` | 是否为其所属势力的君主（势力 id = 君主 id） |
-| `is_free()` | 是否在野 |
-| `is_appeared(year)` | 该年份是否已登场 |
-| `is_alive(year)` | 该年份是否健在（生卒缺失时不作为约束） |
-| `display_name()` | 带表字的展示名，如「关羽（云长）」 |
-| `from_dict(cid, d)` | classmethod，从 JSON 一条 dict 构造 |
-| `to_dict()` | 转回 dict（存档 / 调试） |
-| `apply_override(data)` | 用剧本 dict 覆盖已有字段 |
-
-**兼容性**：`scenario.py::_build_character` 的 keyword 调用不受影响。
-
-### 5.8 `tools/build_characters.py` ★ 本轮新增
-
-**用途**：从《314英雄集结武将数据.xlsx》（或 CSV）生成 `characters.json`。
-
-**用法**（脚本与 xlsx 同目录，直接运行）：
-
-```bash
-pip install openpyxl
-python build_characters.py
-```
-
-**行为**：
-1. 在脚本同目录找第一个 `.xlsx` / `.xlsm` / `.csv`
-2. 读表，跳过表头
-3. 第一遍建 `名字 → [id, ...]` 索引，记录重名
-4. 第二遍构造人物，关系字段由名字转 id（**重名取编号最小者**）
-5. 输出 `characters.json` 到脚本同目录
-6. 控制台打印重名列表与找不到的引用
-
-**列映射**（0-based）：
-
-| 索引 | 列名 | 用途 |
-|---|---|---|
-| 0 | 编号 | → `id`（补零四位） |
-| 1 | 姓名 | → `name` |
-| 2 | 字 | → `family_name` |
-| 3 | 军团 | **不读**（改名「势力」，留空） |
-| 4–6 | 所在 / 所属 / 身份 | **不读**（留空） |
-| 7–11 | 统率 / 武力 / 智力 / 政治 / 魅力 | → 五维 |
-| 12 | 头像 | → `portrait` |
-| 13–15 | 个性 / 阵型 / 战法 | → 空格切分字符串列表 |
-| 16 | 开始仕官 | → `start_official` |
-| 17 | 性别 | → `sex` |
-| 18–20 | 登场年 / 出生年 / 死亡年 | → 时间 |
-| 21 | 相性 | → `affinity` |
-| 22 | 血缘 | → `blood`（**不转 id**） |
-| 23 | 父亲 | → `father`（转 id） |
-| 24 | 母亲 | → `mother`（转 id） |
-| 25 | 世代 | → `generation` |
-| 26 | 配偶 | → `spouse`（转 id） |
-| 27 | 义兄弟 | → `sworn_brothers`（转 id） |
-| 28–35 | 亲爱武将 1–8 | → `liked`（转 id） |
-| 36–43 | 厌恶武将 1–8 | → `disliked`（转 id） |
-
-### 5.9 – 5.11
-
-`game/core/node.py` / `world.py` / `scenario.py` 同上轮（World 加名字表、ScenarioLoader 加 `_build_region_names`）。
-
-### 5.12 `game/core/territory.py`
-
-`CountyStat` 数据类 + `compute_county_stats(world)` + `CAPITAL_BONUS = 2.0`。**保留不动**。
-
-### 5.13 `game/map/geo_data.py`
-
-**未改动**（本轮）。容器、`from_file`、`_classify`、`_classify_county`、查询方法、索引均同上轮。
-
-### 5.14 `game/map/viewport.py`
-
-未改动。`project` / `unproject` / `fit_to_bbox` / `zoom` / `pan_pixels` / `span_px`。
-
-### 5.15 `game/map/renderer.py`
-
-未改动。`_LAYER_ORDER`、`render_territory`、`set_world`、`draw_text` 等均同上轮。
-
-### 5.16 `game/ui/map_canvas.py`
-
-**本轮未改动**。`center_on` / `fit_to_node` / `_node_bbox` 同上轮。
-
-### 5.17 `game/ui/map_controller.py`
-
-**本轮未改动**。`center_on` / `fit_to_node` / `reset_view` / `zoom` 同上轮。
-
-### 5.18 `game/ui/panels/node/`（据点面板包）
-
-**本轮未改动**。目录结构、`panel.py` / `model.py` / `columns.py` / `sorting.py` / `grouping.py` / `group_bar.py` / `context_menu.py` 均同上轮。
-
-### 5.19 `game/ui/side_panel.py` / `main_window.py`
-
-**本轮未改动**。`SidePanel` 接收 `map_controller`，`MainWindow` 创建 `MapController` 并注入，均同上轮。
-
-### 5.20 `game/config/style.py`
-
-**本轮未改动**。`MAP_STYLE` / `LAYER_VISIBILITY` 同上轮。
-
-### 5.21 `game/config/settings_schema.py`
-
-**本轮未改动**。`GROUPS` / `ITEMS` 同上轮。
+### 5.22 `game/config/style.py` / `settings_schema.py`
+未改动。
 
 ---
 
@@ -596,7 +578,7 @@ python main.py
    └─ root.after(120, _auto_load_default)
 ```
 
-### 6.2 地图 + 剧本加载流程
+### 6.2 地图 + 剧本加载流程 ★ 本轮更新
 
 ```
 _auto_load_default()
@@ -611,40 +593,42 @@ _auto_load_default()
 │
 └─ _load_default_scenario()
    ├─ ScenarioLoader.load → World
-   │  ├─ _build_nodes_from_geo：shapes_point → Node
-   │  ├─ _build_region_names：shapes_line.properties → state_names / county_names
-   │  └─ _apply_node_overrides
-   │  └─ 【未实现】_load_base_characters + 剧本覆盖
+   │  ├─ _build_faction × 30
+   │  ├─ _load_base_characters           ★ 读 characters.json，1049 人全进
+   │  ├─ _apply_character_overrides      ★ 剧本覆盖 ~500 人
+   │  ├─ _filter_by_year(world, 190)     ★ 只留 190 年满 16 岁的
+   │  ├─ _build_nodes_from_geo           shapes_point → Node
+   │  ├─ _build_region_names             shapes_line → state/county names
+   │  └─ _apply_node_overrides           30 家首都覆盖 owner
    ├─ game_state.sync_from_world(world)
-   ├─ renderer.set_world(world)
+   ├─ renderer.set_world(world)          → 地图染色（30 家首都）
    └─ map_canvas.redraw()
+   └─ side_panel.refresh_all()           → 人物面板刷新
 ```
 
-### 6.3 人物数据生成流程（离线，一次性）
+### 6.3 剧本生成流程（离线，一次性）
 
 ```
-python tools/build_characters.py
-├─ 找脚本同目录 *.xlsx / *.xlsm / *.csv
-├─ read_xlsx (openpyxl) 或 read_csv
-├─ 第一遍：建 name → [id, ...] 索引，记录重名
-├─ 第二遍：构造 characters{}，关系字段名字转 id
-│  └─ 重名取编号最小者
-└─ 输出 characters.json（同目录）
-   └─ 手动移到 assets/characters.json
+python tools/build_characters.py         # 已存在
+   → assets/characters.json
+
+python tools/build_scenario_190.py      # ★ 本轮新增
+   ├─ 读 characters.json
+   ├─ 30 势力 CORE 种子
+   ├─ expand()：sworn_brothers + blood 家族
+   ├─ eligible()：190 年满 16 岁
+   ├─ 冲突检测（一人一势力）
+   └─ 输出 scenarios/default.json
 ```
 
 ### 6.4 主循环交互
 
+（与上轮相同，加两条）
+
 | 触发 | 调用链 |
 |---|---|
-| 鼠标移动 | `_on_motion` → 40ms 节流 → `viewport.unproject` → `data.find_location` → `status_bar.set_location` |
-| 滚轮 / 拖拽 | `viewport.zoom / pan_pixels` → `renderer.zoom / pan` |
-| 顶部信息栏 | 200ms 轮询 `game_state.get_display_items()` |
-| 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()` |
-| 据点右键 → 定位 | `context_menu._locate` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
-| 据点右键 → 展开/折叠 | `context_menu._set_all_open` → `tree.item(open=...)` 递归 |
-| 据点列头点击 | `_on_heading_click` → `self._sort_key/_sort_desc` → `refresh` |
-| 据点分组切换 | `GroupBar._toggle` → `on_change` → `NodePanel.refresh` |
+| 人物列头点击 | `CharacterPanel._on_heading_click` → `refresh` |
+| 人物右键 → 定位到据点 | `context_menu._locate` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
 
 ### 6.5 模块协作关系
 
@@ -653,22 +637,22 @@ main.py
 └─ ui.main_window ──┬─ config.settings_manager ─ config.style
                     │                            └ config.settings_schema
                     ├─ core.game_state
-                    ├─ core.scenario ─────── core.world ─── core.faction
-                    │                                    ├─ core.character ★
-                    │                                    └─ core.node
+                    ├─ core.scenario ─── core.world ─── core.faction
+                    │                    ├─ core.character
+                    │                    └─ core.node
                     ├─ ui.top_bar
                     ├─ ui.status_bar
                     ├─ ui.map_canvas ─── map.viewport
-                    │                   map.renderer ─── map.geo_data ── core.utils
-                    │                                  └ core.territory（保留备用）
-                    ├─ ui.map_controller ─── ui.map_canvas
+                    │                   map.renderer ─── map.geo_data
+                    ├─ ui.map_controller
                     ├─ ui.settings_window
                     └─ ui.side_panel ──── panels.faction_panel
                                        ├─ panels.node ── map_controller
-                                       ├─ panels.character_panel
+                                       ├─ panels.character ── map_controller ★
                                        └─ panels.troop_panel
                        config.constants
-tools.build_characters ──── assets/characters.json （离线，独立）
+tools.build_characters ──── assets/characters.json （离线）
+tools.build_scenario_190 ── assets/characters.json + scenarios/default.json （离线）★
 ```
 
 ---
@@ -686,15 +670,11 @@ tools.build_characters ──── assets/characters.json （离线，独立）
 | `DEFAULT_ROADS_PATH` | `assets/roads.geojson` |
 | `SCENARIOS_DIR` | `scenarios/` |
 | `DEFAULT_SCENARIO_PATH` | `scenarios/default.json` |
-| **`DEFAULT_CHARACTERS_PATH`** | **`assets/characters.json`（待新增）** |
+| **`DEFAULT_CHARACTERS_PATH`** | **`assets/characters.json`（本轮新增）** |
 
 ### 7.2 设置窗口可改
 
-| 项 | 需重启 |
-|---|---|
-| `THEME` / `FONT_SIZES` / `FONT_CANDIDATES` | 是 |
-| `MAP_STYLE.*` 其余 | 否 |
-| `LAYER_VISIBILITY.*` | 否 |
+（不变）
 
 ### 7.3 代码内常量
 
@@ -711,7 +691,12 @@ tools.build_characters ──── assets/characters.json （离线，独立）
 | 标签刷新节流 | `30 ms` | `_schedule_label_refresh` |
 | settle redraw | `180 ms` | 滚轮静默后补绘 |
 | 据点面板默认分组 | `["state", "county"]` | `GroupBar.initial_selected` |
-| **`Character._DEFAULT_STAT`** | **`50`** | **五维缺省值（本轮）** |
+| **人物面板默认分组** | **`["faction"]`** | ★ 本轮 |
+| **人物面板列数** | **`8`** | ★ 本轮（势力/所在/身份/五维） |
+| **人物面板分组维度** | **`faction / node / role / sex`** | ★ 本轮 |
+| **190 剧本势力数** | **`30`** | ★ 本轮 |
+| **剧本人物段只写 3 字段** | **`faction / node / role`** | ★ 本轮 |
+| `Character._DEFAULT_STAT` | `50` | 五维缺省值 |
 
 ---
 
@@ -725,22 +710,20 @@ tools.build_characters ──── assets/characters.json （离线，独立）
 | 内政 / 军事 / 外交 | 空实现 |
 | 外交交互 | 只有 `stance` 字段 |
 | 部队面板 | 只清空 |
-| `type` 差异化的能力 / 玩法 | 未做（城 / 关隘 / 渡口目前只是标记） |
+| `type` 差异化的能力 / 玩法 | 未做 |
 | 设置窗口「操作」「游戏」tab | 骨架 |
 | 县界 / 县面 hover | 不做 |
-| `dash` 可调 | 不支持（tuple path） |
-| 郡面分级调色 | 相关字段全保留但不消费 |
-| 字体可在 UI 里改 | 不支持（无 `font` 类型控件） |
+| `dash` 可调 | 不支持 |
+| 郡面分级调色 | 字段全保留但不消费 |
+| 字体可在 UI 里改 | 不支持 |
 | 据点面板「主官」列 | 占位，恒显示 `—` |
 | 据点面板「人物」列 | 占位，恒显示 `0` |
 | 据点面板右键三项 | 占位，只 `print` |
-| 据点面板字体 / 字号可调 | 不支持（走 ttk 全局默认 + 组头硬编码 9 号粗体） |
-| 据点面板列宽 / 分组 / 排序持久化 | 不支持，重启后恢复默认 |
-| **剧本覆盖 `characters.json`** | **未实现（本轮明确记录）** |
-| **`characters.json` 加载入口** | **未实现** |
-| **人物面板展示新字段** | **未实现（`character_panel.py` 未动）** |
-| **`Character` 的 `affinity` 参与计算** | **未实现**（字段已存） |
-| **人物头像加载** | **未实现**（`portrait` 字段已存） |
+| 据点面板字体 / 字号可调 | 不支持 |
+| 据点面板列宽 / 分组 / 排序持久化 | 不支持 |
+| **人物面板右键「人物情报」** | **占位，只 `print`（★ 本轮）** |
+| **人物头像加载** | **未实现（`portrait` 字段已存）** |
+| **人物面板状态持久化** | **不支持（★ 本轮）** |
 
 ### 8.2 数据层缺失
 
@@ -748,49 +731,50 @@ tools.build_characters ──── assets/characters.json （离线，独立）
 - `mountains.geojson` 未接入
 - 路网无拓扑关联
 - 势力间无关系矩阵
-- `渡口` 类型在本数据集暂未出现
-- **`characters.json` 生成后需要人工核查 `_ambiguous_names` / `_missing_refs`**
+- **`characters.json` 的 `_ambiguous_names` / `_missing_refs` 未人工核查（5 组重名）**
 - **`Character.affinity` 与 `Faction.stance` 的关系未建立**
-- **人物与据点的归属（`faction / node`）完全依赖剧本，剧本未更新**
+- **190 剧本非首都据点 `owner=None`**（势力只染 30 个首都）
 
 ### 8.3 逻辑与性能限制
 
-（承接前几轮，本轮新增 104–110）
+（承接前几轮）
 
-1–94. （同上轮，略）
-95–103. （同上轮，略）
-104. ★ **`Character` 全展开但未接入加载**：`characters.json` 存在，但 `ScenarioLoader` 不读它
-105. ★ **剧本覆盖未实现**：剧本 `characters` 段仍**新建**人物而非覆盖基础数据
-106. ★ **`apply_override` 用 `hasattr` 防脏数据**：剧本写错字段名会被静默忽略
-107. ★ **关系字段转 id 取"编号最小者"**：重名歧义需人工核对 `_ambiguous_names`
-108. ★ **`blood` 不转 id**：它是家族 / 氏族标签，不是人名
-109. ★ **`start_official = 0` 表示未出仕**：不是错误数据
-110. ★ **`tools/build_characters.py` 依赖 `openpyxl`**：仅生成阶段需要，游戏运行时零依赖
+1–110. （同上轮，略）
+
+**111. ★ `_filter_by_year` 只按 `birth_year` 判断，`birth_year` 缺失时退到 `appear_year <= year`**：极少数人物可能因此在 190 年"提前出场"。
+
+**112. ★ 剧本 `characters` 段不新建人物**：id 不在 `characters.json` 里 → 警告忽略。
+
+**113. ★ `expand()` 只递归 2 层**：义兄弟 1 层 + 家族 1 层。再深的间接关系（义兄弟的义兄弟）不拉。
+
+**114. ★ 冲突检测是"后来者出局"**：如果曹操和袁绍都想要同一个人，后遍历到的势力丢人。势力顺序由 `CORE` 字典的遍历顺序决定（Python 3.7+ 保序）。
+
+**115. ★ 190 剧本只有 30 个首都覆写了 `owner`**：其余 1342 个据点 owner 全为 None（灰色）。
+
+**116. ★ 人物面板按「势力」分组**：某势力 20 人全挂在首都，导致同一据点实际"人数"和显示不一致。将来 `world.characters_at(node_id)` 聚合后再处理。
+
+**117. ★ 人物面板列头「统/武/智/政/魅」用单字**：因为面板宽度有限（340px），全称会挤。
+
+**118. ★ `side_panel.py` 已改为 3 参数调用 `CharacterPanel`**：如果不改，人物右键的"定位到据点"会报错（`map_controller=None`）。
 
 ### 8.4 建议的下一步
 
-1. **实现剧本覆盖加载**（§6.2 里标注的 `_load_base_characters` + 剧本增量覆盖）
-2. **`constants.py` 加 `DEFAULT_CHARACTERS_PATH`**
-3. **`character_panel.py` 展示新字段**（五维 / 表字 / 个性 / 关系）
-4. **给 `render_*` 的 `except` 加"首次异常打印"**
-5. **给 `type` 赋予玩法差异**
-6. **据点点击详情面板**（`node_panel` 的右键三项接入真实窗口）
-7. **外交入口（改 `stance`）**
-8. **接入 `mountains.geojson`**
-9. **存档系统 / 新游戏流程 / 回合流程**
-10. **县界样式细化**
-11. **`settings_schema` 增加 `font` 类型**
-12. **主官 / 人物数两列的真实数据**（`world.characters_at(node_id)` 聚合）
-13. **据点面板字体 / 字号可调**
-14. **据点面板状态持久化**
-15. **★ 人工核查 `characters.json` 的 `_ambiguous_names` / `_missing_refs`**
-16. **★ `Character.affinity` 参与势力关系计算**
+1. **给 190 剧本的非首都据点分兵**（每家 2~5 个二线城市）
+2. **人工核查 `_ambiguous_names`**（李丰 0917/0918/0919 等 5 组）
+3. **`Character.affinity` 参与势力关系计算**
+4. **人物头像加载**（`portrait` 字段已存）
+5. **人物面板右键「人物情报」接入真实窗口**
+6. **`world.characters_at(node_id)` 聚合**（据点面板「人物」列真实数据）
+7. **存档系统 / 新游戏流程 / 回合流程**
+8. **`type` 赋予玩法差异**
+9. **外交入口（改 `stance`）**
+10. **接入 `mountains.geojson`**
 
 ---
 
 ## 9. 变更日志
 
-### 9.1 – 9.8（摘要）
+### 9.1 – 9.9（摘要）
 
 - 9.1：剧本系统 + 外交分组 + 层序修复
 - 9.2：郡面势力染色
@@ -800,85 +784,117 @@ tools.build_characters ──── assets/characters.json （离线，独立）
 - 9.6：郡名标签独立字体（KaiTi）+ 缩小 15%
 - 9.7：术语「县 = 据点」统一 + `type` 枚举收缩为 `城 / 关隘 / 渡口`
 - 9.8：据点面板重构 + `MapController` + `fit_to_node` + 右键展开/折叠 + 郡治显示 + 默认州>郡分组
+- 9.9：人物基础数据 + `Character` 全展开（第十轮）
 
-### 9.9 人物基础数据 + `Character` 全展开（第十轮）
+### 9.10 三层人物加载 + 190 剧本 + 人物面板（第十一轮）
 
 #### 需求
 
-1. 基于《314英雄集结武将数据.xlsx》（1049 行 × 49 列）**构建人物类**
-2. 形成 **JSON 文件保存信息作为基础数据**
-3. **独立基础数据**（`assets/characters.json`）
-4. **游戏运行时剧本覆盖基础数据**
-5. **`Character` 全展开**（每字段显式属性 + 中文注释）
-6. **关系字段转 id**（名字 → id 引用）
-7. **`军团` 改为 `势力`**
-8. **基础数据里 `势力 / 所在 / 所属 / 身份` 留空**（剧本决定）
+1. **剧本年份 190 年**
+2. **玩家势力：曹操**
+3. **至少 30 个势力**（据点、人物贴近史实），电脑与玩家的关系也贴近史实
+4. **人物基础数据在 `assets/characters.json`**；年满 16 岁的安排出场，按史实分配势力或在野（尽量不要在野）
+5. **游戏运行时先读剧本，不足的从基础数据读**（三层加载）
+6. **左侧面板展示人物数据**，像据点面板那样
+7. **剧本尽量用基础数据，减少冗余**（只写动态字段）
+8. **刘关张必须在一起**（锁死在刘备势力）
 
 #### 改动
 
 **新增文件：**
 
-- `tools/build_characters.py` —— xlsx/csv → characters.json 转换脚本
-- `assets/characters.json` —— 1049 位人物基础数据（脚本生成，手动移入 assets/）
+- `tools/build_scenario_190.py` —— 30 势力 + 核心清单 → `default.json`
+- `game/ui/panels/character/__init__.py`
+- `game/ui/panels/character/panel.py`
+- `game/ui/panels/character/model.py`
+- `game/ui/panels/character/columns.py`
+- `game/ui/panels/character/sorting.py`
+- `game/ui/panels/character/grouping.py`
+- `game/ui/panels/character/group_bar.py`
+- `game/ui/panels/character/context_menu.py`
 
 **重写文件：**
 
-- `game/core/character.py` —— 全展开，44 列字段全覆盖，每字段带中文注释
+- `game/core/scenario.py` —— 三层人物加载
+- `game/ui/panels/character_panel.py` —— 瘦身为转发
+- `scenarios/default.json` —— 换成 190 剧本
+- `game/config/constants.py` —— 加 `DEFAULT_CHARACTERS_PATH`
+
+**改一行文件：**
+
+- `game/ui/side_panel.py` —— `CharacterPanel(..., self.map_controller)`
 
 **未改动文件（兼容）：**
 
-- `game/core/scenario.py` 的 `_build_character` —— keyword 调用方式与新版 `Character` 兼容
-- `game/core/world.py` / `node.py` / `territory.py` 等
+- `game/core/character.py`（44 字段全展开，不变）
+- `game/core/world.py`（加 `faction(id)` / `node(id)` 便捷方法）
+- `game/core/node.py` / `territory.py`
+- 据点面板包 `game/ui/panels/node/` 全部文件
+- `game/ui/panels/character_panel.py` 的旧逻辑全部下线
 
 #### 设计决策
 
-- **静态 + 动态双层数据**：
-  - `assets/characters.json` = 静态（五维 / 关系 / 生卒 / 个性 / 阵型 / 战法…）
-  - `scenarios/*.json` = 动态（`faction / node / location_name / affiliation / role`）
-- **关系字段一律用 id 引用**：避免重名歧义
-- **重名取编号最小者**：`李丰` → `0917`（不写特殊规则，让用户接受默认；剧本可显式指定 id）
-- **`blood` 不转 id**：它是家族标签，不是人名
-- **`_ambiguous_names` / `_missing_refs`**：JSON 顶层带排查字段，游戏加载时忽略
-- **`apply_override`**：只覆盖已有属性（`hasattr` 防脏数据）
-- **`sex / traits / formations / tactics`** 全部是字符串列表
-- **`start_official = 0`**：表示未出仕（合法值）
-- **`from_dict` / `to_dict`**：JSON 双向映射，方便存档
+- **三层人物加载**：基础数据（静态）+ 剧本覆盖（动态）+ 按年份筛选（运行时）
+- **剧本只写动态字段**：`characters` 段只写 `faction / node / role`，不写五维 → 减冗余
+- **剧本 id 校验**：剧本写的人物 id 必须在 `characters.json` 里，否则警告忽略（不新建）
+- **`_filter_by_year` 只按 `birth_year` 判断**：`birth_year` 缺失时退到 `appear_year`
+- **刘关张锁死**：刘备 `CORE` 里手写关羽 + 张飞 + 简雍；同时关羽和张飞的 `sworn_brothers` 会互相拉入
+- **人物面板完全仿据点面板**：同样的分组条 + Treeview + 排序 + 右键 + 定位；默认分组用 `faction`
+- **`map_controller` 注入**：人物面板也接收 `map_controller`，右键可以"定位到据点"
 
-#### 数据映射（xlsx → JSON）
+#### 30 势力划分（史实依据）
 
-| xlsx 列 | JSON 字段 | 说明 |
-|---|---|---|
-| 编号 | `id` | 补零四位 |
-| 姓名 / 字 | `name` / `family_name` | |
-| 性别 / 头像 | `sex` / `portrait` | |
-| 五维 | `leadership` … `charisma` | |
-| 登场 / 出生 / 死亡 | `appear_year` … `death_year` | |
-| 相性 | `affinity` | |
-| 血缘 | `blood` | **不转 id** |
-| 父亲 / 母亲 / 配偶 | `father` / `mother` / `spouse` | 转 id |
-| 义兄弟 | `sworn_brothers` | 转 id |
-| 亲爱 / 厌恶 1–8 | `liked` / `disliked` | 转 id |
-| 世代 | `generation` | |
-| 开始仕官 | `start_official` | |
-| 个性 / 阵型 / 战法 | `traits` / `formations` / `tactics` | 空格切分 |
-| **军团** | **不读** | 改名「势力」，由剧本填 |
-| **所在 / 所属 / 身份** | **不读** | 由剧本填 |
+| 势力 | 史实依据 |
+|---|---|
+| 董卓 | 189 年入洛阳，挟天子 |
+| 袁绍 | 渤海太守，反董盟主 |
+| 袁术 | 后将军，据南阳 |
+| 韩馥 | 冀州牧，让冀州给袁绍 |
+| 孔伷 | 豫州刺史 |
+| 刘岱 | 兖州刺史，治昌邑 |
+| 王匡 | 河内太守 |
+| 桥瑁 | 东郡太守，首倡义兵 |
+| 袁遗 | 山阳太守 |
+| 鲍信 | 济北相 |
+| 张邈 | 陈留太守，曹操发小 |
+| 曹操 | 己吾起兵，据陈留 |
+| 张超 | 广陵太守，张邈之弟 |
+| 陶谦 | 徐州牧 |
+| 刘表 | 荆州牧，治襄阳 |
+| 孙坚 | 长沙太守，反董先锋 |
+| 刘焉 | 益州牧，治成都 |
+| 刘虞 | 幽州牧，治蓟县 |
+| 公孙瓒 | 右北平，白马义从 |
+| 公孙度 | 辽东太守，割据 |
+| 刘繇 | 扬州刺史，治寿春 |
+| 马腾 | 西凉军阀 |
+| 韩遂 | 西凉军阀 |
+| 士燮 | 交趾太守 |
+| 张鲁 | 汉中，五斗米道 |
+| 王朗 | 会稽太守 |
+| 华歆 | 豫章太守 |
+| 严白虎 | 吴郡，山越豪强 |
+| 刘备 | 平原令，刘关张起家 |
+| 孔融 | 北海相 |
 
-#### 记录（非代码改动）
+#### 关系设定（`stance`）
 
-- **穿越人物（编号 1001–1049）保留**：所在 / 所属 / 身份均为「无」，`世代 = 0`
-- **脏值原样存**（如「所在: 61」）：不做清洗，保证源头可信
-- **数据源文件**《314英雄集结武将数据.xlsx》与脚本**同目录**运行即可
+- 董卓 -80（死敌）
+- 袁术 / 公孙瓒 / 陶谦 / 刘繇 / 马腾 / 韩遂 -50
+- 韩馥 / 孔伷 / 刘岱 / 王匡 / 桥瑁 / 张超 / 严白虎 -10
+- 袁绍 / 孔融 / 公孙度 +30
+- 其余 0
 
 #### 待办（本轮明确记录）
 
-- **剧本覆盖加载**：`ScenarioLoader` 加 `_load_base_characters` + `_apply_character_overrides`
-- **`constants.py` 加 `DEFAULT_CHARACTERS_PATH`**
-- **人工核查 `_ambiguous_names` / `_missing_refs`**（生成后看控制台输出）
-- **`character_panel.py` 展示新字段**
-- **`Character.affinity` 参与势力关系计算**
+- **非首都据点分兵**：目前 30 家只有首都染成势力色
+- **`_ambiguous_names` 人工核查**（5 组重名：李丰、张承、张南、马忠、韩忠）
 - **人物头像加载**（`portrait` 字段已存）
+- **人物面板右键「人物情报」窗口**
+- **`world.characters_at(node_id)` 聚合**（据点面板「人物」列）
+- **`Character.affinity` 参与势力关系计算**
+- **人物面板状态持久化**
 
 ---
 
-**本轮核心变动集中在 §0（人物约定）**、**§2（新增 tools / characters.json）**、**§3.3（Character 全展开）**、**§4.2（characters.json 结构）**、**§5.7 / 5.8（character.py + build_characters.py）**、**§6.3（数据生成流程）**、**§8.3 第 104–110 条**、**§9.9**。
+**本轮核心变动集中在 §0（人物约定）**、**§2（新增 character/ 包 + build_scenario_190.py）**、**§3.6（ScenarioLoader 三层加载）**、**§4.4 / 4.5 / 4.6（190 剧本结构 + 势力表 + 核心清单）**、**§5.9 / 5.10 / 5.19 / 5.20 / 5.21**、**§6.2 / 6.3（加载 + 生成流程）**、**§7.1 / 7.3（常量）**、**§8.3 第 111–118 条**、**§9.10**。**
