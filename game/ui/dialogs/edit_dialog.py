@@ -16,7 +16,9 @@ class EditDialog(tk.Toplevel):
         super().__init__(master)
         self.title(title)
         self.resizable(False, False)
-        self.transient(master)
+        # 相对主窗口（root）居中 + transient，而非相对右侧面板
+        self._top = master.winfo_toplevel()
+        self.transient(self._top)
 
         self.fields = fields
         self.entity = entity
@@ -35,11 +37,11 @@ class EditDialog(tk.Toplevel):
         self.bind("<Escape>", lambda e: self._cancel())
         self.protocol("WM_DELETE_WINDOW", self._cancel)
 
-        # 尺寸确定后再居中
+        # 尺寸确定后再居中（相对主窗口）
         self.update_idletasks()
         w = max(self.winfo_reqwidth(), 300)
         h = self.winfo_reqheight()
-        center_on_parent(self, master, w, h)
+        center_on_parent(self, self._top, w, h)
 
         try:
             self.grab_set()
@@ -139,13 +141,13 @@ class EditDialog(tk.Toplevel):
         self._vars[f.key] = hexvar
 
     def _build_buttons(self):
-        bar = tk.Frame(self, padx=14, pady=(0, 12))
-        bar.pack(fill="x")
+        bar = tk.Frame(self)
+        bar.pack(fill="x", padx=14, pady=(0, 12))
         self._err_label = tk.Label(bar, text="", fg="#B03A2E", anchor="w")
         self._err_label.pack(side="left")
-        tk.Button(bar, text="取消", width=8, command=self._cancel).pack(
-            side="right")
         tk.Button(bar, text="确定", width=8, command=self._on_ok).pack(
+            side="right")
+        tk.Button(bar, text="取消", width=8, command=self._cancel).pack(
             side="right", padx=(6, 0))
 
     # ============================================================
