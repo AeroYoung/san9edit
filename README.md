@@ -31,6 +31,11 @@
 | **头像路径约定** | `assets/portrait/{id}-{name}.{ext}` | ★ 不再读 `Character.portrait` 字段，见 §9.16 |
 | **头像加载** | `CharacterInfoWindow._load_portrait` | ★ Pillow 打开 + `thumbnail` + `ImageTk.PhotoImage` |
 | **人物情报窗口** | `CharacterInfoWindow` | ★ 右键人物 →「人物情报」弹出的 `Toplevel` |
+| **应用模式** | `APP_MODE` / `MODE_EDIT` / `MODE_GAME` | ★ 编译期切换，默认 `MODE_EDIT`（§1.1） |
+| **编辑会话** | `EditSession` | ★ Command 栈 + baseline + dirty 判定（§11.1） |
+| **命令** | `Command` / `CompositeCommand` | ★ 改 World 的唯一入口，UI 不直接赋值（§10.1） |
+| **增量保存** | `ScenarioWriter.save` | ★ `raw 原样 + diff 增量`，未改动不写（§7） |
+| **字段描述** | `Field` | ★ 弹窗数据驱动核心，6 种 kind（§10.6） |
 
 **「县 = 据点」的核心约定：**
 
@@ -83,6 +88,14 @@
 - 运行时**拼路径，不读 `Character.portrait` 字段**（该字段保留兼容，不再消费）。
 - 同名多人的处理：复制多份，形如 `0651-张南.jpg`、`0652-张南.jpg`。
 
+**「剧本编辑」约定（第十七轮）：**
+
+1. **改 World 只走 Command**：UI 构造 Command → `EditSession.execute()`，**不得**直接赋值实体字段（§10.1 硬约束）。
+2. **双重 baseline**：`raw`（写回模板，保留未改动字段原值）+ `baseline_snap`（diff 基准，加载后立即 `serialize`）。
+3. **`Faction.gold / food` 是派生值**：名下据点求和，`_nodes_ref` 是 `world.nodes` 引用，不落盘、不可赋值。
+4. **增量保存**：`output = deepcopy(raw) + diff(current, baseline_snap)`，未改动字段不出现。
+5. **弹窗数据驱动**：只认 `Field.kind`（int/str/bool/choice/color/readonly），不认业务实体。
+
 ---
 
 ## 1. 项目概述
@@ -124,6 +137,8 @@
 - ✅ **地图右键菜单**：县上（情报 + 定位到列表）/ 空白（复位 / 放大 / 缩小）
 - ✅ **双向定位**：地图 → 列表（切 Tab + 滚动 + 选中）/ 列表 → 地图
 - ✅ **面板列配置**：4 面板列顺序 / 显隐可由设置窗口「面板列」tab 调整
+- ✅ **剧本编辑模式**：`APP_MODE` 编译期切换 + 文件/编辑菜单 + 据点/势力编辑 + 通用 undo/redo + 增量保存（第十七轮）
+- ✅ **`Faction.gold / food` 派生值化**：名下据点求和，不再落盘
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
 - ❌ 主官 / 人物数 / 情报三项右键均为占位
@@ -138,6 +153,7 @@ san9edit/
 ├── README.md                          本文档
 ├── 需求文档.md                        本轮需求
 ├── requirements.txt                   ★ 依赖声明（Pillow）
+├── tests/                            ★ 单元测试（CompositeCommand / ScenarioWriter）
 ├── tools/                             离线生成工具（不参与运行时）
 │   ├── build_characters.py           从 xlsx/csv 生成 assets/characters.json
 │   ├── build_scenario_190.py         生成 190 年默认剧本
@@ -173,6 +189,9 @@ san9edit/
     │   ├── node.py                   Node：县 = 据点（静态 + 动态 owner/troops）
     │   ├── scenario.py               剧本加载（三层人物 + character_id_range）
     │   ├── territory.py              郡级势力统计（保留，暂不消费）
+    │   ├── edit_session.py          ★ Command / CompositeCommand / EditSession
+    │   ├── edit_commands.py         ★ NodeEditCommand / FactionEditCommand
+    │   ├── scenario_writer.py       ★ serialize / diff / save（增量）
     │   └── utils.py                  颜色（lighten/darken）/ 几何工具
     ├── map/                           地图层（投影 + 渲染）
     │   ├── geo_data.py               GeoData：加载 / 分类 / 空间查询 find_location_detail
@@ -190,6 +209,11 @@ san9edit/
         ├── settings_window.py        设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
         │                             +「面板列」tab + 8 个方法
         ├── character_info_window.py  ★ 人物情报窗口（Pillow 头像）
+        ├── dialogs/                  ★ 编辑弹窗（数据驱动）
+        │   ├── field_spec.py        Field NamedTuple（6 种 kind）
+        │   ├── edit_dialog.py       通用数据驱动弹窗（无实体分支）
+        │   ├── node_fields.py       据点字段表
+        │   └── faction_fields.py    势力字段表
         ├── window_utils.py           窗口工具（最大化 / 居中）
         ├── widgets/
         │   └── collapsible.py        折叠区块（设置窗口分组用）
@@ -1065,6 +1089,23 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 - 想固定尺寸、允许放大，才用 `resize`
 - 默认"不超过 200×200"，小图原样
 
+**147. ★ 改 World 只走 Command**：
+- UI 层（弹窗/面板/菜单）**不得**直接赋值实体字段
+- 只能构造 Command → `EditSession.execute()`
+- 任何"直接赋值 World 字段"绕过 session 的代码 = bug
+
+**148. ★ baseline_snap 必须在 `bind_factions()` 之后序列化**：
+- 否则 `Faction.gold/food` property 尚未注入 nodes 引用，值为 0
+- 顺序：`bind_factions` → `serialize` → `EditSession(world, baseline_snap)`
+
+**149. ★ raw 必须保留用于增量写回**：
+- `ScenarioWriter.save(world, path, raw, baseline_snap)` 三个参数都要
+- `raw` 是加载时的原始 dict，写回时作为模板（保留未改动字段原值）
+
+**150. ★ Ctrl+Shift+S / Ctrl+Shift+Z 的 keysym 必须大写**：
+- 正确：`<Control-Shift-S>` / `<Control-Shift-Z>`
+- 错误：`<Control-Shift-s>`（小写不触发）
+
 ### 8.4 建议的下一步
 
 1. **实现"出征 / 调动"**：改 `Character.location`，不动 `node`
@@ -1084,6 +1125,11 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 15. **人物情报窗口单例化**（同一人物只开一个窗口）
 16. **`Character.portrait` 字段清理**（确认无用后从 `from_dict` / `to_dict` 移除）
 17. **搜索匹配扩展到表字**（`_match_one` 加 `family_name` 字段）
+18. **据点 `owner` 编辑 + 级联弹窗**（phase2：改 owner → 人物 faction/node/location 联动）
+19. **势力新建 / 删除 / 消亡**（phase2：`World.add_faction` / `remove_faction` / `remove_faction_if_empty`）
+20. **人物编辑**（复用 §10.6 弹窗骨架，新增 `CharacterEditCommand` + `CHARACTER_FIELDS`）
+21. **`GameState.change_gold/food` 适配派生值**（phase3：`Faction.gold` 已无 setter）
+22. **编辑弹窗多实例控制 / 滚动**（同一实体只开一个窗口；字段 > 10 时加滚动）
 
 ---
 
@@ -1267,4 +1313,67 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 
 ---
 
-**本轮核心变动集中在 §0（新增 3 术语：头像路径约定 / 头像加载 / 人物情报窗口）**、**§2（tools + portrait + character_info_window）**、**§3.3（portrait 字段说明）**、**§4.7（头像资产）**、**§5.26 / 5.27 / 5.28（新增三个模块）**、**§6.4 / 6.5（人物情报链路）**、**§7.3（5 条头像常量）**、**§8.1（3 条待办）**、**§8.3 第 143–146 条（Pillow / 头像路径 / convert RGB / thumbnail 永久约束）**、**§8.4 第 15–17 条**、**§9.16**。
+### 9.17 剧本编辑器（第一阶段 · 瘦身版）（第十七轮）
+
+#### 需求
+
+1. **模式切换**：`APP_MODE` 编译期切换，编辑模式禁用「进行」/ 回合推进
+2. **菜单栏**：新增「文件」「编辑」两个 Menubutton（沿用现有风格，不改原生 menubar）
+3. **据点编辑**：静态字段（`type / level / is_capital / troops / gold / food`）+ 郡治互斥
+4. **势力编辑**：静态字段（`name / color / prestige / stance`），`gold / food` 只读
+5. **通用 undo / redo 框架**：Command / CompositeCommand / EditSession（`max_depth=5`）
+6. **增量保存**：`raw 原样 + diff 增量`，未改动字段不出现
+7. **`Faction.gold / food` 派生值化**：名下据点求和，不落盘
+
+#### 改动
+
+**新增（11 个）**：
+- `game/core/edit_session.py` —— Command / CompositeCommand / EditSession
+- `game/core/edit_commands.py` —— NodeEditCommand / FactionEditCommand
+- `game/core/scenario_writer.py` —— serialize / diff / save（增量）
+- `game/ui/dialogs/` —— field_spec（Field NamedTuple）/ edit_dialog / node_fields / faction_fields
+- `tests/` —— test_composite_command / test_scenario_writer
+
+**修改（13 个）**：
+- `constants.py`（MODE_EDIT / MODE_GAME / APP_MODE）
+- `faction.py`（gold/food → property + `_nodes_ref` + from_dict/to_dict）
+- `node.py`（to_dict）/ `world.py`（bind_factions + character_id_range + 3 个 phase2 占位）
+- `scenario.py`（_build_faction 简化 + from_dict 末尾 bind）/ `game_state.py`（TODO(phase3) 注释）
+- `top_bar.py`（文件/编辑菜单 + set_edit_state / set_game_mode）
+- `main_window.py`（菜单动作 / 快捷键 / 编辑会话 / 未保存拦截 / 保存 / 另存为）
+- `side_panel.py`（set_edit_session / on_panel_edit / open_edit_dialog）
+- `list/panel.py`（edit_session 类属性 + _open_dialog / _notify_edit）
+- `node_panel.py` / `faction_panel.py`（右键「编辑」+ _edit）
+- `build_scenario_190.py` + `scenarios/default.json`（去 factions 的 gold/food）
+
+#### 设计决策
+
+- **Command 模式**：UI 只构造 Command 交给 EditSession.execute，不直接改 World（§10.1 硬约束）
+- **双重 baseline（D2）**：`raw`（写回模板）+ `baseline_snap`（diff 基准），与 undo 栈解耦
+- **`Faction._nodes_ref` = world.nodes 引用（D1）**：gold/food property 实时求和，owner 变化自动反映
+- **数据驱动弹窗（D10）**：Field NamedTuple + kind 分派，无「if 据点 elif 势力」分支
+- **增量保存（D4）**：`output = deepcopy(raw) + diff(current, baseline_snap)`，未改动字段不出现
+- **`EditSession.max_depth = 5`**：undo 栈深度限制，超出裁剪最旧命令
+- **模式判断只在 MainWindow（D9）**：`self.editable`；其余模块读 `edit_session is not None`
+
+#### 症状与根因
+
+| 症状 | 根因 |
+|---|---|
+| 势力面板 gold/food 显示 0 | Faction.gold 变 property，必须 `bind_factions()` 注入 nodes 引用后再序列化 baseline |
+| `pf.gold = ...` 报错 | property 无 setter（GameState.change_gold/food，标记 TODO(phase3)） |
+| Ctrl+Shift+S / Ctrl+Shift+Z 不触发 | Tk keysym 必须大写 `S` / `Z`（`<Control-Shift-S>`） |
+| 面板找不到 MainWindow | MainWindow 不是 widget，经 SidePanel 回调转发（`_open_dialog_callback` / `_edit_callback`） |
+
+#### 待办（本轮明确记录）
+
+- 据点 `owner` 编辑 + 级联弹窗（phase2）
+- 势力新建 / 删除 / 消亡（phase2）
+- 人物编辑（复用弹窗骨架，新增 CharacterEditCommand + CHARACTER_FIELDS）
+- `GameState.change_gold/food` 适配派生值（phase3）
+- 编辑弹窗缺滚动（字段 ≤ 10，暂不需要）
+- 面板列宽 / 排序 / 分组状态持久化（沿用 §9.15 待办）
+
+---
+
+**本轮核心变动集中在 §0（新增 5 术语：编辑会话 / Command / 增量保存 / Field / APP_MODE）**、**§2（dialogs + edit_session / edit_commands / scenario_writer + tests）**、**§3.2（Faction 派生值）/ §3.4（Node.to_dict）/ §3.6（bind_factions）**、**§5（新增 edit_session / edit_commands / scenario_writer / dialogs 四组模块）**、**§7.3（编辑相关常量）**、**§8.3 第 147–150 条（编辑框架永久约束）**、**§8.4 第 18–22 条**、**§9.17**。

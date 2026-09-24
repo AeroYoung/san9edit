@@ -18,416 +18,312 @@
       "name": "董卓",
       "color": "#5B2B2B",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -80
     },
     "0047": {
       "name": "王匡",
       "color": "#7A6F50",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0771": {
       "name": "马腾",
       "color": "#B87A40",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0166": {
       "name": "韩遂",
       "color": "#8B5F3F",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0592": {
       "name": "段煨",
       "color": "#9B7F5F",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0081": {
       "name": "于夫罗",
       "color": "#9070A0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0661": {
       "name": "张杨",
       "color": "#A08B5F",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0169": {
       "name": "韩暹",
       "color": "#6B5F3F",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0932": {
       "name": "刘虞",
       "color": "#80B880",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0266": {
       "name": "公孙瓒",
       "color": "#C8C8C8",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0268": {
       "name": "公孙度",
       "color": "#6B8B8B",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 30
     },
     "0035": {
       "name": "袁绍",
       "color": "#E8C500",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 30
     },
     "0182": {
       "name": "韩馥",
       "color": "#7A8B99",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0601": {
       "name": "张燕",
       "color": "#9B5F8B",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0018": {
       "name": "于毒",
       "color": "#704050",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0470": {
       "name": "眭固",
       "color": "#8B5F70",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0521": {
       "name": "曹操",
       "color": "#2928EF",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0653": {
       "name": "张邈",
       "color": "#B8A080",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0209": {
       "name": "桥瑁",
       "color": "#A08B60",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0947": {
       "name": "刘岱",
       "color": "#8B7A5F",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0024": {
       "name": "袁遗",
       "color": "#D0B860",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0826": {
       "name": "鲍信",
       "color": "#5F7AA0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0062": {
       "name": "应劭",
       "color": "#708B80",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0952": {
       "name": "刘备",
       "color": "#3B8B3B",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0280": {
       "name": "孔融",
       "color": "#B0C0D0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 30
     },
     "0710": {
       "name": "田楷",
       "color": "#90A0C0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0165": {
       "name": "管承",
       "color": "#607090",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0724": {
       "name": "陶谦",
       "color": "#A05060",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0647": {
       "name": "张超",
       "color": "#C08080",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0270": {
       "name": "孔伷",
       "color": "#6090B0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0090": {
       "name": "何仪",
       "color": "#905040",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0958": {
       "name": "刘辟",
       "color": "#806040",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0963": {
       "name": "刘繇",
       "color": "#80A0B0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0933": {
       "name": "刘勋",
       "color": "#7080A0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0080": {
       "name": "王朗",
       "color": "#90C0A0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0091": {
       "name": "华歆",
       "color": "#5F8B70",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0239": {
       "name": "严白虎",
       "color": "#A0A050",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0364": {
       "name": "周昕",
       "color": "#6090A0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0953": {
       "name": "刘表",
       "color": "#5090B0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0551": {
       "name": "孙坚",
       "color": "#C83030",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0032": {
       "name": "袁术",
       "color": "#D0A040",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -50
     },
     "0360": {
       "name": "沙摩柯",
       "color": "#D08030",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": -10
     },
     "0642": {
       "name": "张羡",
       "color": "#A07060",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0925": {
       "name": "刘焉",
       "color": "#408070",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0666": {
       "name": "张鲁",
       "color": "#C0A070",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0310": {
       "name": "吴懿",
       "color": "#50A090",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0272": {
       "name": "高定",
       "color": "#C09060",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0855": {
       "name": "雍闿",
       "color": "#B07040",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0391": {
       "name": "朱褒",
       "color": "#A06070",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0341": {
       "name": "士燮",
       "color": "#60A0A0",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0332": {
       "name": "士壹",
       "color": "#709090",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     },
     "0334": {
       "name": "士徽",
       "color": "#507070",
       "prestige": 1000,
-      "gold": 5000,
-      "food": 20000,
       "stance": 0
     }
   },

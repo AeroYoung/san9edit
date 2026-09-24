@@ -598,8 +598,6 @@ def main():
                 "name": i["name"],
                 "color": i["color"],
                 "prestige": 1000,
-                "gold": 5000,
-                "food": 20000,
                 "stance": i["stance"],
             }
             for fid, i in FACTIONS.items()
