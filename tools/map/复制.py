@@ -57,7 +57,7 @@ def main():
         copy_file(SRC_Dir / "map_with_boundaries.geojson",Dst_Dir,"map.geojson" )
         print("复制了map.geojson")
         copy_file(SRC_Dir / "roads.geojson",Dst_Dir )
-        print("复制了map.geojson")
+        print("复制了roads.geojson")
     except Exception:
         pass
     

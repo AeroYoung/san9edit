@@ -1,6 +1,6 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**势力面板加列**（据点数 / 人物数）、**面板列配置**（4 个面板的列顺序 / 显隐由设置窗口调整）、**`PANEL_COLUMNS` 配置层**、**`GenericListPanel._resolve_columns` / `reload_columns` 框架扩展**。新增 §9.15 变更日志、§8.3 第 141–142 条永久约束。
+> 本轮更新重点：**人物情报窗口**（Pillow 加载头像 + 居中弹窗）、**头像资产规范化**（`tools/check_portraits.py` + `tools/rename_portraits.py`，统一 `{id}-{name}.jpg`）、**人物面板姓名列去表字**。项目**首次引入第三方依赖 Pillow**。新增 §9.16 变更日志。
 
 ---
 
@@ -19,15 +19,18 @@
 | **所属** | `Character.node` | 编制上属于哪个据点，**运行时不变** |
 | **所在** | `Character.location` | 人**现在**在哪儿，**运行时可变** |
 | **染色层** | `render_territory` 画的县面 | **地图上唯一的着色图层**，不吃 LOD |
-| **势力色块** | `FactionPanel` 里势力名前的 ■ | ★ 带黑边，边长 = 行高 − 2 |
+| **势力色块** | `FactionPanel` 里势力名前的 ■ | 带黑边，边长 = 行高 − 2 |
 | **hover 回调契约** | `MapCanvas._location_callback(dict \| None)` | dict 含 state/county/city/node_id/lon/lat/px/py |
 | **选中高亮** | `renderer._selected_node_id` / `SELECT_TAG` | 左键点选的县，描边加粗 2px 亮青 |
 | **hover 高亮层** | `renderer._hover_info` / `HOVER_TAG` | 悬停县高亮，受 `MAP_INTERACTION` 5 开关控制 |
 | **反向定位** | `GenericListPanel.scroll_to_row(key)` | 地图 → 列表：切 Tab + 滚动 + 选中 + 展开组 |
 | **主官 / 人物数** | （预留，未实现） | 将来由剧本 / `world.characters_at` 提供 |
-| **面板列配置** | `style.PANEL_COLUMNS` | ★ 每面板 `{order:[], hidden:[]}`，见 §9.15 |
-| **面板 key** | `GenericListPanel.PANEL_KEY` | ★ 面板在 `PANEL_COLUMNS` 里的键：node/character/faction/troop |
-| **列解析** | `GenericListPanel._resolve_columns()` | ★ 读 `PANEL_COLUMNS` → 返回过滤重排后的可见列 |
+| **面板列配置** | `style.PANEL_COLUMNS` | 每面板 `{order:[], hidden:[]}`，见 §9.15 |
+| **面板 key** | `GenericListPanel.PANEL_KEY` | 面板在 `PANEL_COLUMNS` 里的键：node/character/faction/troop |
+| **列解析** | `GenericListPanel._resolve_columns()` | 读 `PANEL_COLUMNS` → 返回过滤重排后的可见列 |
+| **头像路径约定** | `assets/portrait/{id}-{name}.{ext}` | ★ 不再读 `Character.portrait` 字段，见 §9.16 |
+| **头像加载** | `CharacterInfoWindow._load_portrait` | ★ Pillow 打开 + `thumbnail` + `ImageTk.PhotoImage` |
+| **人物情报窗口** | `CharacterInfoWindow` | ★ 右键人物 →「人物情报」弹出的 `Toplevel` |
 
 **「县 = 据点」的核心约定：**
 
@@ -43,6 +46,7 @@
 2. **关系字段用 id 引用**。
 3. **`faction / node / location / role` 在基础数据里恒为 `null`**，由剧本填充。
 4. **剧本里出现但基础数据没有的人 id → 警告并忽略**（不新建）。
+5. **头像不再走 `portrait` 字段**：直接从 `assets/portrait/{id}-{name}.{ext}` 拼路径（§9.16）。
 
 **「所属 vs 所在」的核心约定：**
 
@@ -61,16 +65,23 @@
 **「染色层」约定：**
 
 - 地图上**唯一的着色图层**（一县一据点，按 `node.owner` 上色）。
-- **不吃 LOD**：只要在视口内且有主，就画。原因——染色是**主信息**，不是细节。
+- **不吃 LOD**：只要在视口内且有主，就画。
 - 只做**视口粗筛**（屏幕外跳过），性能足够。
 - 无主县不染色，州面底色透出。
 
-**「hover 回调契约」约定（★ 第十四轮）：**
+**「hover 回调契约」约定（第十四轮）：**
 
 - `MapCanvas._location_callback(info)`，`info` 是 **dict 或 None**。
 - dict 结构：`{"state": 州名, "county": 郡名, "city": 县名, "node_id": 县 id, "lon": float, "lat": float}`
 - 鼠标离开画布 → 传 `None`。
 - **`MapCanvas` 不感知 `World`**，由 `MainWindow` 拿到 dict 后再拼装势力名。
+
+**「头像资产」约定（第十六轮）：**
+
+- 头像统一命名 `{id}-{name}.{ext}`，如 `0651-张南.jpg`。
+- 通过 `tools/check_portraits.py` 对账、`tools/rename_portraits.py` 批量改名。
+- 运行时**拼路径，不读 `Character.portrait` 字段**（该字段保留兼容，不再消费）。
+- 同名多人的处理：复制多份，形如 `0651-张南.jpg`、`0652-张南.jpg`。
 
 ---
 
@@ -81,9 +92,9 @@
 | 项目名称 | 暗耻三国志（`APP_TITLE`） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | `main.py` → `MainWindow().run()` |
-| 核心功能 | 中国全图矢量渲染、鼠标缩放平移、**光标精确反查州/郡/县/势力**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、**势力面板（带色块 + 据点数 / 人物数）**、**县面势力染色（唯一着色图层，不吃 LOD）**、**据点面板**、**人物面板（玩家势力置顶）**、**面板列配置（顺序 / 显隐可调）**、**人物基础数据（1049 人）+ 190 剧本（52 势力 / 498 人物 / 550 据点）** |
-| 运行环境 | Python 3 + 标准库 `tkinter`。**无第三方依赖** |
-| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县；`roads.geojson`；`water.geojson`；`mountains.geojson`（未接入）；`characters.json`：1049 人 |
+| 核心功能 | 中国全图矢量渲染、鼠标缩放平移、**光标精确反查州/郡/县/势力**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、**势力面板（带色块 + 据点数 / 人物数）**、**县面势力染色（唯一着色图层，不吃 LOD）**、**据点面板**、**人物面板（玩家势力置顶）**、**人物情报窗口（Pillow 头像）**、**面板列配置（顺序 / 显隐可调）**、**人物基础数据（1049 人）+ 190 剧本（52 势力 / 498 人物 / 550 据点）** |
+| 运行环境 | Python 3 + 标准库 `tkinter` + **Pillow**（第三方，仅人物情报窗口用） |
+| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县；`roads.geojson`；`water.geojson`；`mountains.geojson`（未接入）；`characters.json`：1049 人；**`assets/portrait/`：人物头像** |
 | 剧本来源 | `scenarios/default.json`（**190 年 · 十八路诸侯**） |
 | 用户数据 | `userdata/settings.json` |
 | 平台 | Windows 优先 |
@@ -96,10 +107,12 @@
 - ✅ 多 Tab 设置系统 / 剧本系统
 - ✅ **势力面板**：按玩家/盟友/敌对/中立分组 + **势力色块**（带黑边）+ **据点数 / 人物数列**
 - ✅ **据点面板**：8 列 + 排序 + 嵌套分组（默认州>郡）+ 右键 + 全部展开/折叠 + 定位到地图
-- ✅ **人物面板**：8 列 + 排序 + 分组（默认势力，**玩家势力置顶**）+ 右键（人物情报 / 复制编号 / 定位到据点）
+- ✅ **人物面板**：8 列 + 排序 + 分组（默认势力，**玩家势力置顶**）+ 右键（人物情报 / 复制编号 / 定位到据点）+ **姓名列去表字**
+- ✅ **人物情报窗口**：居中弹窗 + Pillow 头像
 - ✅ **`MapController`** / **`MapCanvas.center_on` / `fit_to_node`**
 - ✅ **`Character` 类全展开**（44 字段，含中文注释）
 - ✅ **`tools/build_characters.py`** / **`tools/build_scenario_190.py`**
+- ✅ **`tools/check_portraits.py`** / **`tools/rename_portraits.py`**（第十六轮新增）
 - ✅ **三层人物加载**：基础数据 + 剧本覆盖 + 按年份筛选
 - ✅ **`character_id_range`**：剧本级人物 id 过滤（穿越人物排除机制）
 - ✅ **190 剧本定稿**：**52 势力 / 498 人物 / ~550 据点**
@@ -123,15 +136,19 @@
 san9edit/
 ├── main.py                            程序入口：MainWindow().run()
 ├── README.md                          本文档
-├── 需求文档.md                        本轮需求（Panel 框架 + 地图交互）
+├── 需求文档.md                        本轮需求
+├── requirements.txt                   ★ 依赖声明（Pillow）
 ├── tools/                             离线生成工具（不参与运行时）
 │   ├── build_characters.py           从 xlsx/csv 生成 assets/characters.json
 │   ├── build_scenario_190.py         生成 190 年默认剧本
+│   ├── check_portraits.py            ★ 头像 ↔ 人物数据对账（只输出报告）
+│   ├── rename_portraits.py           ★ 头像文件重命名为 {id}-{name}.{ext}
 │   ├── characters/                   人物原始数据（xlsx + 生成脚本）
 │   └── map/                          地图预处理脚本（预处理 / 精简 / 县边界…）
 ├── assets/                            静态数据
 │   ├── map.geojson                   中国全图（13 州 / 106 郡 / 1372 县）
 │   ├── characters.json               1049 位人物基础数据
+│   ├── portrait/                     ★ 人物头像（{id}-{name}.jpg）
 │   ├── roads.geojson / water.geojson / mountains.geojson   路网 / 水域 / 山地（山未接入）
 ├── scenarios/
 │   └── default.json                  190 剧本（52 势力 / 498 人物 / ~550 据点）
@@ -143,14 +160,14 @@ san9edit/
     │   ├── style.py                  主题 THEME / 字号 FONT_SIZES / 地图样式 MAP_STYLE
     │   │                              / 分级显隐 CITY_LEVEL_MIN_SCALE / 图层 LAYER_VISIBILITY
     │   │                              / hover 开关 MAP_INTERACTION
-    │   │                              / ★ 面板列 PANEL_COLUMNS
+    │   │                              / 面板列 PANEL_COLUMNS
     │   ├── settings_manager.py       设置加载 / 保存 / 就地写回 style 模块
     │   └── settings_schema.py        设置窗口元数据（Tabs / Groups / Items）
-    │                                  + ★ get_panel_columns_meta()
+    │                                  + get_panel_columns_meta()
     ├── core/                          核心数据层（与 UI 无关）
     │   ├── game_state.py             回合 / 日期 / 玩家势力 / 资源（信息栏数据源）
     │   ├── world.py                  World：势力 / 人物 / 据点的聚合容器 + 查询
-    │   │                              + ★ count_nodes_by_owner / count_characters_by_faction
+    │   │                              + count_nodes_by_owner / count_characters_by_faction
     │   ├── faction.py                Faction：势力（stance 相对玩家）
     │   ├── character.py              Character：人物（44 字段，node / location 分离）
     │   ├── node.py                   Node：县 = 据点（静态 + 动态 owner/troops）
@@ -163,22 +180,23 @@ san9edit/
     │   └── renderer.py               MapRenderer：图层渲染 + 选中/hover 高亮层
     └── ui/                            UI 层
         ├── main_window.py            装配工：布局 + hover 拼状态栏 + tooltip
-        │                             + 地图右键菜单 + 双向定位 + ★ 面板列刷新转发
+        │                             + 地图右键菜单 + 双向定位 + 面板列刷新转发
         ├── top_bar.py                顶部信息栏（200ms 轮询）+ 下拉菜单 +「进行」按钮
         ├── status_bar.py             底部状态栏（消息 / 缩放 / 位置）
         ├── map_canvas.py             MapCanvas：地图画布 + 鼠标（拖拽/缩放/点选/右键/hover）
         ├── map_controller.py         面板访问地图的唯一接口（fit_to_node / center_on…）
-        ├── side_panel.py             右侧 Tab 集合 + 面板注册 + select_panel（反向定位切 Tab）
-        │                             + ★ reload_panel_columns()
+        ├── side_panel.py             右侧 Tab 集合 + 面板注册 + select_panel
+        │                             + reload_panel_columns()
         ├── settings_window.py        设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
-        │                             + ★「面板列」tab + 8 个方法
+        │                             +「面板列」tab + 8 个方法
+        ├── character_info_window.py  ★ 人物情报窗口（Pillow 头像）
         ├── window_utils.py           窗口工具（最大化 / 居中）
         ├── widgets/
         │   └── collapsible.py        折叠区块（设置窗口分组用）
         └── panels/                   右侧四个面板
             ├── list/                 ★ 通用列表框架（通用代码唯一集中点）
             │   ├── panel.py          GenericListPanel 基类：UI 组装 + 排序/分组/搜索
-            │   │                     /右键/多选/双向定位调度 + ★ _resolve_columns / reload_columns
+            │   │                     /右键/多选/双向定位调度 + _resolve_columns / reload_columns
             │   ├── columns.py        Column 列定义（含 image 列渲染扩展点）
             │   ├── model.py          Group 分组树节点（title/children/tags/row_tag）
             │   ├── sorting.py        按列排序（空值/"—" 永远排最后）
@@ -186,14 +204,17 @@ san9edit/
             │   ├── group_bar.py      分组条（点选顺序 = 嵌套顺序）
             │   ├── search_bar.py     搜索框（实时 + 清空按钮 + parse_query 扩展点）
             │   └── context_menu.py   MenuItem / MenuContext + 菜单构建器
-            ├── node_panel.py         据点面板（纯配置 + ★ PANEL_KEY）
-            ├── character_panel.py    人物面板（纯配置 + priority_name 玩家置顶 + ★ PANEL_KEY）
+            ├── node_panel.py         据点面板（纯配置 + PANEL_KEY）
+            ├── character_panel.py    人物面板（纯配置 + priority_name 玩家置顶
+            │                         + PANEL_KEY + 姓名列去表字 + 人物情报入口）
             ├── faction_panel.py      势力面板（固定分组 build_groups + 色块 image 扩展点
-            │                         + ★ COLUMNS 绑定 / PANEL_KEY / 据点·人物列）
-            └── troop_panel.py        部队面板（空壳接入框架 + ★ PANEL_KEY）
+            │                         + COLUMNS 绑定 / PANEL_KEY / 据点·人物列）
+            └── troop_panel.py        部队面板（空壳接入框架 + PANEL_KEY）
 ```
 
 **依赖方向单向**：`main → ui → core/map → config`。
+
+**第三方依赖**：`Pillow`（仅 `game/ui/character_info_window.py` 使用）。`requirements.txt` 里声明。
 
 ### 2.1 `panels/list/` 框架与具体面板的分工
 
@@ -208,8 +229,8 @@ san9edit/
 | 列渲染 | `Column.image` 扩展点（文本前加图片） | `image` 取值函数（势力色块） |
 | 定位到地图 | `locate_on_map()` 默认按 `node_id/coords` | （可选覆盖） |
 | 反向定位 | `scroll_to_row()` 展开祖先 + 滚动 + 选中 | `row_key()` |
-| **列配置** | **`_resolve_columns()` 读 `PANEL_COLUMNS` + 过滤重排** | **`PANEL_KEY`** |
-| **列热重载** | **`reload_columns()` 重建 Treeview + refresh** | （无需） |
+| 列配置 | `_resolve_columns()` 读 `PANEL_COLUMNS` + 过滤重排 | `PANEL_KEY` |
+| 列热重载 | `reload_columns()` 重建 Treeview + refresh | （无需） |
 
 ---
 
@@ -245,12 +266,18 @@ san9edit/
 
 **已删除**：~~`location_name`~~ / ~~`affiliation`~~。
 
+**★ `portrait` 字段（第十六轮起）：**
+
+- 字段**保留**（`from_dict` / `to_dict` 依旧读写），但**不再被消费**。
+- 头像路径改为拼 `assets/portrait/{id}-{name}.{ext}`。
+- 将来清理时再删字段。
+
 #### 方法
 
 | 方法 | 说明 |
 |---|---|
 | `is_ruler()` / `is_free()` / `is_appeared(year)` / `is_alive(year)` | 语义判断 |
-| `display_name()` | 带表字的展示名 |
+| `display_name()` | 带表字的展示名（人物情报窗口标题仍用） |
 | `from_dict(cid, d)` / `to_dict()` | JSON 双向 |
 | `apply_override(data)` | 剧本覆盖（`hasattr` 防脏数据） |
 
@@ -273,7 +300,7 @@ def faction(self, fid):     return self.factions.get(fid) if fid else None
 def node(self, nid):        return self.nodes.get(nid) if nid else None
 ```
 
-**★ 聚合（第十六轮新增）：**
+**聚合（第十六轮新增）：**
 
 ```python
 def count_nodes_by_owner(self):
@@ -376,6 +403,22 @@ FACTIONS = {
 
 **人物分配**：CORE 手写种子 + 网络投票扩展 + **affinity 兜底**。
 
+### 4.7 ★ 头像资产（第十六轮）
+
+**目录**：`assets/portrait/`
+**命名**：`{id}-{name}.{ext}`，如 `0651-张南.jpg`
+**扩展名**：`.jpg` / `.jpeg` / `.png` / `.gif` / `.bmp` / `.webp`
+**同名多人**：复制多份，如 `0651-张南.jpg` + `0652-张南.jpg`
+
+**规范流程**：
+
+```bash
+python tools/check_portraits.py           # 对账（只读）
+python tools/rename_portraits.py          # 预览改名计划
+# 顶部 APPLY 改 True 后
+python tools/rename_portraits.py          # 执行
+```
+
 ---
 
 ## 5. 模块与函数清单
@@ -407,7 +450,7 @@ def _build_city_index(self):
             continue
         props = feat["properties"]
         name = props.get("县名")
-        nid = props.get("id")               # ★
+        nid = props.get("id")
         if not name or not nid:
             continue
         bbox = feat["bbox"]
@@ -417,7 +460,7 @@ def _build_city_index(self):
 **② `find_city_at` 解包改成 4 元组**：
 
 ```python
-for (minx, miny, maxx, maxy), name, ring, nid in self._city_index:   # ★ 4 元组
+for (minx, miny, maxx, maxy), name, ring, nid in self._city_index:
     ...
 ```
 
@@ -451,7 +494,6 @@ def find_location_detail(self, lon, lat):
 
     city_name, node_id = self._find_city_with_id(lon, lat)
     if city_name is None:
-        # 兜底：用标签近邻找县名，但拿不到 id
         city_name = self.find_nearest_label(lon, lat, self.labels_city, 0.4)
 
     return {
@@ -475,10 +517,10 @@ def _process_motion(self):
         return
     x, y = self._pending_mouse
     lon, lat = self.viewport.unproject(x, y)
-    info = self.data.find_location_detail(lon, lat)   # ★
+    info = self.data.find_location_detail(lon, lat)
     info["lon"] = lon
     info["lat"] = lat
-    self._location_callback(info)                      # ★ dict
+    self._location_callback(info)
 ```
 
 **② `_on_leave` 传 None**：
@@ -486,10 +528,8 @@ def _process_motion(self):
 ```python
 def _on_leave(self, event):
     if self._location_callback:
-        self._location_callback(None)                  # ★ None
+        self._location_callback(None)
 ```
-
-**`MapCanvas` 不感知 `World`**，只输出地理信息字典。
 
 ### 5.21 `game/ui/main_window.py`（第十四轮改动）
 
@@ -526,7 +566,28 @@ def _faction_at(self, node_id):
     return f.name if f else None
 ```
 
-**`MainWindow` 是唯一知道 `World` 的 hover 拼装点。**
+`_on_settings_applied(changed_paths)` 增 `panel_dirty` 分支：
+
+```python
+        panel_dirty = False
+        for p in changed_paths:
+            if p.startswith("MAP_STYLE.") \
+            or p.startswith("CITY_LEVEL_MIN_SCALE") \
+            or p.startswith("LAYER_VISIBILITY."):
+                map_dirty = True
+            elif p.startswith("PANEL_COLUMNS"):
+                panel_dirty = True
+
+        # ... 原有 map redraw ...
+
+        if panel_dirty:
+            side = getattr(self, "side_panel", None)
+            if side is not None and hasattr(side, "reload_panel_columns"):
+                try:
+                    side.reload_panel_columns()
+                except Exception:
+                    pass
+```
 
 ### 5.22 `game/ui/panels/faction_panel.py`（第十四 / 十六轮改动）
 
@@ -565,12 +626,12 @@ class FactionRow:
         )
 ```
 
-**★ 类体内必须显式绑定 `COLUMNS = COLUMNS`（见 §8.3 第 141 条）。**
+**类体内必须显式绑定 `COLUMNS = COLUMNS`（见 §8.3 第 141 条）。**
 
 ```python
 class FactionPanel(GenericListPanel):
     COLUMNS = COLUMNS           # ★ 必须：否则 self.COLUMNS 取基类默认 ()
-    PANEL_KEY = "faction"       # ★ 第十六轮
+    PANEL_KEY = "faction"
     CUSTOM_GROUPING = True
     ...
 ```
@@ -617,13 +678,13 @@ COLUMNS = (
 - **右键**：`_on_right_click` 拼 `MenuContext` → `context_menu_items` 配置 → `build_menu` 弹出
 - **多选**：`extended` + `_on_select_all`（Ctrl+A）
 - **双向定位**：`scroll_to_row`（展开祖先 + 滚动 + 选中）、`locate_on_map`（默认 `node_id/coords`）
-- **★ 列配置（第十六轮）**：`_resolve_columns()` / `reload_columns()` / `_build_tree_in()`
+- **列配置（第十六轮）**：`_resolve_columns()` / `reload_columns()` / `_build_tree_in()`
 
 ### 5.24 其它
 
 `faction.py` / `game_state.py` / `utils.py` / `node.py` / `territory.py` / `viewport.py` / `top_bar.py` / `status_bar.py` / `window_utils.py` / `collapsible.py` / `constants.py` 未改动。
 
-### 5.25 ★ 本轮新增/改动函数（第十六轮）
+### 5.25 新增/改动函数（第十六轮）
 
 **`game/core/world.py`**
 
@@ -642,7 +703,8 @@ COLUMNS = (
 **`game/ui/panels/{node,character,faction,troop}_panel.py`**
 
 - 各加 `PANEL_KEY = "node" / "character" / "faction" / "troop"`
-- **`faction_panel` 补回 `COLUMNS = COLUMNS`**（见 §8.3 第 141 条）
+- `faction_panel` 补回 `COLUMNS = COLUMNS`（见 §8.3 第 141 条）
+- `character_panel` 的 `NAME_COLUMN` 改为 `lambda r: r.name`（去表字）
 
 **`game/ui/side_panel.py`**
 
@@ -657,31 +719,6 @@ def reload_panel_columns(self):
                 hook()
             except Exception:
                 pass
-```
-
-**`game/ui/main_window.py`**
-
-`_on_settings_applied(changed_paths)` 增 `panel_dirty` 分支：
-
-```python
-        panel_dirty = False
-        for p in changed_paths:
-            if p.startswith("MAP_STYLE.") \
-            or p.startswith("CITY_LEVEL_MIN_SCALE") \
-            or p.startswith("LAYER_VISIBILITY."):
-                map_dirty = True
-            elif p.startswith("PANEL_COLUMNS"):
-                panel_dirty = True
-
-        # ... 原有 map redraw ...
-
-        if panel_dirty:
-            side = getattr(self, "side_panel", None)
-            if side is not None and hasattr(side, "reload_panel_columns"):
-                try:
-                    side.reload_panel_columns()
-                except Exception:
-                    pass
 ```
 
 **`game/config/settings_schema.py`**
@@ -708,6 +745,66 @@ def reload_panel_columns(self):
 
 `_populate` 加两处：跳过 panels tab 的空占位；末尾调 `_populate_panel_columns()`。`_on_reset_all` 同步重置面板列 state。
 
+### 5.26 ★ `game/ui/character_info_window.py`（第十六轮新增）
+
+```python
+class CharacterInfoWindow(tk.Toplevel):
+    """人物情报窗口。当前只显示头像。"""
+    MAX_W = 200
+    MAX_H = 200
+
+    def __init__(self, master, character, font_family="TkDefaultFont"):
+        # title = f"{character.display_name()} — 人物情报"
+        # 名字 Label + 200×200 头像框
+        # 加载头像 → update_idletasks → center_on_parent → grab_set
+        # Escape 关闭
+
+    def _find_portrait_path(self):
+        """拼 assets/portrait/{id}-{name}.{ext}，遍历扩展名。无 → None。"""
+
+    def _load_portrait(self):
+        """Pillow 打开 → convert("RGB") → thumbnail((200,200), LANCZOS)
+           → ImageTk.PhotoImage → self._photo 保引用。
+           缺图 / 无 Pillow / 加载失败 → Label 显示文字提示。"""
+```
+
+**关键点**：
+
+- **`self._photo` 保引用**：Tk 不持 `PhotoImage` 引用，不存 → GC 后显示空白（§8.3 第 139 条同类坑）
+- **Pillow 缺失降级**：`try: from PIL import Image, ImageTk` 失败 → `_PIL_OK = False` → Label 提示"未安装 Pillow"
+- **`thumbnail` 而非 `resize`**：保比例，只缩不放（小图不放大）
+- **RGB 转换**：`Image.open(path).convert("RGB")` —— PNG 带 alpha / 灰度图不会炸
+- **`update_idletasks` 后再居中**：让 `winfo_reqwidth/height` 拿到实际尺寸
+
+### 5.27 ★ `tools/check_portraits.py`（第十六轮新增）
+
+只读对账工具。**精确匹配**（图片 stem == `Character.name`），不做简繁 / 表字 / 模糊。输出三张表：
+
+1. **有数据但没头像**：`姓名 + id`
+2. **有头像但数据里没有**：`文件名 + 实际文件`
+3. **附：数据里重名**：同名多人，一张图无法区分
+
+`load_characters` 兼容 `{id: {...}}` / `{"characters": {...}}` / `[...]` 三种结构。
+
+### 5.28 ★ `tools/rename_portraits.py`（第十六轮新增）
+
+批量重命名 `{id}-{name}.{ext}`。**顶部常量控制开关**：
+
+```python
+APPLY = False            # False = dry-run；True = 执行
+REMOVE_ORIGINAL = False  # 重名复制后是否删原图
+FORCE = False            # 目标已存在时是否覆盖
+```
+
+行为表：
+
+| 场景 | 处理 |
+|---|---|
+| `蔡瑁.jpg`，数据唯一 | **重命名** → `0088-蔡瑁.jpg` |
+| `张南.jpg`，数据两人 | **复制** 2 份 → `0651-张南.jpg`、`0652-张南.jpg`；原文件保留（`REMOVE_ORIGINAL=False`） |
+| 数据里无此人 | **不动**，归入"未匹配" |
+| 已是 `{id}-{name}` 格式 | **跳过**（stem 匹配不上人名，归入"未匹配-不动"） |
+
 ---
 
 ## 6. 程序完整运行流程
@@ -724,7 +821,7 @@ def reload_panel_columns(self):
 
 （同上轮）
 
-### 6.4 主循环交互（hover 链路更新）
+### 6.4 主循环交互
 
 | 触发 | 调用链 |
 |---|---|
@@ -736,23 +833,25 @@ def reload_panel_columns(self):
 | 鼠标离开 | `_on_leave` → `_location_callback(None)` → 状态栏清空 |
 | 滚轮 / 拖拽 | `viewport.zoom / pan_pixels` → `renderer.zoom / pan` |
 | 顶部信息栏 | 200ms 轮询 `game_state.get_display_items()` |
-| 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()`；**`PANEL_COLUMNS*` 则 `side_panel.reload_panel_columns()`** |
-| ★ 面板列重载 | `side_panel.reload_panel_columns()` → 各 panel `reload_columns()` → `_resolve_columns()` 读 `style.PANEL_COLUMNS` → `_build_tree_in()` + `refresh()` |
-| 据点右键 → 定位 | `MenuItem「定位到地图」` → `GenericListPanel.locate_on_map` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
-| 据点右键 → 展开/折叠 | `MenuItem「全部展开/折叠」` → `GenericListPanel._toggle_all` → `tree.item(open=...)` 递归 |
+| 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()`；`PANEL_COLUMNS*` 则 `side_panel.reload_panel_columns()` |
+| 面板列重载 | `side_panel.reload_panel_columns()` → 各 panel `reload_columns()` → `_resolve_columns()` 读 `style.PANEL_COLUMNS` → `_build_tree_in()` + `refresh()` |
+| 据点右键 → 定位 | `MenuItem「定位到地图」` → `GenericListPanel.locate_on_map` → `MapController.fit_to_node` |
+| 据点右键 → 展开/折叠 | `MenuItem「全部展开/折叠」` → `GenericListPanel._toggle_all` |
 | 据点列头点击 | `_on_heading_click` → `_sort_key/_sort_desc` → `refresh` |
 | 据点分组切换 | `GroupBar._toggle` → `on_change` → `NodePanel.refresh` |
 | 人物列头点击 | `_on_heading_click` → `refresh` |
-| 人物右键 → 定位到据点 | `MenuItem「定位到据点」` → `GenericListPanel.locate_on_map` → `MapController.fit_to_node` |
-| 人物分组切换 | `GroupBar._toggle` → `on_change` → `CharacterPanel.refresh` → **`priority_name` 玩家置顶** |
-| ★ 搜索输入 | `SearchBar._on_write` → `_on_search_change` → `refresh`（过滤在分组前） |
-| ★ 左键点选 | `_on_release`（位移≤4px）→ `_handle_click` → `renderer.set_selected` → `_redraw_selected` |
-| ★ hover 高亮 | `_process_motion` → `renderer.set_hover` → `_redraw_hover`（吃 5 开关） |
-| ★ hover tooltip | `_process_motion` → `_location_callback` → `MainWindow._on_location_change` → `_update_tooltip` |
-| ★ 地图右键（县上） | `MapCanvas._on_right_click` → `MainWindow._on_map_right_click` → `_build_node_context_menu` |
-| ★ 地图右键（空白） | `_on_map_right_click(node_id=None)` → `_build_empty_context_menu`（复位/放大/缩小） |
-| ★ 反向定位 | 右键「定位到列表→据点」→ `_locate_to_list` → `side_panel.select_panel` → `NodePanel.scroll_to_row` |
-| **★ 设置 → 面板列** | **设置窗口 panels tab → Listbox 上移/下移/显示隐藏 → 「保存」→ `settings.save/apply` → `on_applied` → `_on_settings_applied` → `side_panel.reload_panel_columns` → 各 panel `reload_columns`** |
+| 人物右键 → 定位到据点 | `MenuItem「定位到据点」` → `GenericListPanel.locate_on_map` |
+| **人物右键 → 人物情报** | **`CharacterPanel._open_info_window(row)` → `world.character(row.id)` → `CharacterInfoWindow(self, ch, ...)`** |
+| **人物情报窗口加载头像** | **`_find_portrait_path()` 拼 `{id}-{name}.{ext}` → `Image.open → convert("RGB") → thumbnail → ImageTk.PhotoImage → self._photo 保引用`** |
+| 人物分组切换 | `GroupBar._toggle` → `on_change` → `CharacterPanel.refresh` → `priority_name` 玩家置顶 |
+| 搜索输入 | `SearchBar._on_write` → `_on_search_change` → `refresh` |
+| 左键点选 | `_on_release`（位移≤4px）→ `_handle_click` → `renderer.set_selected` |
+| hover 高亮 | `_process_motion` → `renderer.set_hover` → `_redraw_hover`（吃 5 开关） |
+| hover tooltip | `_process_motion` → `_location_callback` → `MainWindow._on_location_change` → `_update_tooltip` |
+| 地图右键（县上） | `MapCanvas._on_right_click` → `MainWindow._on_map_right_click` → `_build_node_context_menu` |
+| 地图右键（空白） | `_on_map_right_click(node_id=None)` → `_build_empty_context_menu` |
+| 反向定位 | 右键「定位到列表→据点」→ `_locate_to_list` → `side_panel.select_panel` → `NodePanel.scroll_to_row` |
+| 设置 → 面板列 | 设置窗口 panels tab → Listbox 上移/下移/显示隐藏 → 「保存」→ `settings.save/apply` → `on_applied` → `_on_settings_applied` → `side_panel.reload_panel_columns` → 各 panel `reload_columns` |
 
 ### 6.5 模块协作关系
 
@@ -765,26 +864,30 @@ main.py
                     ├─ core.scenario ─── core.world ─── core.faction
                     │                    ├─ core.character
                     │                    └─ core.node
-                    │                    └─ ★ count_nodes_by_owner / count_characters_by_faction
+                    │                    └─ count_nodes_by_owner / count_characters_by_faction
                     ├─ ui.top_bar
                     ├─ ui.status_bar
                     ├─ ui.map_canvas ─── map.viewport
                     │                   map.renderer ─── map.geo_data
                     │                                  └ core.territory（保留）
-                    │   ★ hover 回调 → MainWindow._on_location_change
-                    │        ↳ 查 World 拼势力名 → status_bar / tooltip
-                    │   ★ 右键回调 → MainWindow._on_map_right_click → 双向定位
+                    │   hover 回调 → MainWindow._on_location_change
+                    │   右键回调 → MainWindow._on_map_right_click → 双向定位
                     ├─ ui.map_controller
-                    ├─ ui.settings_window ──── config.settings_schema ── get_panel_columns_meta()
+                    ├─ ui.settings_window ──── config.settings_schema
                     │                       └─ ui.widgets.collapsible
+                    ├─ ui.character_info_window ──── Pillow（Image / ImageTk）
+                    │                            └─ ui.window_utils.center_on_parent
                     └─ ui.side_panel ──── panels.faction_panel ──┐
                                        ├─ panels.node_panel ─────┤
                                        ├─ panels.character_panel ┤── panels.list（通用框架）
+                                       │   └─ ui.character_info_window
                                        └─ panels.troop_panel ────┘
-                                       └─ ★ reload_panel_columns()
+                                       └─ reload_panel_columns()
                        config.constants
-tools.build_characters ──── assets/characters.json
-tools.build_scenario_190 ── scenarios/default.json
+tools.build_characters    ──── assets/characters.json
+tools.build_scenario_190  ──── scenarios/default.json
+tools.check_portraits     ──── 报告（只读）
+tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 ```
 
 ---
@@ -831,6 +934,12 @@ tools.build_scenario_190 ── scenarios/default.json
 | **`PANEL_COLUMNS` 默认** | `{order:[], hidden:[]}` × 4 panel | 空 = 用 COLUMNS 声明顺序 + 全显示 |
 | **面板列配置 tab** | `TABS` 里 key=`panels` | 位于「操作」与「游戏」之间 |
 | **面板列 UI** | Listbox + 上移/下移/显示隐藏 | 双击 = 切换显隐 |
+| **头像目录** | `assets/portrait/` | 第十六轮 |
+| **头像命名** | `{id}-{name}.{ext}` | 第十六轮 |
+| **头像扩展名** | `.jpg/.jpeg/.png/.gif/.bmp/.webp` | `PORTRAIT_EXTS` |
+| **头像缩放上限** | `200 × 200` | `CharacterInfoWindow.MAX_W/MAX_H` |
+| **头像重采样** | `Image.LANCZOS` | 高质量缩略 |
+| **`rename_portraits.py` 默认** | `APPLY=False / REMOVE_ORIGINAL=False / FORCE=False` | 三开关全保守 |
 
 ---
 
@@ -854,21 +963,26 @@ tools.build_scenario_190 ── scenarios/default.json
 | 据点面板右键三项 | 占位，只 `print` |
 | 据点面板字体 / 字号可调 | 不支持 |
 | 据点面板列宽 / 分组 / 排序持久化 | 不支持 |
-| 人物面板右键「人物情报」 | 占位，只 `print` |
-| 人物头像加载 | 未实现（`portrait` 已存） |
+| 人物面板右键「人物情报」 | **已接入（第十六轮）** |
+| **人物情报窗口内容** | **只显示头像 + 名字，五维 / 关系 / 生平未做** |
+| 人物头像加载 | **已实现（第十六轮，Pillow）** |
 | 人物面板状态持久化 | 不支持 |
-| **`Character.location` 运行时变更** | **未实现（字段已存，无逻辑）** |
-| **`Character.node` 归属变更** | **未实现** |
-| **人物面板势力分组顺序可调** | **未实现（目前仅玩家置顶 + 其余字典序）** |
-| **hover 近邻兜底显示势力** | **未实现（见 §8.3 第 135 条）** |
-| **势力色块间距可调** | **未实现（受 ttk 主题控制，不可直接调）** |
-| **搜索正则 / 跨字段 / 拼音** | **只留 `parse_query` 接口，未实现** |
-| **反向定位（人物 / 势力 / 部队）** | **占位，`state="disabled"`** |
-| **region 高亮州面** | **只做郡面（基础版），州面 MultiPolygon 未做** |
-| **地图情报三项右键** | **占位，只 `print`** |
-| **面板列拖拽排序** | **只做 Listbox + 上移/下移** |
-| **面板列宽 / 排序状态持久化** | **不支持（列宽由 `Column.width` 决定）** |
-| **NAME_COLUMN 可配置** | **锁定必显，不参与配置** |
+| `Character.location` 运行时变更 | 未实现（字段已存，无逻辑） |
+| `Character.node` 归属变更 | 未实现 |
+| 人物面板势力分组顺序可调 | 未实现（目前仅玩家置顶 + 其余字典序） |
+| hover 近邻兜底显示势力 | 未实现（见 §8.3 第 135 条） |
+| 势力色块间距可调 | 未实现（受 ttk 主题控制，不可直接调） |
+| 搜索正则 / 跨字段 / 拼音 | 只留 `parse_query` 接口，未实现 |
+| **搜索匹配表字** | **姓名列去表字后，搜表字不再命中（第十六轮起）** |
+| 反向定位（人物 / 势力 / 部队） | 占位，`state="disabled"` |
+| region 高亮州面 | 只做郡面（基础版），州面 MultiPolygon 未做 |
+| 地图情报三项右键 | 占位，只 `print` |
+| 面板列拖拽排序 | 只做 Listbox + 上移/下移 |
+| 面板列宽 / 排序状态持久化 | 不支持（列宽由 `Column.width` 决定） |
+| NAME_COLUMN 可配置 | 锁定必显，不参与配置 |
+| **`Character.portrait` 字段清理** | **保留但不再消费（§9.16）** |
+| **头像缺图提示** | **只显示"（无头像）"，无占位图** |
+| **人物情报窗口多实例控制** | **无——重复右键会弹多个窗口** |
 
 ### 8.2 数据层缺失
 
@@ -880,36 +994,36 @@ tools.build_scenario_190 ── scenarios/default.json
 
 **119–133.**（同上轮）
 
-**134. ★ `_city_index` 从 3 元组改 4 元组，任何解包处必须同步**：
+**134. `_city_index` 从 3 元组改 4 元组，任何解包处必须同步**：
 - 现在 `(bbox, 县名, ring, 县 id)`
 - 已改：`_build_city_index` / `find_city_at` / `_find_city_with_id`
 - 若将来新增遍历处，务必 4 元组解包
 
-**135. ★ hover 兜底不返回 `node_id`**：
+**135. hover 兜底不返回 `node_id`**：
 - `find_location_detail` 里，如果 `_find_city_with_id` 未命中多边形，回落到 `find_nearest_label` → 只有县名，无 id
 - 结果：近邻兜底时**不显示势力名**
-- 出现场景：县界缝隙、多边形外但靠近中心点
-- 影响：轻微，不影响主功能
 
-**136. ★ `MapCanvas` 与 `World` 解耦**：
+**136. `MapCanvas` 与 `World` 解耦**：
 - `MapCanvas` 只输出地理信息 dict（state / county / city / node_id / lon / lat）
 - 势力名由 `MainWindow._on_location_change` 拼装
-- **不要**给 `MapCanvas` 塞 `World` 引用（方案 A 的债）
+- **不要**给 `MapCanvas` 塞 `World` 引用
 
-**137. ★ 势力色块大小必须动态计算**：
-- 不能硬编码（不同系统 ttk 行高不同：Windows ~20，Linux ~22，Mac ~24）
+**137. 势力色块大小必须动态计算**：
+- 不能硬编码（不同系统 ttk 行高不同）
 - `_compute_swatch_size` 优先读 `Style.lookup("Treeview", "rowheight")`，退化到 `TkDefaultFont.metrics("linespace") + 6`
 - 色块 = 行高 − 2
 
-**138. ★ `PhotoImage` 必须显式填整块**：
+**138. `PhotoImage` 必须显式填整块**：
 - `img.put(color)` 单色字符串在部分 Tk 版本只填左上角一个像素
 - **必须** `img.put(color, to=(0, 0, size, size))`
 
-**139. ★ `PhotoImage` 必须保引用**：
+**139. `PhotoImage` 必须保引用**：
 - `FactionPanel._swatches` 缓存
-- 每次 `refresh` 先 `clear()` 再重建
+- `CharacterInfoWindow._photo` 属性
+- **Tk 不持 `PhotoImage` 引用**，不存 → GC 后显示空白
+- 每次 `refresh` / 每次开窗，先 `clear()` 再重建
 
-**140. ★ 势力色块带黑边**：
+**140. 势力色块带黑边**：
 - 先整块填 `#000000`
 - 再在 `(1, 1, size-1, size-1)` 填势力色
 - 想调边框粗细改 `to` 起点；想调颜色改 `#000000`
@@ -929,11 +1043,33 @@ tools.build_scenario_190 ── scenarios/default.json
 - **不要**把 order 当白名单（否则加列后用户看不到新列）
 - **不要**在加载配置时把未知 key 报错（将来列被删除时同理）
 
+**143. ★ Pillow 是唯一的第三方依赖**：
+- 只用在 `game/ui/character_info_window.py`
+- 加载时 `try: from PIL import Image, ImageTk` → 失败时 `_PIL_OK = False`，窗口降级显示"未安装 Pillow"，不崩
+- `requirements.txt` 声明 `Pillow`
+- **不要**在 `core/` / `map/` 层引入 Pillow —— 保持数据层无依赖
+
+**144. ★ 头像路径拼 `{id}-{name}`，不读 `portrait` 字段**：
+- `Character.portrait` 字段**保留但不再消费**
+- 拼路径只用 `ch.id` + `ch.name`，**不含表字**
+- 表字（`family_name`）不参与文件名
+- 名字含空格 / 特殊字符时需与重命名工具保持一致（工具也按原样拼）
+
+**145. ★ `Image.open` 后必须 `convert("RGB")`**：
+- 部分 PNG 带 alpha 通道 → `ImageTk.PhotoImage` 可能不认
+- 灰度图 / 调色板图同理
+- 统一 `convert("RGB")` 最稳
+
+**146. ★ 缩略用 `thumbnail` 而非 `resize`**：
+- `thumbnail` 保比例、只缩不放
+- 想固定尺寸、允许放大，才用 `resize`
+- 默认"不超过 200×200"，小图原样
+
 ### 8.4 建议的下一步
 
 1. **实现"出征 / 调动"**：改 `Character.location`，不动 `node`
 2. **`world.characters_at(node_id)` 聚合**（据点面板「人物」列真实数据）
-3. **人物面板右键「人物情报」接入真实窗口**
+3. **人物情报窗口扩展**：五维条形图 + 关系网络 + 生平
 4. **`Character.affinity` 参与势力关系计算**
 5. **非首都据点兵/钱/粮细化**
 6. **存档系统 / 新游戏流程 / 回合流程**
@@ -945,6 +1081,9 @@ tools.build_scenario_190 ── scenarios/default.json
 12. **势力面板组内排序可调**（当前威望降序）
 13. **面板列宽持久化**（`PANEL_COLUMNS` 里加 `widths` 字段）
 14. **面板列配置支持拖拽**（tkinter 需手写，暂用按钮替代）
+15. **人物情报窗口单例化**（同一人物只开一个窗口）
+16. **`Character.portrait` 字段清理**（确认无用后从 `from_dict` / `to_dict` 移除）
+17. **搜索匹配扩展到表字**（`_match_one` 加 `family_name` 字段）
 
 ---
 
@@ -975,35 +1114,17 @@ tools.build_scenario_190 ── scenarios/default.json
 
 #### 改动
 
-**修改文件：**
-
-- `game/map/geo_data.py` —— `_build_city_index` 加 id（3→4 元组）；`find_city_at` 解包改 4 元组；新增 `_find_city_with_id` / `find_location_detail`
+- `game/map/geo_data.py` —— `_city_index` 3→4 元组；`find_city_at` 解包改 4 元组；新增 `_find_city_with_id` / `find_location_detail`
 - `game/ui/map_canvas.py` —— `_process_motion` 传 dict；`_on_leave` 传 `None`
 - `game/ui/main_window.py` —— `_on_location_change` 接收 dict 并查 World 拼势力名；新增 `_faction_at`
 - `game/ui/panels/faction_panel.py` —— 加色块（`_make_swatch` / `_compute_swatch_size` / `_swatches` 缓存）
 
-**未改动**：
-
-- `Character` / `Node` / `Faction` / `ScenarioLoader`
-- 其它面板（据点 / 人物 / 部队）
-- 染色层 / LOD
-
 #### 设计决策
 
-- **hover 走方案 B（结构化回调）而非 A（给 MapCanvas 塞 World）**：
-  - 理由：`MapCanvas` 保持纯地图控件，将来可复用于别的场景
-  - `MainWindow` 本来就是装配工，持有 World，拼装天然
-  - 代价：回调契约从 `str` 变 `dict`，`_on_leave` 从 `""` 变 `None`
-- **`_city_index` 加 id 而非另建新索引**：
-  - 加一个字段，元组长度 3→4，改动集中
-  - 唯一风险：忘了同步解包处 → grep 验证
-- **色块尺寸动态计算**：
-  - 不能硬编码（系统 ttk 行高不同）
-  - `Style.lookup("Treeview", "rowheight")` 优先；退化到 `TkDefaultFont.metrics("linespace") + 6`
-  - 色块 = 行高 − 2
+- **hover 走方案 B（结构化回调）而非 A（给 MapCanvas 塞 World）**：`MapCanvas` 保持纯地图控件
+- **`_city_index` 加 id 而非另建新索引**：改动集中
+- **色块尺寸动态计算**：不硬编码
 - **色块带黑边**：先整块填黑，再在 `(1,1,size-1,size-1)` 填势力色
-- **`img.put(color, to=...)` 显式填整块**：单色字符串 `put` 在部分 Tk 版本只填 1 像素
-- **`PhotoImage` 保引用**：`_swatches` 缓存，`refresh` 先 `clear` 再重建
 
 #### 症状与根因
 
@@ -1012,102 +1133,57 @@ tools.build_scenario_190 ── scenarios/default.json
 | 色块只显示 1 个像素 | `img.put(color)` 单色字符串在部分 Tk 版本只填左上角 |
 | 色块大小不对 | 硬编码 12 在 Windows 上偏小，Linux 上偏大 |
 
-#### 待办（本轮明确记录）
-
-- hover 近邻兜底不返回 `node_id` → 该情况下不显示势力名
-- 势力色块间距受 ttk 主题控制，不可直接调
-- 势力面板组内排序（当前威望降序）将来若需可调，另做
-
 ---
 
 ### 9.14 Panel 通用框架 + 地图交互（第十五轮）
 
 #### 需求
 
-1. **Panel 通用框架**：4 个面板（据点 / 人物 / 势力 / 部队）共享一套基础设施，具体面板只写配置
-2. **搜索**：实时 / 包含匹配 / 多词 AND / 保留分组结构 / 清空按钮
-3. **地图交互**：左键点选 + 选中高亮；hover 高亮（5 开关）；地图右键菜单（县上 / 空白两种）
-4. **双向定位**：地图 → 列表（右键触发）、列表 → 地图（`fit_to_node`）
+1. **Panel 通用框架**：4 个面板共享基础设施
+2. **搜索**：实时 / 多词 AND / 保留分组结构
+3. **地图交互**：左键点选 + hover 高亮（5 开关）+ 右键菜单
+4. **双向定位**：地图 ↔ 列表
 
 #### 改动
 
-**新增**：
-- `game/ui/panels/list/` —— 通用框架 9 文件（panel / columns / model / sorting / grouping / group_bar / search_bar / context_menu）
-- `game/ui/panels/node_panel.py` —— 据点面板（纯配置）
-
-**重写**（瘦身为配置）：
-- `character_panel.py` / `faction_panel.py` / `troop_panel.py`
-
-**删除**（旧包，代码并入框架）：
-- `game/ui/panels/node/`、`game/ui/panels/character/` 共 16 文件
-
-**地图层**：
-- `renderer.py` —— 新增选中 / hover 高亮层（`SELECT_TAG` / `HOVER_TAG`）
-- `map_canvas.py` —— 点选（拖拽/点击判定）、右键回调、hover 高亮触发、`px/py` 传递
-- `main_window.py` —— 地图右键菜单、tooltip 浮窗、`_locate_to_list` 双向定位
-- `side_panel.py` —— 面板注册 `panels` 字典 + `select_panel`（反向定位切 Tab）
-
-**配置层**：
-- `style.py` —— 新增 `MAP_INTERACTION`（5 开关）
-- `settings_manager.py` —— `_DEFAULTS` + `apply` 接入 `MAP_INTERACTION`
-- `settings_schema.py` —— 新增「操作」Tab 下的「地图悬停互动」分组 + 5 个 bool 项
+**新增**：`panels/list/` 9 文件 + `node_panel.py`
+**重写**：`character_panel.py` / `faction_panel.py` / `troop_panel.py`
+**删除**：`panels/node/`、`panels/character/` 共 16 文件
+**地图层**：`renderer.py` / `map_canvas.py` / `main_window.py` / `side_panel.py`
+**配置层**：`style.py`（`MAP_INTERACTION`）/ `settings_manager.py` / `settings_schema.py`
 
 #### 设计决策
 
-- **三个框架扩展点**（需求 2.4 的三处差异）：
-  - 势力「固定分组」→ `CUSTOM_GROUPING` + `build_groups()` 回调
-  - 势力「色块」→ `Column.image` 列渲染扩展点
-  - 人物「玩家置顶」→ `priority_name()` 动态方法
-- **分组树抽象 `Group`**：`title / children / tags / open / row_tag`，同时承载组头配色与行配色
-- **hover 高亮用独立图层 tag**：删旧画新，不污染底层数据；pan/zoom 走 `move/scale` 自动跟随
-- **点选不触发业务逻辑**：只更新 `renderer._selected_node_id` + 高亮，不滚动列表 / 不弹窗 / 不查 World
-- **反向定位 `_syncing` 防递归**：`scroll_to_row` 期间置位，阻止列表 → 地图回触发
-- **搜索过滤在分组前**：过滤只作用于叶子行，组内有匹配行才显示该组（空组隐藏）
-
-#### 待办（本轮明确记录）
-
-- `highlight_hover_region` 为基础版：只高亮郡面，州面（MultiPolygon）未做
-- 反向定位其余 3 项（人物 / 势力 / 部队）占位，`state="disabled"`
-- 搜索正则 / 跨字段 / 拼音只留 `parse_query` 接口，未实现
-- 地图情报三项右键仍为 `print` 占位
+- **三个框架扩展点**：`CUSTOM_GROUPING` / `Column.image` / `priority_name()`
+- **分组树抽象 `Group`**：`title / children / tags / row_tag`
+- **hover 高亮用独立图层 tag**：删旧画新
+- **点选不触发业务逻辑**
+- **反向定位 `_syncing` 防递归**
+- **搜索过滤在分组前**
 
 ---
 
-### 9.15 势力面板加列 + 面板列配置（第十六轮）
+### 9.15 势力面板加列 + 面板列配置（第十六轮前半）
 
 #### 需求
 
 1. **势力面板加列**：据点数、人物数（威望 / 金 / 粮已有）
-2. **4 个面板的列顺序 / 显隐可调**：设置窗口新增「面板列」tab，Listbox + 上移/下移 + 显示隐藏
+2. **4 个面板的列顺序 / 显隐可调**：设置窗口新增「面板列」tab
 3. **低耦合**：统计进 `World`，配置进 `style`，框架读 `style`，UI 层不碰业务
 
 #### 改动
 
-**数据层**
-- `core/world.py` —— 新增 `count_nodes_by_owner()` / `count_characters_by_faction()`
-
-**配置层**
-- `config/style.py` —— 新增 `PANEL_COLUMNS`
-- `config/settings_manager.py` —— `_DEFAULTS` + `apply()` 接入
-- `config/settings_schema.py` —— 新增 `panels` tab + `PANEL_KEYS` / `PANEL_TITLES` / `get_panel_columns_meta()`
-
-**框架层**
-- `ui/panels/list/panel.py` —— `_resolve_columns()` / `reload_columns()` / `_build_tree_in()`；3 处 `self.COLUMNS` → `self._visible_columns`
-
-**面板层**
-- `node_panel.py` / `character_panel.py` / `troop_panel.py` —— 加 `PANEL_KEY`
-- `faction_panel.py` —— **补 `COLUMNS = COLUMNS`**；加 `PANEL_KEY`；`FactionRow` 加 `node_count` / `char_count`；`COLUMNS` 加「据点」「人物」两列
-
-**UI 层**
-- `ui/side_panel.py` —— `reload_panel_columns()`
-- `ui/main_window.py` —— `_on_settings_applied` 增 `PANEL_COLUMNS*` 分支
-- `ui/settings_window.py` —— 新增面板列配置 UI（8 个方法 + 2 处 `_populate` 挂接）
+**数据层**：`core/world.py` —— `count_nodes_by_owner()` / `count_characters_by_faction()`
+**配置层**：`style.py`（`PANEL_COLUMNS`）/ `settings_manager.py` / `settings_schema.py`（panels tab + `get_panel_columns_meta`）
+**框架层**：`list/panel.py` —— `_resolve_columns()` / `reload_columns()` / `_build_tree_in()`
+**面板层**：4 panel 加 `PANEL_KEY`；`faction_panel` 补 `COLUMNS = COLUMNS`；`FactionRow` 加 `node_count` / `char_count`
+**UI 层**：`side_panel.py` / `main_window.py` / `settings_window.py`（8 个新方法）
 
 #### 数据流
 
 ```
-style.PANEL_COLUMNS (默认: 各 panel order=[] / hidden=[])
-        ↓ settings_manager 加载/保存/apply（就地改 dict）
+style.PANEL_COLUMNS (默认)
+        ↓ settings_manager 加载/保存/apply
 userdata/settings.json  ←→  设置窗口「面板列」tab
         ↓ 保存后 on_applied 回调
 main_window → side_panel.reload_panel_columns() → 各 panel.reload_columns()
@@ -1115,33 +1191,80 @@ main_window → side_panel.reload_panel_columns() → 各 panel.reload_columns()
 GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 ```
 
+#### 症状与根因
+
+| 症状 | 根因 |
+|---|---|
+| 势力面板只有势力名一列 | `faction_panel` 类体内**漏写 `COLUMNS = COLUMNS`**，`self.COLUMNS` 取到基类默认 `()`（§8.3 第 141 条） |
+| 据点/人物数为 0 | id 类型不一致（str vs int） |
+| 设置窗口 panels tab 空白 | `schema.TABS` 未加 `panels`，或 `get_panel_columns_meta` 导入失败 |
+| 改动列配置保存后面板无变化 | `_on_settings_applied` 未接 `PANEL_COLUMNS*` 分支 |
+
+#### 待办
+
+- 面板列不支持拖拽排序
+- 列宽 / 分组 / 排序状态未持久化
+- `NAME_COLUMN` 不可配置
+
+---
+
+### 9.16 人物情报窗口 + 头像资产规范化（第十六轮后半）
+
+#### 需求
+
+1. **对账头像与人物数据**：找出"缺头像的人"和"孤儿图片"
+2. **头像文件重命名**：`{id}-{name}.{ext}`，重名武将复制多份
+3. **人物面板右键「人物情报」**：打开居中的头像窗口
+4. **人物面板姓名列去表字**：只显示姓名
+
+#### 改动
+
+**新增**：
+- `tools/check_portraits.py` —— 对账（只读，输出三张表）
+- `tools/rename_portraits.py` —— 批量改名（dry-run + 顶部常量开关）
+- `game/ui/character_info_window.py` —— 人物情报窗口（Pillow 头像）
+- `requirements.txt` —— 声明 `Pillow`
+
+**修改**：
+- `game/ui/panels/character_panel.py` —— 右键「人物情报」接入窗口；`NAME_COLUMN` 改 `lambda r: r.name`（去表字）
+
+**未改动**：
+- `Character` 类（`portrait` 字段保留但不再消费）
+- 其它面板 / 地图层 / 数据层
+
 #### 设计决策
 
-- **统计进 `World` 而非面板**：`World` 定位为聚合容器，两个 `Counter` 方法将来据点面板「人物」列 / 势力面板「主官」列均可复用
-- **每次 `refresh` 只算一次聚合**：`fetch_rows` 循环外算 `dict`，避免 O(势力数 × 据点/人物数)
-- **列配置 UI 的列元数据动态取自 `panel.COLUMNS`**：schema 不写死列清单，加列后配置 UI 自动跟上
-- **未在 order 中的 key 追加到末尾 + 默认显示**：用户旧配置不因加列而失效（见 §8.3 第 142 条）
-- **NAME_COLUMN 锁定必显**：它是色块 / 名称载体，藏了行即废
-- **排序交互用 Listbox + 按钮**：tkinter 原生拖拽需手写，按钮方案简单可靠
-- **不重写 `_build_ui`，只抽出 `_build_tree_in`**：`reload_columns` 可复用，搜索框 / 分组条不动
-- **`PANEL_COLUMNS` 走 `_apply_inplace`**：与其它 style 项一致，就地改 dict，模块级 import 自动看到新值
+- **引入 Pillow**：tkinter 原生不支持 JPG；Pillow 后续还要用于立绘 / 缩放 / 裁剪，早引入划算
+- **只用在 UI 层**：`core/` / `map/` 保持零第三方依赖
+- **降级不崩**：`try: import PIL` 失败 → `_PIL_OK = False` → 窗口显示"未安装 Pillow"
+- **头像路径拼 `{id}-{name}`，不读 `portrait` 字段**：字段保留兼容，逻辑已切换
+- **名字只用 `ch.name`，不含表字**：文件名 = `0651-张南.jpg`，不是 `0651-张南（XX）.jpg`
+- **`Image.open().convert("RGB")`**：兼容 PNG alpha / 灰度
+- **`thumbnail` 而非 `resize`**：保比例、只缩不放
+- **`self._photo` 保引用**：Tk 不持 `PhotoImage` 引用，不存 → GC 后空白（§8.3 第 139 条同类坑）
+- **`update_idletasks` 后再 `center_on_parent`**：让 `winfo_reqwidth/height` 拿到实际尺寸
+- **`rename_portraits.py` 用顶部常量控制**：`APPLY / REMOVE_ORIGINAL / FORCE`，比 `--apply` 命令行参数更直观
+- **对账脚本不做模糊匹配**：简繁 / 表字 / 异体全交给人工（用户明确要求）
 
 #### 症状与根因
 
 | 症状 | 根因 |
 |---|---|
-| **势力面板只有势力名一列** | `faction_panel` 类体内**漏写 `COLUMNS = COLUMNS`**，`self.COLUMNS` 取到基类默认 `()`。`NAME_COLUMN` 因为是 `__init__` 里的实例属性才正常。见 §8.3 第 141 条 |
-| 据点/人物数为 0 | `node.owner` / `char.faction` 与 `f.id` 的 id 类型不一致（str vs int），用 `Counter` 的 key 对照 `world.factions` 一眼看出 |
-| 设置窗口 panels tab 空白 | `schema.TABS` 未加 `panels`，或 `get_panel_columns_meta` 导入 panel 失败（延迟 import 静默吞掉） |
-| 改动列配置保存后面板无变化 | `MainWindow._on_settings_applied` 未接 `PANEL_COLUMNS*` 分支，或 `side_panel` 属性名不匹配 |
+| 头像窗口显示空白 | `PhotoImage` 未保引用，GC 回收（§8.3 第 139 条） |
+| 头像窗口报 `unknown file type` | tkinter 原生不支持 JPG，必须走 Pillow 中转 |
+| 部分 PNG 头像加载失败 | PNG 带 alpha / 调色板，需 `convert("RGB")` |
+| 重命名脚本"未匹配"一大堆 | 名字写法不一致（简繁 / 异体 / 表字），脚本不做模糊，需人工 |
+| 重名武将只改出一个文件 | 数据里同名多人，需复制 N 份（`build_plan` 的 `len(ids) > 1` 分支） |
 
 #### 待办（本轮明确记录）
 
-- 面板列不支持拖拽排序（Listbox + 按钮替代）
-- 列宽 / 分组 / 排序状态未持久化
-- `NAME_COLUMN` 不可配置（锁定必显）
-- 反向定位（人物 / 势力 / 部队）仍占位
+- 人物情报窗口只显示头像 + 名字，五维 / 关系 / 生平未做
+- 窗口非单例，重复右键弹多个
+- 缺头像只显示"（无头像）"，无占位图
+- `Character.portrait` 字段保留但不再消费，将来确认无用后清理
+- 姓名列去表字后，搜表字不再命中（`_match_one` 未扩展）
+- 右键菜单标题仍带表字（`row.display_name`），未统一
 
 ---
 
-**本轮核心变动集中在 §0（新增 3 术语）**、**§3.5（World 聚合）**、**§5.22 / 5.25（faction_panel / 新增函数清单）**、**§6.4 / 6.5（面板列重载链路）**、**§7.3（3 条常量）**、**§8.1（3 条待办）**、**§8.3 第 141–142 条（永久约束）**、**§8.4 第 13–14 条**、**§9.15**。
+**本轮核心变动集中在 §0（新增 3 术语：头像路径约定 / 头像加载 / 人物情报窗口）**、**§2（tools + portrait + character_info_window）**、**§3.3（portrait 字段说明）**、**§4.7（头像资产）**、**§5.26 / 5.27 / 5.28（新增三个模块）**、**§6.4 / 6.5（人物情报链路）**、**§7.3（5 条头像常量）**、**§8.1（3 条待办）**、**§8.3 第 143–146 条（Pillow / 头像路径 / convert RGB / thumbnail 永久约束）**、**§8.4 第 15–17 条**、**§9.16**。

@@ -17,7 +17,6 @@ OUTPUT_FILE = BASE_DIR / "map_with_boundaries.geojson"
 AREA_TOL = 1e-6   # 面积阈值（度²），小于此值视为 rounding 误差
 
 
-
 # ============================================================
 # 基础工具
 # ============================================================
@@ -93,8 +92,11 @@ def poly_to_boundary(poly):
         coords.append(coords[0])
     if len(coords) < 4:
         return None
+    # ★ 新增：round 后至少 3 个唯一点（否则退化成线段）
+    unique = {(round(x, 8), round(y, 8)) for x, y in coords}
+    if len(unique) < 3:
+        return None
     return [[round(x, 8), round(y, 8)] for x, y in coords]
-
 
 def multipoly_to_boundary(poly):
     polys = to_polygons(poly)
@@ -158,6 +160,145 @@ def merge_to_single(poly, delta=0.0):
             pass
     return max(polys, key=lambda p: p.area)
 
+
+# ============================================================
+# ★ 新增：投影空间内去重
+# ============================================================
+
+def _dedup_projected(polygons, points_arr, county_proj):
+    """★ 同郡投影空间内强制互不重叠。
+       按面积降序逐个 difference，保证零重叠。
+       完全被占的县退回一个围绕自身点的极小圆。"""
+    n = len(polygons)
+    if n <= 1:
+        return polygons
+
+    order = sorted(
+        range(n),
+        key=lambda i: -(polygons[i].area
+                        if polygons[i] is not None and not polygons[i].is_empty
+                        else 0.0),
+    )
+
+    minx, miny, maxx, maxy = county_proj.bounds
+    diag = ((maxx - minx) ** 2 + (maxy - miny) ** 2) ** 0.5
+    if diag <= 0:
+        diag = 1.0
+
+    result = [None] * n
+    occupied = None
+
+    for i in order:
+        p = polygons[i]
+        if p is None or p.is_empty:
+            continue
+        if occupied is None:
+            result[i] = p
+            occupied = p
+            continue
+        try:
+            p2 = p.difference(occupied)
+        except Exception:
+            try:
+                p2 = make_valid(p).difference(occupied)
+            except Exception:
+                p2 = None
+        if p2 is None or p2.is_empty:
+            result[i] = None
+            continue
+        m = merge_to_single(p2, delta=0.0)
+        if m is None or m.is_empty:
+            result[i] = None
+        else:
+            result[i] = m
+            occupied = unary_union([occupied, m])
+
+    # 被完全吃掉的县：退回一个极小圆（不与 occupied 重叠）
+    for i in range(n):
+        if result[i] is not None:
+            continue
+        pt = Point(points_arr[i][0], points_arr[i][1])
+        r = diag * 1e-4
+        tiny = None
+        for _ in range(20):
+            cand = pt.buffer(r)
+            if occupied is not None:
+                try:
+                    cand = cand.difference(occupied)
+                except Exception:
+                    cand = None
+            if cand is not None and not cand.is_empty:
+                tiny = cand
+                break
+            r *= 1.8
+        if tiny is None or tiny.is_empty:
+            tiny = pt.buffer(diag * 1e-7)
+        result[i] = tiny
+        occupied = tiny if occupied is None else unary_union([occupied, tiny])
+
+    return result
+
+def _wgs_dedup_county(county):
+    """★ 同郡 WGS 空间二次去重。
+       覆盖：UTM→WGS 转换误差 + Step 5 点内检查时的 buffer 扩展。
+       按面积降序 difference；被完全吃掉的县保留原 boundary（不写回）。"""
+    cities = county.get("cities", [])
+    if len(cities) < 2:
+        return
+
+    entries = []
+    for city in cities:
+        cb = city.get("boundary")
+        if not cb or len(cb) < 3:
+            continue
+        try:
+            p = Polygon(ring_to_coords(cb))
+            if not p.is_valid:
+                p = p.buffer(0)
+        except Exception:
+            continue
+        if p.is_empty:
+            continue
+        entries.append((city, p))
+
+    if len(entries) < 2:
+        return
+
+    order = sorted(range(len(entries)), key=lambda i: -entries[i][1].area)
+
+    result = [None] * len(entries)
+    occupied = None
+    for i in order:
+        _, p = entries[i]
+        if occupied is None:
+            result[i] = p
+            occupied = p
+            continue
+        try:
+            p2 = p.difference(occupied)
+        except Exception:
+            try:
+                p2 = make_valid(p).difference(occupied)
+            except Exception:
+                p2 = None
+        if p2 is None or p2.is_empty:
+            continue
+        polys = to_polygons(p2)
+        if not polys:
+            continue
+        m = max(polys, key=lambda x: x.area)
+        result[i] = m
+        occupied = unary_union([occupied, m])
+
+    for i, (city, _) in enumerate(entries):
+        if result[i] is None:
+            continue
+        try:
+            b = poly_to_boundary(result[i])
+            if b:
+                city["boundary"] = b
+        except Exception:
+            pass
 
 def point_inside_polygon(pt, poly, tol=1e-6):
     try:
@@ -390,7 +531,7 @@ def fill_gaps_kdtree(polygons, points_arr, county_proj, max_iter=50):
             if gap.area < 1e-12:
                 continue
 
-            # ============ 新增：优先选相邻的 city ============
+            # ============ 优先选相邻的 city ============
             adjacent_i = None
             try:
                 for i in valid_idx:
@@ -839,6 +980,12 @@ def main():
             county_poly = county.get("_poly")
             if county_poly is None or county_poly.is_empty:
                 continue
+            # ★ 新增：郡几何若 invalid 先修，后续 intersection 才不抛
+            if not county_poly.is_valid:
+                county_poly = make_valid(county_poly)
+                if county_poly.is_empty:
+                    continue
+
             cities = county.get("cities", [])
             if not cities:
                 continue
@@ -901,6 +1048,9 @@ def main():
                 print(f"  ! {county['name']} 生成失败: {e}")
                 polygons = [county_proj] * len(unique_pts)
 
+            # ★ 新增：投影空间内去重，同郡各县强制互不重叠
+            polygons = _dedup_projected(polygons, pts_arr, county_proj)
+
             for i, poly in enumerate(polygons):
                 used_fallback = False
                 if poly is None or poly.is_empty:
@@ -911,8 +1061,16 @@ def main():
 
                 try:
                     poly_wgs = transform(t_wgs.transform, poly)
-                    poly_wgs = poly_wgs.intersection(county_poly)
-                    poly_wgs = merge_to_single(poly_wgs, delta=0.0)
+                    # ★ 新增：回转换后几何可能 invalid，先修再交
+                    if poly_wgs is not None and not poly_wgs.is_empty \
+                            and not poly_wgs.is_valid:
+                        poly_wgs = make_valid(poly_wgs)
+                    if poly_wgs is not None and not poly_wgs.is_empty:
+                        poly_wgs = poly_wgs.intersection(county_poly)
+                    if poly_wgs is not None and not poly_wgs.is_empty:
+                        poly_wgs = merge_to_single(poly_wgs, delta=0.0)
+                    else:
+                        poly_wgs = None
                 except Exception:
                     poly_wgs = None
 
@@ -949,7 +1107,34 @@ def main():
 
                 b = poly_to_boundary(poly_wgs) if poly_wgs is not None else None
                 if b is None:
-                    b = poly_to_boundary(county_poly)
+                    # ★ 不再退整郡：以县点为中心取一个极小圆兜底
+                    pt_wgs = transform(t_wgs.transform, Point(pts_arr[i]))
+                    minx2, miny2, maxx2, maxy2 = county_poly.bounds
+                    diag_w = ((maxx2 - minx2) ** 2 + (maxy2 - miny2) ** 2) ** 0.5
+                    if diag_w <= 0:
+                        diag_w = 1e-6
+                    for r in [diag_w * 0.005, diag_w * 0.02, diag_w * 0.1]:
+                        try:
+                            cand = pt_wgs.buffer(r).intersection(county_poly)
+                        except Exception:
+                            cand = None
+                        if cand is not None and not cand.is_empty:
+                            b = poly_to_boundary(cand)
+                            if b is not None:
+                                used_fallback = True
+                                break
+
+                # ★ 终极兜底：无论如何给一个围绕县点的方块，保证有 boundary
+                if b is None:
+                    pt_wgs = transform(t_wgs.transform, Point(pts_arr[i]))
+                    eps = 1e-3   # ≈ 100 m，能看见
+                    b = [
+                        [round(pt_wgs.x - eps, 8), round(pt_wgs.y - eps, 8)],
+                        [round(pt_wgs.x + eps, 8), round(pt_wgs.y - eps, 8)],
+                        [round(pt_wgs.x + eps, 8), round(pt_wgs.y + eps, 8)],
+                        [round(pt_wgs.x - eps, 8), round(pt_wgs.y + eps, 8)],
+                        [round(pt_wgs.x - eps, 8), round(pt_wgs.y - eps, 8)],
+                    ]
                     used_fallback = True
 
                 if b:
@@ -961,6 +1146,9 @@ def main():
                         city_ok += len(unique_to_cities[i])
                 else:
                     city_fail += len(unique_to_cities[i])
+
+            # ★ 新增：本郡在 WGS 空间二次去重
+            _wgs_dedup_county(county)
 
     for state in data["states"]:
         state.pop("_poly", None)

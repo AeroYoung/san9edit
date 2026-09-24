@@ -79,7 +79,7 @@ COLUMNS = (
     Column("cha",     "魅",   34, "center", lambda r: r.charisma,     sort_numeric=True),
 )
 
-NAME_COLUMN = Column("name", "姓名", 110, "w", lambda r: r.display_name)
+NAME_COLUMN = Column("name", "姓名", 110, "w", lambda r: r.name)
 
 GROUP_DIMS = {
     "faction": ("势力", lambda r: r.faction_name or "在野"),
@@ -122,7 +122,7 @@ class CharacterPanel(GenericListPanel):
         return [
             MenuItem(row.display_name, enabled=False),
             MenuItem.sep(),
-            MenuItem("人物情报", lambda: self._intel(ctx.selected_rows)),
+            MenuItem("人物情报", lambda: self._open_info_window(row)),
             MenuItem("复制编号", lambda: self._copy_id(row.id)),
             MenuItem.sep(),
             MenuItem("定位到据点", lambda: self.locate_on_map(row)),
@@ -131,10 +131,17 @@ class CharacterPanel(GenericListPanel):
             MenuItem("全部折叠", lambda: self._toggle_all(False)),
         ]
 
-    def _intel(self, rows):
-        names = "、".join(r.display_name for r in rows[:5])
-        more = f" 等 {len(rows)} 个" if len(rows) > 5 else ""
-        print(f"[人物情报] characters={names}{more}")
+    def _open_info_window(self, row):
+        from game.ui.character_info_window import CharacterInfoWindow
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            return
+        ch = world.character(row.id)
+        if ch is None:
+            return
+        top = self.winfo_toplevel()
+        font_family = getattr(top, "font_family", "TkDefaultFont")
+        CharacterInfoWindow(self, ch, font_family=font_family)
 
     def _copy_id(self, cid):
         try:
