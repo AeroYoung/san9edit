@@ -45,9 +45,19 @@ class MainWindow:
         self._tooltip = None       # hover 浮窗
         self._map_menus = []       # 地图右键菜单引用（防 GC）
 
+        # 剧本编辑模式（D9：模式判断只在这里）
+        self.editable = (C.APP_MODE == C.MODE_EDIT)
+        self.edit_session = None
+        self._modal_open = False
+        self._scenario_path = str(C.DEFAULT_SCENARIO_PATH)
+        self._baseline_raw = None
+
         self._setup_theme()
         self._build_layout()
         self._bind_shortcuts()
+
+        # 关闭窗口拦截（编辑模式下有未保存改动时弹确认）
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # 启动后加载默认地图。
         # 用 after 让窗口先完成一次布局，canvas 才有真实尺寸。
@@ -112,6 +122,9 @@ class MainWindow:
         # 缩放变化回调：地图缩放时更新状态栏
         self.map_canvas.set_zoom_callback(self._on_zoom_change)
 
+        # 编辑模式下禁用「进行」按钮
+        self.top_bar.set_game_mode(not self.editable)
+
     def _bind_shortcuts(self):
         r = self.root
         r.bind("<plus>",  lambda e: self.map_canvas.zoom(1.25))
@@ -119,6 +132,11 @@ class MainWindow:
         r.bind("<minus>", lambda e: self.map_canvas.zoom(1 / 1.25))
         r.bind("<0>",     lambda e: self.map_canvas.reset_view())
         r.bind("<Control-o>", lambda e: self.open_geojson())
+        # 剧本编辑快捷键（弹窗打开时由 _modal_open 屏蔽）
+        r.bind("<Control-s>", lambda e: self._on_save_scenario())
+        r.bind("<Control-Shift-S>", lambda e: self._on_save_as())
+        r.bind("<Control-z>", lambda e: self._on_undo())
+        r.bind("<Control-Shift-Z>", lambda e: self._on_redo())
 
     # ==========================================================
     # 地图加载
@@ -140,7 +158,10 @@ class MainWindow:
         if not path.is_file():
             self.status_bar.set_message(f"未找到剧本 {path.name}")
             return
+        self._load_scenario(path)
 
+    def _load_scenario(self, path):
+        """加载指定剧本文件，构造 World，并（编辑模式）重建编辑会话。"""
         geo = getattr(self, "_geo_data", None)
         if geo is None:
             # 兜底：从渲染器里拿
@@ -158,18 +179,30 @@ class MainWindow:
 
         self._world = world
         self.game_state.sync_from_world(world)
-        self.map_canvas.renderer.set_world(world)   # ★ 新
-        self.status_bar.set_message(world.summary() + " | 玩家势力：曹操")
+        self.map_canvas.renderer.set_world(world)
         self.side_panel.refresh_all()
-        self.map_canvas.redraw()                    # ★ 新：触发一次全量重绘
+        self.map_canvas.redraw()
 
         pf = world.player_faction()
         pf_name = pf.name if pf else "—"
         self.status_bar.set_message(
             f"{world.summary()}  |  玩家势力：{pf_name}"
         )
-        # ★ 新增：刷新右侧面板（势力 / 据点 / 人物 / 部队）
-        self.side_panel.refresh_all()
+
+        # 编辑模式：建立编辑会话 + baseline 快照（§10.7）
+        if self.editable:
+            from game.core.scenario_writer import ScenarioWriter
+            from game.core.edit_session import EditSession
+            baseline_snap = ScenarioWriter.serialize(world)
+            self.edit_session = EditSession(world, baseline_snap)
+            self._baseline_raw = self._load_raw_scenario(path)
+            self._scenario_path = str(path)
+            self.side_panel.set_edit_session(
+                self.edit_session,
+                on_edit=self.on_edit_executed,
+                open_dialog=self.open_edit_dialog,
+            )
+            self._sync_undo_redo_state()
 
     def open_geojson(self):
         path = filedialog.askopenfilename(
@@ -347,7 +380,17 @@ class MainWindow:
 
     def _on_menu_action(self, action, **kw):
         if action == "quit":
-            self.root.quit()
+            self._on_close()
+        elif action == "select_scenario":
+            self._on_select_scenario()
+        elif action == "save_scenario":
+            self._on_save_scenario()
+        elif action == "save_scenario_as":
+            self._on_save_as()
+        elif action == "undo":
+            self._on_undo()
+        elif action == "redo":
+            self._on_redo()
         elif action == "new_game":
             self._confirm_and_new_game()
         elif action == "load_game":
@@ -381,6 +424,8 @@ class MainWindow:
     # 游戏流程
     # ==========================================================
     def _end_turn(self):
+        if self.editable:
+            return   # 编辑模式禁用回合推进
         self.game_state.advance_turn()
         self.side_panel.refresh_all()
         self.status_bar.set_message(
@@ -434,6 +479,124 @@ class MainWindow:
         if messagebox.askyesno("新游戏",
                                "确定要开始新游戏吗？当前进度不会保存。"):
             self.status_bar.set_message("新游戏（尚未实现）")
+
+    # ==========================================================
+    # 剧本编辑：会话 / 弹窗 / 保存
+    # ==========================================================
+    def open_edit_dialog(self, dlg_factory):
+        """打开模态弹窗，屏蔽全局快捷键。供面板调用。"""
+        self._modal_open = True
+        try:
+            dlg = dlg_factory()
+            self.root.wait_window(dlg)
+            return dlg
+        finally:
+            self._modal_open = False
+
+    def on_edit_executed(self):
+        """面板编辑执行后由 SidePanel 转发。"""
+        self._sync_undo_redo_state()
+
+    def _sync_undo_redo_state(self):
+        if self.edit_session is None:
+            self.top_bar.set_edit_state(False, False)
+        else:
+            self.top_bar.set_edit_state(
+                self.edit_session.can_undo(),
+                self.edit_session.can_redo(),
+            )
+
+    def _load_raw_scenario(self, path):
+        import json
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def _on_close(self):
+        """关闭窗口 / 退出菜单：有未保存改动时拦截。"""
+        if self._confirm_discard():
+            self.root.destroy()
+
+    def _confirm_discard(self):
+        """有未保存改动时弹「放弃 / 取消」。True = 可继续（丢弃）。"""
+        if self.edit_session is not None and self.edit_session.is_dirty():
+            ans = messagebox.askyesnocancel(
+                "未保存的改动", "有未保存的改动，是否放弃？")
+            return ans is True
+        return True
+
+    def _on_save_scenario(self):
+        if self._modal_open:
+            return
+        if self.edit_session is None:
+            self.status_bar.set_message("未加载剧本")
+            return
+        if not self.edit_session.is_dirty():
+            self.status_bar.set_message("无改动，未保存")
+            return
+        self._save_to_path(self._scenario_path)
+
+    def _on_save_as(self):
+        if self._modal_open:
+            return
+        if self.edit_session is None:
+            self.status_bar.set_message("未加载剧本")
+            return
+        path = filedialog.asksaveasfilename(
+            title="另存为",
+            initialdir=str(C.SCENARIOS_DIR),
+            defaultextension=".json",
+            filetypes=[("JSON", "*.json"), ("所有文件", "*.*")],
+        )
+        if not path:
+            return
+        self._save_to_path(path)
+        self._scenario_path = path   # 上下文切换到新文件
+
+    def _save_to_path(self, path):
+        from game.core.scenario_writer import ScenarioWriter
+        world = getattr(self, "_world", None)
+        if world is None or self.edit_session is None:
+            return
+        try:
+            ScenarioWriter.save(world, path, self._baseline_raw,
+                                self.edit_session.baseline)
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+            return
+        self.edit_session.rebase()
+        self.edit_session.clear()
+        self._baseline_raw = self._load_raw_scenario(path)
+        self._sync_undo_redo_state()
+        self.status_bar.set_message(f"已保存 → {path}")
+
+    def _on_undo(self):
+        if self._modal_open or self.edit_session is None:
+            return
+        self.edit_session.undo()
+        self.side_panel.refresh_all()
+        self._sync_undo_redo_state()
+
+    def _on_redo(self):
+        if self._modal_open or self.edit_session is None:
+            return
+        self.edit_session.redo()
+        self.side_panel.refresh_all()
+        self._sync_undo_redo_state()
+
+    def _on_select_scenario(self):
+        if self._modal_open:
+            return
+        if not self._confirm_discard():
+            return
+        path = filedialog.askopenfilename(
+            title="选择剧本",
+            initialdir=str(C.SCENARIOS_DIR),
+            filetypes=[("JSON", "*.json"), ("所有文件", "*.*")],
+        )
+        if not path:
+            return
+        from pathlib import Path
+        self._load_scenario(Path(path))
 
     # ==========================================================
     def run(self):

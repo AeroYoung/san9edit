@@ -79,6 +79,11 @@ class EditSession:
     def can_redo(self) -> bool:
         return bool(self._redo_stack)
 
+    @property
+    def baseline(self):
+        """当前 baseline 快照（供 ScenarioWriter.save 用）。"""
+        return self._baseline
+
     def is_dirty(self) -> bool:
         """current = serialize(world); return bool(diff(current, baseline))"""
         from game.core.scenario_writer import ScenarioWriter

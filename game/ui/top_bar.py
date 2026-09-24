@@ -117,6 +117,8 @@ class TopBar(tk.Frame):
         right.pack(side="right", padx=8, pady=4)
 
         menu_specs = [
+            ("文件", self._build_file_menu),
+            ("编辑", self._build_edit_menu),
             ("游戏", self._build_game_menu),
             ("势力", self._build_faction_menu),
             ("命令", self._build_order_menu),
@@ -170,6 +172,24 @@ class TopBar(tk.Frame):
         self.on_action(action)
 
     # ---------- 各下拉菜单定义 ----------
+    def _build_file_menu(self, m):
+        m.add_command(label="选择剧本",
+                      command=lambda: self._emit("select_scenario"))
+        m.add_separator()
+        m.add_command(label="保存", accelerator="Ctrl+S",
+                      command=lambda: self._emit("save_scenario"))
+        m.add_command(label="另存为", accelerator="Ctrl+Shift+S",
+                      command=lambda: self._emit("save_scenario_as"))
+        m.add_separator()
+        m.add_command(label="退出", command=lambda: self._emit("quit"))
+
+    def _build_edit_menu(self, m):
+        self._edit_menu = m
+        m.add_command(label="撤销", accelerator="Ctrl+Z",
+                      command=lambda: self._emit("undo"), state="disabled")
+        m.add_command(label="重做", accelerator="Ctrl+Shift+Z",
+                      command=lambda: self._emit("redo"), state="disabled")
+
     def _build_game_menu(self, m):
         m.add_command(label="新游戏", command=lambda: self._emit("new_game"))
         m.add_command(label="读取存档", command=lambda: self._emit("load_game"))
@@ -224,6 +244,22 @@ class TopBar(tk.Frame):
     def _build_help_menu(self, m):
         m.add_command(label="操作说明", command=lambda: self._emit("help_manual"))
         m.add_command(label="关于", command=lambda: self._emit("help_about"))
+
+    # ==========================================================
+    # 编辑模式控制
+    # ==========================================================
+    def set_edit_state(self, can_undo, can_redo):
+        """编辑菜单撤销/重做的置灰状态。由 MainWindow 主动调用。"""
+        menu = getattr(self, "_edit_menu", None)
+        if menu is None:
+            return
+        menu.entryconfig(0, state="normal" if can_undo else "disabled")
+        menu.entryconfig(1, state="normal" if can_redo else "disabled")
+
+    def set_game_mode(self, enabled):
+        """enabled=False 时禁用「进行」按钮。"""
+        self.end_turn_btn.configure(
+            state="normal" if enabled else "disabled")
 
     # ==========================================================
     # 数据刷新
