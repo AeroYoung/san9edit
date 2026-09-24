@@ -44,8 +44,11 @@ class MapCanvas(ttk.Frame):
         self._pending_mouse = None
         self._location_callback = None
         self._zoom_callback = None
+        self._right_click_callback = None
         self._need_fit = False       # 加载数据后等待首次有效尺寸
         self._settle_job = None      # 滚轮静默后补绘的定时器句柄
+        self._selected_node_id = None   # ★ 左键选中的县
+        self._press_xy = None           # ★ 按下位置（区分拖拽 / 点击）
         self._bind_events()
 
     # ==========================================================
@@ -56,6 +59,10 @@ class MapCanvas(ttk.Frame):
 
     def set_zoom_callback(self, fn):
         self._zoom_callback = fn
+
+    def set_right_click_callback(self, fn):
+        """右键回调：fn(node_id, event)。node_id 为 None 表示空白处。"""
+        self._right_click_callback = fn
 
     def _notify_zoom(self):
         """缩放比例变化时通知外部（如状态栏）。"""
@@ -195,6 +202,8 @@ class MapCanvas(ttk.Frame):
         c.bind("<B1-Motion>", self._on_drag)
         c.bind("<ButtonRelease-1>", self._on_release)
         c.bind("<Double-Button-1>", lambda e: self.reset_view())
+        c.bind("<Button-3>", self._on_right_click)
+        c.bind("<Button-2>", self._on_right_click)
         c.bind("<Motion>", self._on_motion)
         c.bind("<Leave>", self._on_leave)
         c.bind("<Configure>", self._on_resize)
@@ -207,6 +216,7 @@ class MapCanvas(ttk.Frame):
 
     def _on_press(self, event):
         self._drag = (event.x, event.y)
+        self._press_xy = (event.x, event.y)
 
     def _on_drag(self, event):
         if not self._drag:
@@ -219,7 +229,39 @@ class MapCanvas(ttk.Frame):
         self._schedule_label_refresh()
 
     def _on_release(self, event):
+        # 位移 <= 4px 视为点击（否则是拖拽平移）
+        was_click = False
+        if self._press_xy is not None:
+            if (abs(event.x - self._press_xy[0]) <= 4
+                    and abs(event.y - self._press_xy[1]) <= 4):
+                was_click = True
         self._drag = None
+        self._press_xy = None
+        if was_click:
+            self._handle_click(event)
+
+    def _handle_click(self, event):
+        """左键点选县：只更新选中高亮，不触发任何业务逻辑。"""
+        if not self.data:
+            return
+        lon, lat = self.viewport.unproject(event.x, event.y)
+        info = self.data.find_location_detail(lon, lat)
+        node_id = info.get("node_id")
+        if node_id == self._selected_node_id:
+            self._selected_node_id = None       # 再点同一县 → 取消
+        else:
+            self._selected_node_id = node_id    # 点空白 / 海 / 山 → None
+        self.renderer.set_selected(self._selected_node_id)
+
+    def _on_right_click(self, event):
+        if not self.data:
+            return
+        lon, lat = self.viewport.unproject(event.x, event.y)
+        info = self.data.find_location_detail(lon, lat)
+        # 优先用被点选的县，否则用右键位置的县
+        node_id = self._selected_node_id or info.get("node_id")
+        if self._right_click_callback:
+            self._right_click_callback(node_id, event)
 
     def _on_resize(self, event):
         """窗口尺寸变化。
@@ -250,9 +292,13 @@ class MapCanvas(ttk.Frame):
         info = self.data.find_location_detail(lon, lat)   # ★ 新方法
         info["lon"] = lon
         info["lat"] = lat
+        info["px"] = x          # ★ tooltip 定位用（画布内像素）
+        info["py"] = y
+        self.renderer.set_hover(info)                      # ★ hover 高亮
         self._location_callback(info)                      # ★ 传 dict
 
     def _on_leave(self, event):
+        self.renderer.set_hover(None)                      # ★ 清除 hover 高亮
         if self._location_callback:
             self._location_callback(None)                  # ★ "" → None
     

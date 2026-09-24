@@ -9,6 +9,8 @@
     "LAYER_VISIBILITY.road": false,
     "LAYER_VISIBILITY.water": true,
     "LAYER_VISIBILITY.label_state": false,
-    "LAYER_VISIBILITY.label_county": false
+    "LAYER_VISIBILITY.label_county": false,
+    "MAP_INTERACTION.highlight_hover_border": false,
+    "MAP_INTERACTION.highlight_hover_fill": false
   }
 }

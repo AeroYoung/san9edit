@@ -7,7 +7,7 @@
 """
 
 from game.config.style import (
-    MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY,
+    MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY, MAP_INTERACTION,
 )
 
 from game.core.utils import lighten_color, darken_color
@@ -22,6 +22,8 @@ class MapRenderer:
     POINT_TAG   = "point"
     CITY_TAG = "city"
     TERRITORY_TAG = "territory"     # ★ 新：郡面染色
+    SELECT_TAG = "select_highlight"  # ★ 左键选中高亮
+    HOVER_TAG = "hover_highlight"    # ★ hover 高亮
     # 从底到顶的图层顺序；越靠后越在上面
     _LAYER_ORDER = (
         "polygon",   # 州/郡面
@@ -31,6 +33,8 @@ class MapRenderer:
         "road",      # 道路
         "line",      # 郡界
         "point",     # 县点
+        "select_highlight",  # ★ 选中描边
+        "hover_highlight",   # ★ hover 高亮
         "label",     # 文字
     )
 
@@ -43,6 +47,8 @@ class MapRenderer:
         self._cum_scale = 1.0    # 自上次完整重绘以来的累计缩放倍率
         self._world = None          # ★ World 引用（势力染色用）
         self._county_stats = {}     # ★ {county_id: CountyStat}
+        self._selected_node_id = None   # ★ 左键选中的县
+        self._hover_info = None         # ★ hover 的 info dict 或 None
 
     def set_data(self, geo_data):
         self.data = geo_data
@@ -75,6 +81,8 @@ class MapRenderer:
         self._draw_geometry()
         self._drawn = True
         self.refresh_dynamic()     # 水/路/点/标签（动态）
+        self._redraw_selected()    # ★ 全量重绘后恢复选中 / hover 高亮
+        self._redraw_hover()
                 
 
     def pan(self, dx, dy):
@@ -686,3 +694,120 @@ class MapRenderer:
                 )
             except Exception:
                 pass          # 与其它 render_* 保持一致的静默策略
+
+    # ==========================================================
+    # 高亮层（选中 / hover）
+    # ==========================================================
+    def set_selected(self, node_id):
+        """左键选中一个县（None = 取消选中），只更新高亮，不触发业务逻辑。"""
+        if self._selected_node_id == node_id:
+            return
+        self._selected_node_id = node_id
+        self._redraw_selected()
+
+    def set_hover(self, info):
+        """hover 信息（dict 或 None）。dict 含 node_id / state / county。"""
+        self._hover_info = info
+        self._redraw_hover()
+
+    def _redraw_selected(self):
+        self.canvas.delete(self.SELECT_TAG)
+        if self._selected_node_id:
+            self._highlight_node(
+                self._selected_node_id, self.SELECT_TAG,
+                border=True, border_color="#00C8FF", border_width=2,
+            )
+
+    def _redraw_hover(self):
+        self.canvas.delete(self.HOVER_TAG)
+        info = self._hover_info
+        if not info:
+            return
+        opts = MAP_INTERACTION
+        nid = info.get("node_id")
+
+        border = opts.get("highlight_hover_border", True)
+        fill = opts.get("highlight_hover_fill", True)
+        faction_all = opts.get("highlight_hover_faction_all", False)
+
+        if nid and (border or fill or faction_all):
+            node_ids = [nid]
+            if faction_all and self._world:
+                node = self._world.node(nid)
+                if node is not None and node.owner is not None:
+                    node_ids = [n.id for n in self._world.nodes.values()
+                                if n.owner == node.owner]
+            for hid in node_ids:
+                self._highlight_node(
+                    hid, self.HOVER_TAG,
+                    border=border, fill=fill,
+                )
+
+        if opts.get("highlight_hover_region", False):
+            self._highlight_region(info)
+
+    def _highlight_node(self, nid, tag, border=False, fill=False,
+                        border_color="#00BFFF", border_width=2):
+        """在县界上叠一层高亮（描边 / 填充）。"""
+        ring = self._node_ring(nid)
+        if ring is None:
+            return
+        pts = self._project_ring(ring)
+        if len(pts) < 6:
+            return
+        if fill:
+            owner_color = self._node_owner_color(nid)
+            fill_color = lighten_color(owner_color, 0.45) if owner_color else "#F5F5F5"
+            self.canvas.create_polygon(
+                *pts, fill=fill_color, outline="", tags=(tag,),
+            )
+        if border:
+            self.canvas.create_line(
+                *pts, fill=border_color, width=border_width, tags=(tag,),
+            )
+
+    def _highlight_region(self, info):
+        """region 开关：hover 到州 / 郡时，高亮整片郡面。"""
+        county = info.get("county")
+        if county:
+            ring = self._county_ring(county)
+            if ring:
+                pts = self._project_ring(ring)
+                if len(pts) >= 6:
+                    self.canvas.create_polygon(
+                        *pts, fill="#FFFFFF", outline="#FF9800",
+                        width=2, stipple="gray50", tags=(self.HOVER_TAG,),
+                    )
+
+    def _node_ring(self, nid):
+        for feat in getattr(self.data, "shapes_city_boundary", None) or []:
+            props = feat.get("properties") or {}
+            if props.get("id") == nid:
+                return feat["geometry"]["coordinates"]
+        return None
+
+    def _county_ring(self, county_name):
+        for feat in getattr(self.data, "shapes_line", None) or []:
+            props = feat.get("properties") or {}
+            if props.get("郡名") == county_name:
+                return feat["geometry"]["coordinates"]
+        return None
+
+    def _project_ring(self, ring):
+        """把闭合环投影成画布像素坐标，并确保首尾闭合。"""
+        pts = []
+        for lon, lat in ring:
+            x, y = self.viewport.project(lon, lat)
+            pts.extend((x, y))
+        if pts and (pts[0] != pts[-2] or pts[1] != pts[-1]):
+            pts.extend((pts[0], pts[1]))
+        return pts
+
+    def _node_owner_color(self, nid):
+        if not self._world:
+            return None
+        node = self._world.node(nid)
+        if node is None or node.owner is None:
+            return None
+        f = self._world.faction(node.owner)
+        return f.color if f else None

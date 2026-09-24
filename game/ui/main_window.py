@@ -15,7 +15,7 @@ from tkinter import ttk, filedialog, messagebox
 from tkinter import font as tkfont
 
 from game.config import constants as C
-from game.config.style import THEME, FONT_CANDIDATES
+from game.config.style import THEME, FONT_CANDIDATES, MAP_INTERACTION
 from game.core.game_state import GameState
 from game.ui.top_bar import TopBar
 from game.ui.status_bar import StatusBar
@@ -42,6 +42,8 @@ class MainWindow:
         self.settings = SettingsManager()
         self.settings.apply()
         self.game_state = GameState()
+        self._tooltip = None       # hover 浮窗
+        self._map_menus = []       # 地图右键菜单引用（防 GC）
 
         self._setup_theme()
         self._build_layout()
@@ -100,6 +102,7 @@ class MainWindow:
         pane.add(self.side_panel, weight=1)
 
         self.map_canvas.set_location_callback(self._on_location_change)
+        self.map_canvas.set_right_click_callback(self._on_map_right_click)
 
         # ---------- 底部状态栏 ----------
         self.status_bar = StatusBar(root, self.font_family)
@@ -204,6 +207,7 @@ class MainWindow:
         """info 为 None 或 dict。"""
         if not info:
             self.status_bar.set_location("")
+            self._hide_tooltip()
             return
 
         parts = [p for p in (info.get("state"),
@@ -217,6 +221,7 @@ class MainWindow:
         lat = info.get("lat", 0.0)
         text = " · ".join(parts) + f"   （{lon:.2f}°E, {lat:.2f}°N）"
         self.status_bar.set_location(text)
+        self._update_tooltip(info)
 
     def _faction_at(self, node_id):
         """按据点 id 查势力名；无主 → None。"""
@@ -230,6 +235,112 @@ class MainWindow:
             return None
         f = world.faction(node.owner)
         return f.name if f else None
+
+    # ==========================================================
+    # hover tooltip
+    # ==========================================================
+    def _update_tooltip(self, info):
+        if not MAP_INTERACTION.get("highlight_hover_tooltip", True):
+            self._hide_tooltip()
+            return
+        node_id = info.get("node_id")
+        if not node_id:
+            self._hide_tooltip()
+            return
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            self._hide_tooltip()
+            return
+        node = world.node(node_id)
+        if node is None:
+            self._hide_tooltip()
+            return
+
+        faction_name = "无主"
+        if node.owner:
+            f = world.faction(node.owner)
+            faction_name = f.name if f else "无主"
+        text = f"{node.name}\n势力：{faction_name}\n驻军：{node.troops:,}"
+
+        px = info.get("px", 0)
+        py = info.get("py", 0)
+        rootx = self.map_canvas.canvas.winfo_rootx()
+        rooty = self.map_canvas.canvas.winfo_rooty()
+        self._show_tooltip(text, rootx + px + 14, rooty + py + 14)
+
+    def _show_tooltip(self, text, x, y):
+        if self._tooltip is None:
+            self._tooltip = tk.Toplevel(self.root)
+            self._tooltip.overrideredirect(True)
+            try:
+                self._tooltip.attributes("-topmost", True)
+            except Exception:
+                pass
+            self._tooltip_lbl = tk.Label(
+                self._tooltip, text=text, bg="#FFFFE0", fg="#333333",
+                relief="solid", bd=1, padx=8, pady=4, justify="left",
+                font=(self.font_family, 10),
+            )
+            self._tooltip_lbl.pack()
+        else:
+            self._tooltip_lbl.config(text=text)
+        self._tooltip.geometry(f"+{x}+{y}")
+
+    def _hide_tooltip(self):
+        if self._tooltip is not None:
+            try:
+                self._tooltip.destroy()
+            except Exception:
+                pass
+            self._tooltip = None
+
+    # ==========================================================
+    # 地图右键菜单
+    # ==========================================================
+    def _on_map_right_click(self, node_id, event):
+        menu = tk.Menu(self.root, tearoff=0)
+        self._map_menus.append(menu)
+        if node_id:
+            self._build_node_context_menu(menu, node_id)
+        else:
+            self._build_empty_context_menu(menu)
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+
+    def _build_node_context_menu(self, menu, node_id):
+        menu.add_command(label="据点情报",
+                         command=lambda: self._map_intel("node", node_id))
+        menu.add_command(label="人物情报",
+                         command=lambda: self._map_intel("character", node_id))
+        menu.add_command(label="势力情报",
+                         command=lambda: self._map_intel("faction", node_id))
+        menu.add_separator()
+        locate = tk.Menu(menu, tearoff=0)
+        locate.add_command(label="据点",
+                           command=lambda: self._locate_to_list("node", node_id))
+        locate.add_command(label="人物", state="disabled")
+        locate.add_command(label="势力", state="disabled")
+        locate.add_command(label="部队", state="disabled")
+        menu.add_cascade(label="定位到列表", menu=locate)
+
+    def _build_empty_context_menu(self, menu):
+        menu.add_command(label="复位视图", command=self.map_canvas.reset_view)
+        menu.add_command(label="放大", command=lambda: self.map_canvas.zoom(1.25))
+        menu.add_command(label="缩小",
+                         command=lambda: self.map_canvas.zoom(1 / 1.25))
+
+    def _map_intel(self, kind, node_id):
+        print(f"[地图情报] kind={kind} node={node_id}")
+
+    # ==========================================================
+    # 双向定位（地图 → 列表）
+    # ==========================================================
+    def _locate_to_list(self, tab_key, node_id):
+        panel = self.side_panel.select_panel(tab_key)
+        if panel is not None and hasattr(panel, "scroll_to_row"):
+            panel.scroll_to_row(node_id)
 
     def _on_zoom_change(self, scale):
         self.status_bar.set_zoom(f"缩放 {scale:.1f}")

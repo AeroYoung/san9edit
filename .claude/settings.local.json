@@ -11,7 +11,8 @@
       "Bash(python -m py_compile game/config/style.py game/map/renderer.py)",
       "Bash(rm -rf game/__pycache__ game/map/__pycache__ game/config/__pycache__ game/core/__pycache__ game/ui/__pycache__)",
       "Bash(python -m py_compile game/map/renderer.py game/map/geo_data.py game/ui/map_canvas.py)",
-      "Bash(python -m py_compile game/config/constants.py game/config/style.py game/map/geo_data.py game/map/renderer.py game/ui/map_canvas.py)"
+      "Bash(python -m py_compile game/config/constants.py game/config/style.py game/map/geo_data.py game/map/renderer.py game/ui/map_canvas.py)",
+      "Bash(python -m py_compile game/map/renderer.py game/ui/map_canvas.py game/ui/main_window.py game/ui/side_panel.py game/config/style.py game/config/settings_manager.py game/config/settings_schema.py game/ui/panels/list/panel.py game/ui/panels/list/model.py game/ui/panels/list/context_menu.py game/ui/panels/faction_panel.py game/ui/panels/node_panel.py game/ui/panels/character_panel.py game/ui/panels/troop_panel.py)"
     ]
   }
 }

@@ -28,7 +28,7 @@ class GroupBar(ttk.Frame):
         self._order_label = ttk.Label(self, text="", foreground="#555")
         self._order_label.pack(side="left", padx=(8, 0))
 
-        # ★ 应用初始选中（不触发 on_change）
+        # 应用初始选中（不触发 on_change）
         if initial_selected:
             for key in initial_selected:
                 if key in self._vars:

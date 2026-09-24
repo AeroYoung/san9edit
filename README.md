@@ -1,6 +1,6 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**势力面板色块**（带黑边，行高自适应）、**hover 显示势力名**（方案 B：MapCanvas 传 dict，MainWindow 拼装）、**`_city_index` 加 id 字段**（3 元组 → 4 元组）。新增 §9.13 变更日志。
+> 本轮更新重点：**Panel 通用框架**（4 个面板收敛到 `panels/list/` 框架，具体面板只写配置）、**搜索**（实时 / 多词 AND / 保留分组结构）、**地图点选 + 选中高亮**、**hover 高亮（5 开关）**、**地图右键菜单**、**双向定位**。新增 §9.14 变更日志。
 
 ---
 
@@ -20,7 +20,10 @@
 | **所在** | `Character.location` | 人**现在**在哪儿，**运行时可变** |
 | **染色层** | `render_territory` 画的县面 | **地图上唯一的着色图层**，不吃 LOD |
 | **势力色块** | `FactionPanel` 里势力名前的 ■ | ★ 带黑边，边长 = 行高 − 2 |
-| **hover 回调契约** | `MapCanvas._location_callback(dict \| None)` | ★ 本轮从 `str` 改成 `dict` |
+| **hover 回调契约** | `MapCanvas._location_callback(dict \| None)` | dict 含 state/county/city/node_id/lon/lat/px/py |
+| **选中高亮** | `renderer._selected_node_id` / `SELECT_TAG` | 左键点选的县，描边加粗 2px 亮青 |
+| **hover 高亮层** | `renderer._hover_info` / `HOVER_TAG` | 悬停县高亮，受 `MAP_INTERACTION` 5 开关控制 |
+| **反向定位** | `GenericListPanel.scroll_to_row(key)` | 地图 → 列表：切 Tab + 滚动 + 选中 + 展开组 |
 | **主官 / 人物数** | （预留，未实现） | 将来由剧本 / `world.characters_at` 提供 |
 
 **「县 = 据点」的核心约定：**
@@ -98,6 +101,12 @@
 - ✅ **`character_id_range`**：剧本级人物 id 过滤（穿越人物排除机制）
 - ✅ **190 剧本定稿**：**52 势力 / 498 人物 / ~550 据点**
 - ✅ **所属 vs 所在**概念：`node` / `location` 分离
+- ✅ **Panel 通用框架**：4 面板共享 `panels/list/`，具体面板只写配置
+- ✅ **搜索**：实时 / 多词 AND / 保留分组结构 / 清空按钮
+- ✅ **地图点选 + 选中高亮**：只点县、单选、描边加粗、再点/点空白取消
+- ✅ **hover 高亮**：5 开关（描边 / 填充 / 整个势力 / tooltip / 区域）
+- ✅ **地图右键菜单**：县上（情报 + 定位到列表）/ 空白（复位 / 放大 / 缩小）
+- ✅ **双向定位**：地图 → 列表（切 Tab + 滚动 + 选中）/ 列表 → 地图
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
 - ❌ 主官 / 人物数 / 情报三项右键均为占位
@@ -108,75 +117,87 @@
 
 ```
 san9edit/
-├── main.py
-├── README.md
-├── tools/
-│   ├── build_characters.py           从 xlsx/csv 生成 characters.json
-│   └── build_scenario_190.py         生成 190 年默认剧本
-├── assets/
-│   ├── map.geojson
+├── main.py                            程序入口：MainWindow().run()
+├── README.md                          本文档
+├── 需求文档.md                        本轮需求（Panel 框架 + 地图交互）
+├── tools/                             离线生成工具（不参与运行时）
+│   ├── build_characters.py           从 xlsx/csv 生成 assets/characters.json
+│   ├── build_scenario_190.py         生成 190 年默认剧本
+│   ├── characters/                   人物原始数据（xlsx + 生成脚本）
+│   └── map/                          地图预处理脚本（预处理 / 精简 / 县边界…）
+├── assets/                            静态数据
+│   ├── map.geojson                   中国全图（13 州 / 106 郡 / 1372 县）
 │   ├── characters.json               1049 位人物基础数据
-│   ├── roads.geojson
-│   ├── water.geojson
-│   └── mountains.geojson             未接入
+│   ├── roads.geojson / water.geojson / mountains.geojson   路网 / 水域 / 山地（山未接入）
 ├── scenarios/
-│   └── default.json                  190 剧本（52 势力 / 498 人物 / 550 据点）
+│   └── default.json                  190 剧本（52 势力 / 498 人物 / ~550 据点）
 ├── userdata/
-│   └── settings.json
-└── game/
-    ├── config/
-    │   ├── constants.py
-    │   ├── style.py
-    │   ├── settings_manager.py
-    │   └── settings_schema.py
-    ├── core/
-    │   ├── game_state.py
-    │   ├── utils.py
-    │   ├── faction.py
-    │   ├── character.py              44 字段（node / location 分离）
-    │   ├── node.py
-    │   ├── world.py
-    │   ├── scenario.py               三层人物加载 + character_id_range
-    │   └── territory.py
-    ├── map/
-    │   ├── geo_data.py               ★ _city_index 加 id；新增 find_location_detail
-    │   ├── viewport.py
-    │   └── renderer.py               render_territory 去掉 LOD 粗筛
-    └── ui/
-        ├── main_window.py            ★ _on_location_change 接收 dict + 查势力
-        ├── top_bar.py
-        ├── status_bar.py
-        ├── map_canvas.py             ★ hover 回调传 dict / None
-        ├── map_controller.py
-        ├── side_panel.py
-        ├── settings_window.py
-        ├── window_utils.py
-        ├── widgets/collapsible.py
-        └── panels/
-            ├── faction_panel.py      ★ 势力色块（带黑边，行高自适应）
-            ├── character_panel.py
-            ├── troop_panel.py
-            ├── character/
-            │   ├── __init__.py
-            │   ├── panel.py          refresh 加玩家势力置顶
-            │   ├── model.py
-            │   ├── columns.py
-            │   ├── sorting.py
-            │   ├── grouping.py       build_tree 加 priority_name
-            │   ├── group_bar.py
-            │   └── context_menu.py
-            └── node/
-                ├── __init__.py
-                ├── panel.py
-                ├── model.py
-                ├── columns.py
-                ├── sorting.py
-                ├── grouping.py
-                ├── group_bar.py
-                └── context_menu.py
+│   └── settings.json                 用户设置覆盖（只存与默认不同的项）
+└── game/                             运行时主包
+    ├── config/                        配置层（无业务逻辑）
+    │   ├── constants.py              路径常量 + 窗口常量
+    │   ├── style.py                  主题 THEME / 字号 FONT_SIZES / 地图样式 MAP_STYLE
+    │   │                              / 分级显隐 CITY_LEVEL_MIN_SCALE / 图层 LAYER_VISIBILITY
+    │   │                              / ★ hover 开关 MAP_INTERACTION
+    │   ├── settings_manager.py       设置加载 / 保存 / 就地写回 style 模块
+    │   └── settings_schema.py        设置窗口元数据（Tabs / Groups / Items）
+    ├── core/                          核心数据层（与 UI 无关）
+    │   ├── game_state.py             回合 / 日期 / 玩家势力 / 资源（信息栏数据源）
+    │   ├── world.py                  World：势力 / 人物 / 据点的聚合容器 + 查询
+    │   ├── faction.py                Faction：势力（stance 相对玩家）
+    │   ├── character.py              Character：人物（44 字段，node / location 分离）
+    │   ├── node.py                   Node：县 = 据点（静态 + 动态 owner/troops）
+    │   ├── scenario.py               剧本加载（三层人物 + character_id_range）
+    │   ├── territory.py              郡级势力统计（保留，暂不消费）
+    │   └── utils.py                  颜色（lighten/darken）/ 几何工具
+    ├── map/                           地图层（投影 + 渲染）
+    │   ├── geo_data.py               GeoData：加载 / 分类 / 空间查询 find_location_detail
+    │   ├── viewport.py               Viewport：经纬度 ⇄ 像素投影 / 缩放 / 平移
+    │   └── renderer.py               MapRenderer：图层渲染 + ★ 选中/hover 高亮层
+    └── ui/                            UI 层
+        ├── main_window.py            装配工：布局 + hover 拼状态栏 + tooltip
+        │                             + 地图右键菜单 + 双向定位
+        ├── top_bar.py                顶部信息栏（200ms 轮询）+ 下拉菜单 +「进行」按钮
+        ├── status_bar.py             底部状态栏（消息 / 缩放 / 位置）
+        ├── map_canvas.py             MapCanvas：地图画布 + 鼠标（拖拽/缩放/点选/右键/hover）
+        ├── map_controller.py         面板访问地图的唯一接口（fit_to_node / center_on…）
+        ├── side_panel.py             右侧 Tab 集合 + 面板注册 + select_panel（反向定位切 Tab）
+        ├── settings_window.py        设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
+        ├── window_utils.py           窗口工具（最大化 / 居中）
+        ├── widgets/
+        │   └── collapsible.py        折叠区块（设置窗口分组用）
+        └── panels/                   右侧四个面板
+            ├── list/                 ★ 通用列表框架（通用代码唯一集中点）
+            │   ├── panel.py          GenericListPanel 基类：UI 组装 + 排序/分组/搜索
+            │   │                     /右键/多选/双向定位调度
+            │   ├── columns.py        Column 列定义（含 image 列渲染扩展点）
+            │   ├── model.py          Group 分组树节点（title/children/tags/row_tag）
+            │   ├── sorting.py        按列排序（空值/"—" 永远排最后）
+            │   ├── grouping.py       默认维度分组（正交 + priority_name 置顶）
+            │   ├── group_bar.py      分组条（点选顺序 = 嵌套顺序）
+            │   ├── search_bar.py     搜索框（实时 + 清空按钮 + parse_query 扩展点）
+            │   └── context_menu.py   MenuItem / MenuContext + 菜单构建器
+            ├── node_panel.py         据点面板（纯配置：NodeRow + COLUMNS + 分组 + 右键）
+            ├── character_panel.py    人物面板（纯配置 + priority_name 玩家置顶）
+            ├── faction_panel.py      势力面板（固定分组 build_groups + 色块 image 扩展点）
+            └── troop_panel.py        部队面板（空壳接入框架，数据留白）
 ```
 
 **依赖方向单向**：`main → ui → core/map → config`。
+
+### 2.1 `panels/list/` 框架与具体面板的分工
+
+| 关注点 | 框架（`list/`）负责 | 具体面板只写 |
+|---|---|---|
+| 列表 | Treeview 构建、列宽/对齐、滚动条、`group` tag | `COLUMNS` / `NAME_COLUMN` |
+| 排序 | 列头点击切换升降序、空值排最后 | （无需） |
+| 分组 | 默认维度分组（`GROUP_DIMS` + GroupBar） | `GROUP_DIMS` / `DEFAULT_GROUP` / `PRIORITY_NAME` |
+| 固定分组 | `CUSTOM_GROUPING` 时走 `build_groups()` 回调 | `build_groups()`（势力用） |
+| 搜索 | 过滤调度、多词 AND、保留分组结构 | （无需） |
+| 右键菜单 | 菜单弹出、多选上下文、`MenuItem` 构建 | `context_menu_items()` |
+| 列渲染 | `Column.image` 扩展点（文本前加图片） | `image` 取值函数（势力色块） |
+| 定位到地图 | `locate_on_map()` 默认按 `node_id/coords` | （可选覆盖） |
+| 反向定位 | `scroll_to_row()` 展开祖先 + 滚动 + 选中 | `row_key()` |
 
 ---
 
@@ -576,13 +597,19 @@ def refresh(self):
             )
 ```
 
-### 5.23 `game/ui/panels/character/`
+### 5.23 ★ `game/ui/panels/list/`（本轮新增框架）
 
-`grouping.py::build_tree` 加 `priority_name` 参数；`panel.py::refresh` 传 `priority_name`。上一轮改动，未变。
+通用列表面板框架，核心 `GenericListPanel`（`panel.py`），分工见 §2.1：
+
+- **构建 UI**：搜索框 + 分组条 + Treeview + 滚动条（`_build_ui`）
+- **调度**：排序（`_on_heading_click`）、分组（`_build_groups`）、搜索（`_apply_search`）
+- **右键**：`_on_right_click` 拼 `MenuContext` → `context_menu_items` 配置 → `build_menu` 弹出
+- **多选**：`extended` + `_on_select_all`（Ctrl+A）
+- **双向定位**：`scroll_to_row`（展开祖先 + 滚动 + 选中）、`locate_on_map`（默认 `node_id/coords`）
 
 ### 5.24 其它
 
-`faction.py` / `game_state.py` / `utils.py` / `node.py` / `world.py` / `territory.py` / `viewport.py` / `map_controller.py` / `settings_*` / `style.py` 未改动。
+`faction.py` / `game_state.py` / `utils.py` / `node.py` / `world.py` / `territory.py` / `viewport.py` / `top_bar.py` / `status_bar.py` / `settings_window.py` / `window_utils.py` / `collapsible.py` / `constants.py` 未改动。
 
 ---
 
@@ -613,13 +640,20 @@ def refresh(self):
 | 滚轮 / 拖拽 | `viewport.zoom / pan_pixels` → `renderer.zoom / pan` |
 | 顶部信息栏 | 200ms 轮询 `game_state.get_display_items()` |
 | 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()` |
-| 据点右键 → 定位 | `context_menu._locate` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
-| 据点右键 → 展开/折叠 | `context_menu._set_all_open` → `tree.item(open=...)` 递归 |
-| 据点列头点击 | `_on_heading_click` → `self._sort_key/_sort_desc` → `refresh` |
+| 据点右键 → 定位 | `MenuItem「定位到地图」` → `GenericListPanel.locate_on_map` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
+| 据点右键 → 展开/折叠 | `MenuItem「全部展开/折叠」` → `GenericListPanel._toggle_all` → `tree.item(open=...)` 递归 |
+| 据点列头点击 | `_on_heading_click` → `_sort_key/_sort_desc` → `refresh` |
 | 据点分组切换 | `GroupBar._toggle` → `on_change` → `NodePanel.refresh` |
-| 人物列头点击 | `CharacterPanel._on_heading_click` → `refresh` |
-| 人物右键 → 定位到据点 | `context_menu._locate` → `MapController.fit_to_node` |
+| 人物列头点击 | `_on_heading_click` → `refresh` |
+| 人物右键 → 定位到据点 | `MenuItem「定位到据点」` → `GenericListPanel.locate_on_map` → `MapController.fit_to_node` |
 | 人物分组切换 | `GroupBar._toggle` → `on_change` → `CharacterPanel.refresh` → **`priority_name` 玩家置顶** |
+| ★ 搜索输入 | `SearchBar._on_write` → `_on_search_change` → `refresh`（过滤在分组前） |
+| ★ 左键点选 | `_on_release`（位移≤4px）→ `_handle_click` → `renderer.set_selected` → `_redraw_selected` |
+| ★ hover 高亮 | `_process_motion` → `renderer.set_hover` → `_redraw_hover`（吃 5 开关） |
+| ★ hover tooltip | `_process_motion` → `_location_callback` → `MainWindow._on_location_change` → `_update_tooltip` |
+| ★ 地图右键（县上） | `MapCanvas._on_right_click` → `MainWindow._on_map_right_click` → `_build_node_context_menu` |
+| ★ 地图右键（空白） | `_on_map_right_click(node_id=None)` → `_build_empty_context_menu`（复位/放大/缩小） |
+| ★ 反向定位 | 右键「定位到列表→据点」→ `_locate_to_list` → `side_panel.select_panel` → `NodePanel.scroll_to_row` |
 
 ### 6.5 模块协作关系
 
@@ -637,13 +671,14 @@ main.py
                     │                   map.renderer ─── map.geo_data
                     │                                  └ core.territory（保留）
                     │   ★ hover 回调 → MainWindow._on_location_change
-                    │                    ↳ 查 World 拼势力名 → status_bar
+                    │        ↳ 查 World 拼势力名 → status_bar / tooltip
+                    │   ★ 右键回调 → MainWindow._on_map_right_click → 双向定位
                     ├─ ui.map_controller
                     ├─ ui.settings_window
-                    └─ ui.side_panel ──── panels.faction_panel ★ 色块
-                                       ├─ panels.node ── map_controller
-                                       ├─ panels.character ── map_controller ★ 置顶
-                                       └─ panels.troop_panel
+                    └─ ui.side_panel ──── panels.faction_panel ──┐
+                                       ├─ panels.node_panel ─────┤
+                                       ├─ panels.character_panel ┤── panels.list（通用框架）
+                                       └─ panels.troop_panel ────┘
                        config.constants
 tools.build_characters ──── assets/characters.json
 tools.build_scenario_190 ── scenarios/default.json
@@ -678,12 +713,18 @@ tools.build_scenario_190 ── scenarios/default.json
 | 据点面板默认分组 | `["state", "county"]` | `GroupBar.initial_selected` |
 | 人物面板默认分组 | `["faction"]` | `GroupBar.initial_selected` |
 | 人物面板玩家势力置顶 | `priority_name=faction.name` | 只对最外层生效 |
-| **势力色块尺寸** | **`行高 − 2`** | ★ 动态计算（`_compute_swatch_size`） |
+| **势力色块尺寸** | **`行高 − 6`** | ★ 动态计算（`_compute_swatch_size`，最小 8） |
 | **势力色块黑边** | **`1 px`** | ★ `img.put("#000000", to=(0,0,size,size))` |
 | `character_id_range` 默认 | `[1, 1000]` | 排除穿越人物 |
 | `character_id_range` 不写 | `[1, 9999]` | 全部加载 |
 | 190 剧本势力 / 人物 / 据点 | `52 / 498 / ~550` | 定稿 |
 | `Character._DEFAULT_STAT` | `50` | 五维缺省值 |
+| **选中描边** | **`#00C8FF` / `2px`** | `renderer.SELECT_TAG` |
+| **hover 描边** | **`#00BFFF` / `2px`** | `renderer.HOVER_TAG` |
+| **hover 填充** | **`lighten_color(color, 0.45)`** | 蒙白 45%（无主县 `#F5F5F5`） |
+| **点击判定阈值** | **`4 px`** | 位移 ≤ 4px 算点击，否则拖拽 |
+| **面板 selectmode** | **`extended`** | 多选（Ctrl / Shift / Ctrl+A） |
+| **`MAP_INTERACTION` 默认** | tooltip 开；border / fill / faction_all / region 关 | 5 开关 |
 
 ---
 
@@ -715,6 +756,10 @@ tools.build_scenario_190 ── scenarios/default.json
 | **人物面板势力分组顺序可调** | **未实现（目前仅玩家置顶 + 其余字典序）** |
 | **hover 近邻兜底显示势力** | **未实现（见 §8.3 第 135 条）** |
 | **势力色块间距可调** | **未实现（受 ttk 主题控制，不可直接调）** |
+| **搜索正则 / 跨字段 / 拼音** | **只留 `parse_query` 接口，未实现** |
+| **反向定位（人物 / 势力 / 部队）** | **占位，`state="disabled"`** |
+| **region 高亮州面** | **只做郡面（基础版），州面 MultiPolygon 未做** |
+| **地图情报三项右键** | **占位，只 `print`** |
 
 ### 8.2 数据层缺失
 
@@ -850,3 +895,56 @@ tools.build_scenario_190 ── scenarios/default.json
 ---
 
 **本轮核心变动集中在 §0（hover 回调契约）**、**§3.9（CityIndex 4 元组）**、**§5.19 / 5.20 / 5.21 / 5.22（geo_data / map_canvas / main_window / faction_panel）**、**§6.4（hover 链路）**、**§7.3（色块尺寸常量）**、**§8.3 第 134–140 条**、**§9.13**。
+
+---
+
+### 9.14 Panel 通用框架 + 地图交互（第十五轮）
+
+#### 需求
+
+1. **Panel 通用框架**：4 个面板（据点 / 人物 / 势力 / 部队）共享一套基础设施，具体面板只写配置
+2. **搜索**：实时 / 包含匹配 / 多词 AND / 保留分组结构 / 清空按钮
+3. **地图交互**：左键点选 + 选中高亮；hover 高亮（5 开关）；地图右键菜单（县上 / 空白两种）
+4. **双向定位**：地图 → 列表（右键触发）、列表 → 地图（`fit_to_node`）
+
+#### 改动
+
+**新增**：
+- `game/ui/panels/list/` —— 通用框架 9 文件（panel / columns / model / sorting / grouping / group_bar / search_bar / context_menu）
+- `game/ui/panels/node_panel.py` —— 据点面板（纯配置）
+
+**重写**（瘦身为配置）：
+- `character_panel.py` / `faction_panel.py` / `troop_panel.py`
+
+**删除**（旧包，代码并入框架）：
+- `game/ui/panels/node/`、`game/ui/panels/character/` 共 16 文件
+
+**地图层**：
+- `renderer.py` —— 新增选中 / hover 高亮层（`SELECT_TAG` / `HOVER_TAG`）
+- `map_canvas.py` —— 点选（拖拽/点击判定）、右键回调、hover 高亮触发、`px/py` 传递
+- `main_window.py` —— 地图右键菜单、tooltip 浮窗、`_locate_to_list` 双向定位
+- `side_panel.py` —— 面板注册 `panels` 字典 + `select_panel`（反向定位切 Tab）
+
+**配置层**：
+- `style.py` —— 新增 `MAP_INTERACTION`（5 开关）
+- `settings_manager.py` —— `_DEFAULTS` + `apply` 接入 `MAP_INTERACTION`
+- `settings_schema.py` —— 新增「操作」Tab 下的「地图悬停互动」分组 + 5 个 bool 项
+
+#### 设计决策
+
+- **三个框架扩展点**（需求 2.4 的三处差异）：
+  - 势力「固定分组」→ `CUSTOM_GROUPING` + `build_groups()` 回调
+  - 势力「色块」→ `Column.image` 列渲染扩展点
+  - 人物「玩家置顶」→ `priority_name()` 动态方法
+- **分组树抽象 `Group`**：`title / children / tags / open / row_tag`，同时承载组头配色与行配色
+- **hover 高亮用独立图层 tag**：删旧画新，不污染底层数据；pan/zoom 走 `move/scale` 自动跟随
+- **点选不触发业务逻辑**：只更新 `renderer._selected_node_id` + 高亮，不滚动列表 / 不弹窗 / 不查 World
+- **反向定位 `_syncing` 防递归**：`scroll_to_row` 期间置位，阻止列表 → 地图回触发
+- **搜索过滤在分组前**：过滤只作用于叶子行，组内有匹配行才显示该组（空组隐藏）
+
+#### 待办（本轮明确记录）
+
+- `highlight_hover_region` 为基础版：只高亮郡面，州面（MultiPolygon）未做
+- 反向定位其余 3 项（人物 / 势力 / 部队）占位，`state="disabled"`
+- 搜索正则 / 跨字段 / 拼音只留 `parse_query` 接口，未实现
+- 地图情报三项右键仍为 `print` 占位

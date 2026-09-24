@@ -186,3 +186,15 @@ LAYER_VISIBILITY = {
     "territory": True,      # ★ 郡面势力染色
     "city": True,
 }
+
+# ============================================================
+# 地图 hover 互动（需求 3.2）
+# ============================================================
+# 5 个开关，全部在设置窗口「操作」Tab 下，全局生效，不分 panel。
+MAP_INTERACTION = {
+    "highlight_hover_border":      False,    # hover 县描边加粗变亮
+    "highlight_hover_fill":        False,    # hover 县填充变亮
+    "highlight_hover_faction_all": False,   # 所属势力的所有县同时高亮
+    "highlight_hover_tooltip":     True,    # tooltip：县名 + 势力 + 驻军
+    "highlight_hover_region":      False,   # hover 州/郡边界高亮整片区域
+}

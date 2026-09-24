@@ -69,6 +69,9 @@ GROUPS = [
 
     {"key": "visibility", "tab": "appearance", "title": "图层显隐",
      "desc": "各图层总开关。关闭后该层完全不绘制。"},
+
+    {"key": "map_interaction", "tab": "operation", "title": "地图悬停互动",
+     "desc": "鼠标在地图上悬停 / 点选时的视觉反馈。全局生效，不分面板。"},
 ]
 
 # ============================================================
@@ -272,6 +275,23 @@ ITEMS = [
      "label": "县名标签"},
     {"path": "LAYER_VISIBILITY.city", "group": "visibility", "type": "bool",
     "label": "县界"},
+
+    # ---------------- 地图悬停互动 ----------------
+    {"path": "MAP_INTERACTION.highlight_hover_border", "group": "map_interaction",
+     "type": "bool", "label": "悬停县描边高亮",
+     "desc": "悬停的县描边加粗变亮（1px → 2px 亮色）。"},
+    {"path": "MAP_INTERACTION.highlight_hover_fill", "group": "map_interaction",
+     "type": "bool", "label": "悬停县填充高亮",
+     "desc": "悬停的县填充色变亮（蒙一层白）。"},
+    {"path": "MAP_INTERACTION.highlight_hover_faction_all", "group": "map_interaction",
+     "type": "bool", "label": "悬停高亮整个势力",
+     "desc": "悬停县所属势力的所有县同时高亮。"},
+    {"path": "MAP_INTERACTION.highlight_hover_tooltip", "group": "map_interaction",
+     "type": "bool", "label": "悬停弹提示框",
+     "desc": "弹出 tooltip：县名 + 势力 + 驻军。"},
+    {"path": "MAP_INTERACTION.highlight_hover_region", "group": "map_interaction",
+     "type": "bool", "label": "悬停高亮整片区域",
+     "desc": "悬停州 / 郡边界时高亮整片区域。"},
 ]
 
 
