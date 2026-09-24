@@ -252,19 +252,24 @@ class GeoData:
         self._build_city_index() 
 
     def _build_city_index(self):
-        """县界多边形索引。仅收有 boundary 的项。"""
+        """县界多边形索引。仅收有 boundary 的项。
+
+        每项 = (bbox, 县名, ring, 县 id)
+        """
         self._city_index = []
         feats = getattr(self, "shapes_city_boundary", None) or []
         for feat in feats:
             ring = feat["geometry"]["coordinates"]
             if len(ring) < 3:
                 continue
-            name = feat["properties"].get("县名")
-            if not name:
+            props = feat["properties"]
+            name = props.get("县名")
+            nid = props.get("id")           # ★ 新增
+            if not name or not nid:
                 continue
             bbox = feat["bbox"]
-            self._city_index.append((bbox, name, ring))
-
+            self._city_index.append((bbox, name, ring, nid))    # ★ 4 元组
+    
     @staticmethod
     def _ring_bbox(ring):
         xs = [p[0] for p in ring]
@@ -321,7 +326,7 @@ class GeoData:
         """
         best_name = None
         best_area = None
-        for (minx, miny, maxx, maxy), name, ring in self._city_index:
+        for (minx, miny, maxx, maxy), name, ring, nid in self._city_index:   # ★ 4 元组
             if not (minx <= lon <= maxx and miny <= lat <= maxy):
                 continue
             if not point_in_polygon(lon, lat, ring):
@@ -331,6 +336,40 @@ class GeoData:
                 best_area, best_name = area, name
         return best_name
 
+    def _find_city_with_id(self, lon, lat):
+        """和 find_city_at 同逻辑，但同时返回县 id。
+
+        返回 (县名, 县 id)；未命中 → (None, None)。
+        """
+        best_name = None
+        best_id = None
+        best_area = None
+        for (minx, miny, maxx, maxy), name, ring, nid in self._city_index:
+            if not (minx <= lon <= maxx and miny <= lat <= maxy):
+                continue
+            if not point_in_polygon(lon, lat, ring):
+                continue
+            area = (maxx - minx) * (maxy - miny)
+            if best_area is None or area < best_area:
+                best_area, best_name, best_id = area, name, nid
+        return best_name, best_id
+
+    def find_location_detail(self, lon, lat):
+        """给 MapCanvas hover 用。返回带 node_id 的 dict。"""
+        state = self.find_state_at(lon, lat)
+        county = self.find_county_at(lon, lat)
+
+        city_name, node_id = self._find_city_with_id(lon, lat)
+        if city_name is None:
+            # 兜底：用标签近邻找县名，但拿不到 id
+            city_name = self.find_nearest_label(lon, lat, self.labels_city, 0.4)
+
+        return {
+            "state":   state,
+            "county":  county,
+            "city":    city_name,
+            "node_id": node_id,
+        }
 
     @staticmethod
     def find_nearest_label(lon, lat, candidates, max_dist):

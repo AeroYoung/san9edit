@@ -8926,120 +8926,6 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "雒县—绵竹",
-        "road_type": "郡内道",
-        "from_id": "110401",
-        "from_name": "雒县",
-        "from_type": "城",
-        "from_level": 2,
-        "from_county": "广汉郡",
-        "from_county_id": "1104",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110410",
-        "to_name": "绵竹",
-        "to_type": "城",
-        "to_level": 9,
-        "to_county": "广汉郡",
-        "to_county_id": "1104",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": null,
-        "mountains_crossed": [],
-        "waters_crossed": [],
-        "length_km": 23.93,
-        "length_deg": 0.2161,
-        "point_count": 2,
-        "difficulty": 1.3,
-        "effective_length_km": 31.11,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.0,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            104.36435724768887,
-            31.021647346447935
-          ],
-          [
-            104.4072127,
-            31.2334825
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name": "什邡—雒县",
-        "road_type": "郡内道",
-        "from_id": "110404",
-        "from_name": "什邡",
-        "from_type": "城",
-        "from_level": 9,
-        "from_county": "广汉郡",
-        "from_county_id": "1104",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110401",
-        "to_name": "雒县",
-        "to_type": "城",
-        "to_level": 2,
-        "to_county": "广汉郡",
-        "to_county_id": "1104",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": "需设桥/渡",
-        "mountains_crossed": [],
-        "waters_crossed": [
-          "绵水-郫水"
-        ],
-        "length_km": 21.9,
-        "length_deg": 0.2214,
-        "point_count": 2,
-        "difficulty": 1.35,
-        "effective_length_km": 29.57,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.05,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            104.1678362,
-            31.1235329
-          ],
-          [
-            104.36435724768887,
-            31.021647346447935
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "name": "休屠—姑臧",
         "road_type": "郡内道",
         "from_id": "050714",
@@ -10170,62 +10056,6 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "武阳—广都",
-        "road_type": "郡间道",
-        "from_id": "110601",
-        "from_name": "武阳",
-        "from_type": "城",
-        "from_level": 2,
-        "from_county": "犍为郡",
-        "from_county_id": "1106",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110503",
-        "to_name": "广都",
-        "to_type": "城",
-        "to_level": 9,
-        "to_county": "蜀郡",
-        "to_county_id": "1105",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": null,
-        "mountains_crossed": [],
-        "waters_crossed": [],
-        "length_km": 37.25,
-        "length_deg": 0.3379,
-        "point_count": 2,
-        "difficulty": 1.3,
-        "effective_length_km": 48.43,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.0,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            103.99287876963956,
-            30.20090680080824
-          ],
-          [
-            104.0863257,
-            30.5256752
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "name": "上虞—山阴",
         "road_type": "郡内道",
         "from_id": "100207",
@@ -10760,7 +10590,7 @@
         "to_id": "110401",
         "to_name": "雒县",
         "to_type": "城",
-        "to_level": 2,
+        "to_level": 5,
         "to_county": "广汉郡",
         "to_county_id": "1104",
         "to_state": "益州",
@@ -12241,62 +12071,6 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "郪县—雒县",
-        "road_type": "郡内道",
-        "from_id": "110402",
-        "from_name": "郪县",
-        "from_type": "城",
-        "from_level": 9,
-        "from_county": "广汉郡",
-        "from_county_id": "1104",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110401",
-        "to_name": "雒县",
-        "to_type": "城",
-        "to_level": 2,
-        "to_county": "广汉郡",
-        "to_county_id": "1104",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": null,
-        "mountains_crossed": [],
-        "waters_crossed": [],
-        "length_km": 62.95,
-        "length_deg": 0.6396,
-        "point_count": 2,
-        "difficulty": 1.3,
-        "effective_length_km": 81.84,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.0,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            104.9464722,
-            30.7566259
-          ],
-          [
-            104.36435724768887,
-            31.021647346447935
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "name": "平舆—陈县",
         "road_type": "郡间道",
         "from_id": "130401",
@@ -12348,64 +12122,6 @@
           [
             114.90180929456335,
             33.74692168458813
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name": "南安—武阳",
-        "road_type": "郡内道",
-        "from_id": "110603",
-        "from_name": "南安",
-        "from_type": "城",
-        "from_level": 9,
-        "from_county": "犍为郡",
-        "from_county_id": "1106",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110601",
-        "to_name": "武阳",
-        "to_type": "城",
-        "to_level": 2,
-        "to_county": "犍为郡",
-        "to_county_id": "1106",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": "需设桥/渡",
-        "mountains_crossed": [],
-        "waters_crossed": [
-          "古江水"
-        ],
-        "length_km": 73.83,
-        "length_deg": 0.675,
-        "point_count": 2,
-        "difficulty": 1.45,
-        "effective_length_km": 107.06,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.15,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            103.7410535,
-            29.5746395
-          ],
-          [
-            103.99287876963956,
-            30.20090680080824
           ]
         ]
       }
@@ -12811,6 +12527,64 @@
           [
             114.3227071,
             33.9762652
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "临邛—成都",
+        "road_type": "郡内道",
+        "from_id": "110504",
+        "from_name": "临邛",
+        "from_type": "城",
+        "from_level": 9,
+        "from_county": "蜀郡",
+        "from_county_id": "1105",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110501",
+        "to_name": "成都",
+        "to_type": "城",
+        "to_level": 2,
+        "to_county": "蜀郡",
+        "to_county_id": "1105",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": "需设桥/渡",
+        "mountains_crossed": [],
+        "waters_crossed": [
+          "古江水"
+        ],
+        "length_km": 72.03,
+        "length_deg": 0.7379,
+        "point_count": 2,
+        "difficulty": 1.45,
+        "effective_length_km": 104.44,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.15,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            103.4660062,
+            30.4215854
+          ],
+          [
+            104.16388765808898,
+            30.66115900288571
           ]
         ]
       }
@@ -13332,64 +13106,6 @@
           [
             118.3473255,
             31.7240457
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name": "汉嘉—武阳",
-        "road_type": "郡间道",
-        "from_id": "110701",
-        "from_name": "汉嘉",
-        "from_type": "城",
-        "from_level": 4,
-        "from_county": "蜀郡属国",
-        "from_county_id": "1107",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110601",
-        "to_name": "武阳",
-        "to_type": "城",
-        "to_level": 2,
-        "to_county": "犍为郡",
-        "to_county_id": "1106",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": "需设桥/渡",
-        "mountains_crossed": [],
-        "waters_crossed": [
-          "古江水"
-        ],
-        "length_km": 80.96,
-        "length_deg": 0.8414,
-        "point_count": 2,
-        "difficulty": 1.45,
-        "effective_length_km": 117.39,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.15,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            103.15230442630826,
-            30.23716383784091
-          ],
-          [
-            103.99287876963956,
-            30.20090680080824
           ]
         ]
       }
@@ -22553,22 +22269,22 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "临邛—汉嘉",
+        "name": "汉嘉—临邛",
         "road_type": "郡间道",
-        "from_id": "110504",
-        "from_name": "临邛",
+        "from_id": "110701",
+        "from_name": "汉嘉",
         "from_type": "城",
-        "from_level": 9,
-        "from_county": "蜀郡",
-        "from_county_id": "1105",
+        "from_level": 4,
+        "from_county": "蜀郡属国",
+        "from_county_id": "1107",
         "from_state": "益州",
         "from_state_id": "11",
-        "to_id": "110701",
-        "to_name": "汉嘉",
+        "to_id": "110504",
+        "to_name": "临邛",
         "to_type": "城",
-        "to_level": 4,
-        "to_county": "蜀郡属国",
-        "to_county_id": "1107",
+        "to_level": 9,
+        "to_county": "蜀郡",
+        "to_county_id": "1105",
         "to_state": "益州",
         "to_state_id": "11",
         "mountain_pass": null,
@@ -22596,12 +22312,12 @@
         "type": "LineString",
         "coordinates": [
           [
-            103.4660062,
-            30.4215854
-          ],
-          [
             103.15230442630826,
             30.23716383784091
+          ],
+          [
+            103.4660062,
+            30.4215854
           ]
         ]
       }
@@ -27471,6 +27187,62 @@
     {
       "type": "Feature",
       "properties": {
+        "name": "雒县—绵竹",
+        "road_type": "郡内道",
+        "from_id": "110401",
+        "from_name": "雒县",
+        "from_type": "城",
+        "from_level": 5,
+        "from_county": "广汉郡",
+        "from_county_id": "1104",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110410",
+        "to_name": "绵竹",
+        "to_type": "城",
+        "to_level": 9,
+        "to_county": "广汉郡",
+        "to_county_id": "1104",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": null,
+        "mountains_crossed": [],
+        "waters_crossed": [],
+        "length_km": 23.93,
+        "length_deg": 0.2161,
+        "point_count": 2,
+        "difficulty": 1.3,
+        "effective_length_km": 31.11,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.0,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            104.36435724768887,
+            31.021647346447935
+          ],
+          [
+            104.4072127,
+            31.2334825
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "name": "元城—魏县",
         "road_type": "郡内道",
         "from_id": "020120",
@@ -27520,6 +27292,64 @@
           [
             115.1080046,
             36.2337863
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "什邡—雒县",
+        "road_type": "郡内道",
+        "from_id": "110404",
+        "from_name": "什邡",
+        "from_type": "城",
+        "from_level": 9,
+        "from_county": "广汉郡",
+        "from_county_id": "1104",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110401",
+        "to_name": "雒县",
+        "to_type": "城",
+        "to_level": 5,
+        "to_county": "广汉郡",
+        "to_county_id": "1104",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": "需设桥/渡",
+        "mountains_crossed": [],
+        "waters_crossed": [
+          "绵水-郫水"
+        ],
+        "length_km": 21.9,
+        "length_deg": 0.2214,
+        "point_count": 2,
+        "difficulty": 1.35,
+        "effective_length_km": 29.57,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.05,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            104.1678362,
+            31.1235329
+          ],
+          [
+            104.36435724768887,
+            31.021647346447935
           ]
         ]
       }
@@ -28543,6 +28373,62 @@
           [
             110.1489492,
             40.5888629
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "武阳—广都",
+        "road_type": "郡间道",
+        "from_id": "110601",
+        "from_name": "武阳",
+        "from_type": "城",
+        "from_level": 5,
+        "from_county": "犍为郡",
+        "from_county_id": "1106",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110503",
+        "to_name": "广都",
+        "to_type": "城",
+        "to_level": 9,
+        "to_county": "蜀郡",
+        "to_county_id": "1105",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": null,
+        "mountains_crossed": [],
+        "waters_crossed": [],
+        "length_km": 37.25,
+        "length_deg": 0.3379,
+        "point_count": 2,
+        "difficulty": 1.3,
+        "effective_length_km": 48.43,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.0,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            103.99287876963956,
+            30.20090680080824
+          ],
+          [
+            104.0863257,
+            30.5256752
           ]
         ]
       }
@@ -29588,6 +29474,62 @@
     {
       "type": "Feature",
       "properties": {
+        "name": "郪县—雒县",
+        "road_type": "郡内道",
+        "from_id": "110402",
+        "from_name": "郪县",
+        "from_type": "城",
+        "from_level": 9,
+        "from_county": "广汉郡",
+        "from_county_id": "1104",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110401",
+        "to_name": "雒县",
+        "to_type": "城",
+        "to_level": 5,
+        "to_county": "广汉郡",
+        "to_county_id": "1104",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": null,
+        "mountains_crossed": [],
+        "waters_crossed": [],
+        "length_km": 62.95,
+        "length_deg": 0.6396,
+        "point_count": 2,
+        "difficulty": 1.3,
+        "effective_length_km": 81.84,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.0,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            104.9464722,
+            30.7566259
+          ],
+          [
+            104.36435724768887,
+            31.021647346447935
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
         "name": "美稷—沙陵",
         "road_type": "郡间道",
         "from_id": "010612",
@@ -29639,6 +29581,64 @@
           [
             111.1246066,
             40.3238103
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "南安—武阳",
+        "road_type": "郡内道",
+        "from_id": "110603",
+        "from_name": "南安",
+        "from_type": "城",
+        "from_level": 9,
+        "from_county": "犍为郡",
+        "from_county_id": "1106",
+        "from_state": "益州",
+        "from_state_id": "11",
+        "to_id": "110601",
+        "to_name": "武阳",
+        "to_type": "城",
+        "to_level": 5,
+        "to_county": "犍为郡",
+        "to_county_id": "1106",
+        "to_state": "益州",
+        "to_state_id": "11",
+        "mountain_pass": null,
+        "mountain_pass_id": null,
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": "需设桥/渡",
+        "mountains_crossed": [],
+        "waters_crossed": [
+          "古江水"
+        ],
+        "length_km": 73.83,
+        "length_deg": 0.675,
+        "point_count": 2,
+        "difficulty": 1.45,
+        "effective_length_km": 107.06,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.0,
+          "water_bonus": 0.15,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            103.7410535,
+            29.5746395
+          ],
+          [
+            103.99287876963956,
+            30.20090680080824
           ]
         ]
       }
@@ -62727,64 +62727,6 @@
           [
             121.2093714,
             30.0149927
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
-        "name": "广都—江原",
-        "road_type": "郡内道",
-        "from_id": "110503",
-        "from_name": "广都",
-        "from_type": "城",
-        "from_level": 9,
-        "from_county": "蜀郡",
-        "from_county_id": "1105",
-        "from_state": "益州",
-        "from_state_id": "11",
-        "to_id": "110505",
-        "to_name": "江原",
-        "to_type": "城",
-        "to_level": 9,
-        "to_county": "蜀郡",
-        "to_county_id": "1105",
-        "to_state": "益州",
-        "to_state_id": "11",
-        "mountain_pass": null,
-        "mountain_pass_id": null,
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": "需设桥/渡",
-        "mountains_crossed": [],
-        "waters_crossed": [
-          "古江水"
-        ],
-        "length_km": 27.04,
-        "length_deg": 0.2805,
-        "point_count": 2,
-        "difficulty": 1.45,
-        "effective_length_km": 39.21,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.0,
-          "water_bonus": 0.15,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            104.0863257,
-            30.5256752
-          ],
-          [
-            103.8103584,
-            30.5760088
           ]
         ]
       }

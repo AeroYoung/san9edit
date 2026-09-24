@@ -7,24 +7,33 @@
     敌对：stance <  0
     中立：其余
 空组也显示（带 (0) 计数），结构稳定。
+
+势力名左侧带一个势力色小方块（PhotoImage）。
 """
 
+import tkinter as tk
 from tkinter import ttk
 
 
 class FactionPanel(ttk.Frame):
-    # 每个分组的 key / 标题 / 标签后缀
+    # 每个分组的 key / 标题
     _GROUPS = [
         ("player",  "玩家势力"),
         ("ally",    "盟友"),
         ("hostile", "敌对"),
         ("neutral", "中立"),
     ]
-
+    
     def __init__(self, master, game_state):
         super().__init__(master, padding=8)
         self.game_state = game_state
 
+        # ★ 色块缓存：PhotoImage 必须保活，否则 GC 后显示空白
+        self._swatches = {}
+        # ★ 动态算色块边长 = 略小于行高
+        
+        self._SWATCH_SIZE = self._compute_swatch_size()
+        print(f"[FactionPanel] 行高={self._SWATCH_SIZE + 2}, 色块={self._SWATCH_SIZE}")
         # ---------- 头部 ----------
         header = ttk.Frame(self)
         header.pack(fill="x")
@@ -78,11 +87,63 @@ class FactionPanel(ttk.Frame):
         # 首次刷新（此时 world 可能还是 None，refresh 里会安全返回）
         self.refresh()
 
+    @staticmethod
+    def _compute_swatch_size():
+        """读 ttk 主题行高，返回比行高略小的色块边长。
+
+        优先级：
+            1. Style.lookup("Treeview", "rowheight")
+            2. TkDefaultFont 的 linespace + 6（补偿 ttk padding）
+        """
+        import tkinter.font as tkfont
+
+        row_h = None
+        try:
+            style = ttk.Style()
+            v = style.lookup("Treeview", "rowheight")
+            if v:
+                row_h = int(v)
+        except Exception:
+            pass
+
+        if not row_h:
+            try:
+                f = tkfont.nametofont("TkDefaultFont")
+                row_h = f.metrics("linespace") + 6
+            except Exception:
+                row_h = 20
+
+        # 色块比行高小 2 像素 —— "小一点点"
+        return max(8, row_h - 6)
+
+    # ------------------------------------------------------------
+    # 色块
+    # ------------------------------------------------------------
+    def _make_swatch(self, color):
+        """生成一个带黑色边框的纯色小方块 PhotoImage。
+
+        做法：先整块填黑，再在内部 (1,1)-(size-1,size-1) 填势力色，
+        自然形成 1 像素黑色边框。
+        """
+        size = self._SWATCH_SIZE
+        img = tk.PhotoImage(width=size, height=size)
+
+        # 1) 整块填黑（当边框用）
+        img.put("#000000", to=(0, 0, size, size))
+
+        # 2) 内部填势力色（留 1 像素边框）
+        try:
+            img.put(color, to=(1, 1, size - 1, size - 1))
+        except tk.TclError:
+            img.put("#888888", to=(1, 1, size - 1, size - 1))
+        return img
+
     # ------------------------------------------------------------
     def refresh(self):
         # 清空
         for item in self.tree.get_children():
             self.tree.delete(item)
+        self._swatches.clear()      # ★ 释放旧的色块引用
 
         world = getattr(self.game_state, "world", None)
         if world is None or not getattr(world, "factions", None):
@@ -98,9 +159,14 @@ class FactionPanel(ttk.Frame):
                 tags=(f"group_{key}",),
             )
             for f in factions:
+                # ★ 生成 + 缓存色块
+                swatch = self._make_swatch(f.color)
+                self._swatches[f.id] = swatch
+
                 self.tree.insert(
                     header, "end",
-                    text=f.name,
+                    text=f.name,           # 势力名
+                    image=swatch,          # ★ 色块（在名字左边）
                     values=(
                         self._ruler_name(world, f),
                         f"{f.prestige:,}",
@@ -128,7 +194,7 @@ class FactionPanel(ttk.Frame):
             else:
                 buckets["neutral"].append(f)
 
-        # 组内按威望降序（好看一点）
+        # 组内按威望降序
         for key in buckets:
             buckets[key].sort(key=lambda x: (-x.prestige, x.name))
         return buckets

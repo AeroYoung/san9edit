@@ -247,18 +247,15 @@ class MapCanvas(ttk.Frame):
             return
         x, y = self._pending_mouse
         lon, lat = self.viewport.unproject(x, y)
-        state, county, city = self.data.find_location(lon, lat)
-        parts = [p for p in (state, county, city) if p]
-        if parts:
-            text = " · ".join(parts) + f"   （{lon:.2f}°E, {lat:.2f}°N）"
-        else:
-            text = f"{lon:.2f}°E, {lat:.2f}°N"
-        self._location_callback(text)
+        info = self.data.find_location_detail(lon, lat)   # ★ 新方法
+        info["lon"] = lon
+        info["lat"] = lat
+        self._location_callback(info)                      # ★ 传 dict
 
     def _on_leave(self, event):
         if self._location_callback:
-            self._location_callback("")
-
+            self._location_callback(None)                  # ★ "" → None
+    
     # ==========================================================
     # 渲染
     # ==========================================================

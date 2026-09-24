@@ -6740,7 +6740,7 @@
               "id": "110401",
               "name": "雒县",
               "is_capital": true,
-              "level": 2,
+              "level": 5,
               "type": "城"
             },
             {
@@ -6903,7 +6903,7 @@
               "id": "110601",
               "name": "武阳",
               "is_capital": true,
-              "level": 2,
+              "level": 5,
               "type": "城"
             },
             {

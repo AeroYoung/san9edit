@@ -200,8 +200,36 @@ class MainWindow:
     # ==========================================================
     # 事件
     # ==========================================================
-    def _on_location_change(self, text):
+    def _on_location_change(self, info):
+        """info 为 None 或 dict。"""
+        if not info:
+            self.status_bar.set_location("")
+            return
+
+        parts = [p for p in (info.get("state"),
+                            info.get("county"),
+                            info.get("city")) if p]
+        faction = self._faction_at(info.get("node_id"))
+        if faction:
+            parts.append(faction)
+
+        lon = info.get("lon", 0.0)
+        lat = info.get("lat", 0.0)
+        text = " · ".join(parts) + f"   （{lon:.2f}°E, {lat:.2f}°N）"
         self.status_bar.set_location(text)
+
+    def _faction_at(self, node_id):
+        """按据点 id 查势力名；无主 → None。"""
+        if not node_id:
+            return None
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            return None
+        node = world.node(node_id)
+        if node is None or node.owner is None:
+            return None
+        f = world.faction(node.owner)
+        return f.name if f else None
 
     def _on_zoom_change(self, scale):
         self.status_bar.set_zoom(f"缩放 {scale:.1f}")
@@ -278,7 +306,6 @@ class MainWindow:
             except Exception:
                 pass
         self.status_bar.set_message("设置已保存")
-
 
     def _confirm_and_new_game(self):
         if messagebox.askyesno("新游戏",

@@ -94,7 +94,7 @@ class CharacterPanel(ttk.Frame):
     def _on_intel(self, kind, row):
         print(f"[人物情报] kind={kind} id={row.id} {row.display_name}")
 
-        def refresh(self):
+    def refresh(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
         self._item_rows = {}

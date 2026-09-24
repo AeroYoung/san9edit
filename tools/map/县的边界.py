@@ -6,9 +6,16 @@ from shapely.geometry import Polygon, Point
 from shapely.ops import transform, unary_union
 from shapely.validation import make_valid
 from pyproj import CRS, Transformer
+from pathlib import Path
 
+# 当前脚本所在目录
+BASE_DIR = Path(__file__).resolve().parent
+
+INPUT_FILE = BASE_DIR / "map_processed.geojson"
+OUTPUT_FILE = BASE_DIR / "map_with_boundaries.geojson"
 
 AREA_TOL = 1e-6   # 面积阈值（度²），小于此值视为 rounding 误差
+
 
 
 # ============================================================
@@ -703,7 +710,7 @@ def check_before(data, area_tol=AREA_TOL):
 
 def main():
     print("读取 map_processed.geojson ...")
-    with open("map_processed.geojson", encoding="utf-8") as f:
+    with open(INPUT_FILE, encoding="utf-8") as f:
         data = json.load(f)
 
     print("\n[0] 修复前状态检查 ...")
@@ -960,10 +967,9 @@ def main():
         for county in state["counties"]:
             county.pop("_poly", None)
 
-    out = "map_with_boundaries.geojson"
-    with open(out, "w", encoding="utf-8") as f:
+    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    print(f"\n已输出: {out}")
+    print(f"\n已输出: {OUTPUT_FILE}")
 
     # ---------- Step 6 ----------
     print("\n[6] 修复后检查 ...")

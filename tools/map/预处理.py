@@ -1,7 +1,11 @@
 import json
+from pathlib import Path
 
-INPUT_FILE = "map.geojson"
-OUTPUT_FILE = "map_processed.geojson"
+# 当前脚本所在目录
+BASE_DIR = Path(__file__).resolve().parent
+
+INPUT_FILE = BASE_DIR / "map.geojson"
+OUTPUT_FILE = BASE_DIR / "map_processed.geojson"
 
 def main():
     with open(INPUT_FILE, "r", encoding="utf-8") as f:

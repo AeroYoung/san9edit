@@ -19,10 +19,12 @@
 
 import json
 import os
+from pathlib import Path
 
-INPUT_FILE  = "map_processed.geojson"
-OUTPUT_FILE = "map_slim.geojson"
-
+# 当前脚本所在目录
+BASE_DIR = Path(__file__).resolve().parent
+INPUT_FILE = BASE_DIR / "map_processed.geojson"
+OUTPUT_FILE = BASE_DIR / "map_slim.geojson"
 
 def strip_state(state):
     state.pop("name_coords", None)
