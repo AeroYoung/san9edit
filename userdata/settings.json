@@ -1,6 +1,9 @@
 {
   "version": 1,
   "overrides": {
+    "CITY_LEVEL_MIN_SCALE.8": 350,
+    "CITY_LEVEL_MIN_SCALE.9": 350,
+    "CITY_LEVEL_MIN_SCALE.10": 350,
     "LAYER_VISIBILITY.water": true
   }
 }

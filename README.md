@@ -1,6 +1,6 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**县界渲染（黑色虚线）**、**几何层去色（州/郡/县只画黑边）**、**标签去势力色（全部黑色）**、**设置窗口 `#` 颜色报错修复**。新增 §9.3 变更日志。
+> 本轮更新重点：**县界多边形反查县名**（hover 显示州 · 郡 · 县）、修复 **`polygon.fill = "#"` 导致州界渲染静默失败**、记录 **Tk 线宽整数取整** 行为。新增 §9.4 变更日志。
 
 ---
 
@@ -11,23 +11,23 @@
 | 项目名称 | 暗耻三国志（`APP_TITLE`） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | `main.py` → `MainWindow().run()` |
-| 核心功能 | 中国全图矢量渲染（州/郡/**县**三级边界 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、光标反查行政区、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口（外观 / 操作 / 游戏）、剧本系统（NPC/据点初始化 + 玩家势力绑定）、势力关系分组展示、**郡面势力染色（唯一的着色图层）** |
+| 核心功能 | 中国全图矢量渲染（州/郡/县三级边界 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、**光标精确反查州/郡/县**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、势力关系分组展示、**郡面势力染色（唯一着色图层）** |
 | 运行环境 | Python 3 + 标准库 `tkinter`。仅依赖标准库，**无第三方依赖、无 requirements.txt** |
-| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 据点（`states → counties → cities` 三层嵌套；**据点新增 `boundary` 字段**）；`assets/roads.geojson`：约 600 条道路线段；`assets/water.geojson`：205 条河流/湖泊（已接入渲染）；`assets/mountains.geojson`：42 个山地区块（**未接入**） |
-| 剧本来源 | `scenarios/default.json`：默认剧本，启动时自动加载 |
-| 用户数据 | `userdata/settings.json`：设置覆盖文件，仅保存与默认值不同的项 |
-| 平台 | Windows 优先（`maximize()` 兼容 Win/Linux/macOS） |
+| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 据点（`states → counties → cities`；**据点新增 `boundary` 字段**）；`assets/roads.geojson`：约 600 条道路；`assets/water.geojson`：205 条河流/湖泊；`assets/mountains.geojson`：42 个山地区块（未接入） |
+| 剧本来源 | `scenarios/default.json` |
+| 用户数据 | `userdata/settings.json` |
+| 平台 | Windows 优先 |
 
 **当前完成度**：
 
 - ✅ 地图查看器（州/郡/县三级**边界**渲染 + 道路 + 水域 + 图层显隐 + 县点四级样式 + 县名避让）
+- ✅ **县界渲染**（黑色虚线，按 bbox 尺寸分级显隐）
+- ✅ **几何层去色**（州 / 郡 / 县三级边界均黑色描边，州面不填充）
+- ✅ **郡面势力染色**（地图上**唯一**的着色图层）
+- ✅ **hover 精确反查**：鼠标滑过显示 `州 · 郡 · 县`
 - ✅ 多 Tab 设置系统（外观 tab 有内容，操作/游戏 tab 空骨架）
-- ✅ 剧本系统：可加载 JSON 剧本，构造 `World`
-- ✅ 势力面板分组列表（玩家 / 盟友 / 敌对 / 中立四组）
-- ✅ **郡面势力染色**：地图上**唯一**的着色图层
-- ✅ **县界渲染**：黑色虚线，按 bbox 尺寸分级显隐
-- ✅ **几何层去色**：州 / 郡 / 县三级边界均黑色描边，州面不再填充
-- ✅ **标签去势力色**：州名 / 郡名 / 县名 / 县点均为固定颜色（黑或深灰）
+- ✅ 剧本系统
+- ✅ 势力面板分组列表
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
 
@@ -40,7 +40,7 @@ san9edit/
 ├── main.py
 ├── README.md
 ├── assets/
-│   ├── map.geojson                 ★ city 新增 boundary 字段
+│   ├── map.geojson                 city 带 boundary
 │   ├── roads.geojson
 │   ├── water.geojson
 │   └── mountains.geojson           未接入
@@ -51,9 +51,9 @@ san9edit/
 └── game/
     ├── config/
     │   ├── constants.py
-    │   ├── style.py                ★ 本轮：州面透明、三级边界黑、县界虚线、标签黑
-    │   ├── settings_manager.py     待排查：州界宽度保存后是否生效
-    │   └── settings_schema.py      ★ 本轮：删 2 条颜色 ITEM、加县界分组、polygon.width max 调大
+    │   ├── style.py
+    │   ├── settings_manager.py
+    │   └── settings_schema.py
     ├── core/
     │   ├── game_state.py
     │   ├── utils.py
@@ -64,14 +64,14 @@ san9edit/
     │   ├── scenario.py
     │   └── territory.py
     ├── map/
-    │   ├── geo_data.py             ★ 本轮：新增 shapes_city_boundary，from_file 调 _assign_lod
+    │   ├── geo_data.py             ★ 本轮：新增 _city_index / find_city_at
     │   ├── viewport.py
-    │   └── renderer.py             ★ 本轮：CITY_TAG、_LAYER_ORDER 插 "city"、render_city_boundaries、删两个换色方法
+    │   └── renderer.py
     └── ui/
         ├── main_window.py
         ├── top_bar.py
-        ├── status_bar.py
-        ├── map_canvas.py
+        ├── status_bar.py           本轮未改（已天然支持三段显示）
+        ├── map_canvas.py           本轮未改（已天然支持三段拼接）
         ├── side_panel.py
         ├── settings_window.py
         ├── window_utils.py
@@ -91,15 +91,16 @@ san9edit/
 
 ### 3.1 三层 ID 编码
 
-不变：州 2 位 / 郡 4 位 / 据点 6 位。
+州 2 位 / 郡 4 位 / 据点 6 位。
 
 ### 3.2 势力（Faction）
 
-不变。
+`id` = 君主人物 id。字段：`id` / `name` / `color` / `prestige` / `gold` / `food` / `stance`。
+`stance_label()` → `"敌对"` / `"盟友"` / `"中立"`。
 
 ### 3.3 人物（Character）
 
-不变。
+四位 id，五维。
 
 ### 3.4 据点（Node）
 
@@ -107,51 +108,65 @@ san9edit/
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `id` | str | 六位字符串 |
+| `id` | str | 六位 |
 | `name` | str | 名称 |
 | `coords` | tuple | `(lon, lat)` |
 | `type` | str | `县`/`关隘`/`渡口/津`/`仓/监`/`谷`/`山地` |
-| `level` | int | 规模，1（最大）–10（最小） |
+| `level` | int | 1（最大）–10（最小） |
 | `is_capital` | bool | 是否郡治 |
-| **`boundary`** | list | ★ 本轮新增：`[(lon,lat), ...]` 闭合环，**全部据点都有**（含关隘/仓/谷/山地等，部分为非县的极小多边形） |
+| `boundary` | list | 闭合环 `[(lon,lat), ...]`，**全部据点都有**（含关隘/仓/谷/山地，部分为极小多边形） |
 
-**动态字段**（来自剧本覆盖）：`owner` / `troops` / `gold` / `food`。
+**动态字段**（剧本覆盖）：`owner` / `troops` / `gold` / `food`。
 
 **属性**：`state_id` / `county_id` / `is_owned()`。
 
 ### 3.5 游戏世界（World）
 
-不变。
+聚合容器，`factions` / `characters` / `nodes`。
 
 ### 3.6 剧本加载器（ScenarioLoader）
 
-不变。
+`ScenarioLoader.load(path, geo_data)` → `World`。
 
 ### 3.7 郡级控制力统计（CountyStat）
 
-不变。
+**渲染层专用**。控制力算法：
+
+```
+单据点权重 = (11 - level)
+郡治据点再 × 2.0
+郡内总控制力 = Σ 权重(全部据点，含无主)
+势力值 = 控制力_F / 总控制力
+ratio > 0.8   → 主导势力（郡面用原色）
+0.5 < ratio ≤ 0.8 → 主要势力（郡面用变浅色）
+其余          → 郡面不上色
+```
 
 ### 3.8 县界（CityBoundary）
 
-**渲染层专用**，由 `GeoData.shapes_city_boundary` 承载。每个元素：
+**渲染层 + 查询层共用**，由 `GeoData.shapes_city_boundary` 承载。每个元素：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `geometry` | dict | `{"type": "LineString", "coordinates": [ring]}`，ring 是闭合环 |
+| `geometry` | dict | `{"type": "LineString", "coordinates": [ring]}` |
 | `properties` | dict | `{id, 县名, type, level}` |
 | `bbox` | tuple | `(min_lon, min_lat, max_lon, max_lat)` |
-| `size` | float | bbox 对角线长度，供 `_assign_lod` 分级 |
+| `size` | float | bbox 对角线长度 |
 | `min_scale` | float | `_assign_lod` 赋的显示阈值（0/15/45/100 四档） |
 
-**收集规则**：所有 `city` 的 `boundary`，不做 type 过滤。
+### 3.9 县界空间索引（CityIndex）
 
-**LOD 规则**：与水域共用 `_assign_lod`——按 size 从大到小分四档，前 15% 阈值 0，15%–40% 阈值 15，40%–70% 阈值 45，其余阈值 100。
+**本轮新增**。`GeoData._city_index`，结构 `(bbox, 名称, 外环顶点)`，与 `_state_index` / `_county_index` 同构。
+
+- 构建：`_build_index` 末尾调 `_build_city_index`
+- 用途：`find_city_at(lon, lat)` 用 `point_in_polygon` 精确反查县名
+- 只收 `shapes_city_boundary` 中 `boundary` 顶点 ≥ 3 的项
 
 ---
 
 ## 4. 数据格式参考
 
-### 4.1 `assets/map.geojson` 实际结构（本轮更新）
+### 4.1 `assets/map.geojson` 实际结构
 
 ```json
 {
@@ -168,7 +183,7 @@ san9edit/
         "id": "010101", "name": "长子",
         "coords": [lon, lat],
         "is_capital": true, "level": 3, "type": "县",
-        "boundary": [[lon,lat], ...]            // ★ 本轮新增：县/据点边界（闭合环）
+        "boundary": [[lon,lat], ...]            // 县/据点边界
       }]
     }]
   }]
@@ -176,17 +191,18 @@ san9edit/
 ```
 
 **注意**：
-- `boundary` 字段在**所有** type 的 city 上都存在。
-- 非 `县` 类型的 `boundary` 常常是极小的圆环（关隘/仓/谷/山地），视觉上接近一个点，不影响正常渲染。
-- 部分县 boundary 是正常多边形。
+
+- `boundary` 在**所有** type 的 city 上都存在
+- 非 `县` 类型的 `boundary` 常常是极小的圆环（关隘 / 仓 / 谷 / 山地），视觉上接近一个点
+- `fill` 在 `style.py` 里是**空串 `""`**（Tk 合法的"不填充"），**不是 `"#"`**
 
 ### 4.2 `type` 枚举
 
-不变。
+`县` / `关隘` / `渡口/津` / `仓/监` / `谷` / `山地`。
 
 ### 4.3 `scenarios/default.json` 结构
 
-不变。
+version 1。字段与前一版一致。
 
 ---
 
@@ -194,32 +210,64 @@ san9edit/
 
 ### 5.1 `main.py`
 
-不变。
+`main()` → `MainWindow().run()`。
 
 ### 5.2 `game/config/constants.py`
 
-不变。
+路径常量：`ASSETS_DIR` / `DEFAULT_MAP_PATH` / `DEFAULT_WATER_PATH` / `DEFAULT_ROADS_PATH` / `SCENARIOS_DIR` / `DEFAULT_SCENARIO_PATH` / `APP_TITLE` / `MIN_WINDOW_SIZE`。
 
 ### 5.3 – 5.9
 
-`faction.py` / `character.py` / `node.py` / `world.py` / `scenario.py` / `game_state.py` / `utils.py` **均未改动**。
+`faction.py` / `character.py` / `node.py` / `world.py` / `scenario.py` / `game_state.py` / `utils.py` **未改动**。
+
+`utils.lighten_color(hex_color, factor=0.4)` / `darken_color(hex_color, factor=0.5)`：向白 / 黑线性插值。
 
 ### 5.10 `game/core/territory.py`
 
-不变。
+`CountyStat` 数据类 + `compute_county_stats(world)` + `CAPITAL_BONUS = 2.0`。渲染层专用，不进 `World`。
 
 ### 5.11 `game/map/geo_data.py`（★ 本轮改动）
 
-**① `__init__` 新增容器**：
+#### 容器
 
 ```python
-self.shapes_city_boundary = []   # ★ 县界（闭合 ring，虚线轮廓用）
+self.shapes_polygon = []          # 州面
+self.shapes_line = []             # 郡界
+self.shapes_point = []            # 据点（Point）
+self.shapes_city_boundary = []    # ★ 县界（闭合 ring）
+self.shapes_water_line = []
+self.shapes_water_polygon = []
+self.labels_state = []            # [(lon, lat, 州名)]
+self.labels_county = []           # [(lon, lat, 郡名, 郡id)]
+self.labels_city = []             # [(lon, lat, 县名, level, 据点id)]
+self.bbox = None
+self.roads = []
+self._state_index = []            # [(bbox, 州名, ring)]
+self._county_index = []           # [(bbox, 郡名, ring)]
+self._city_index = []             # ★ 本轮新增：[(bbox, 县名, ring)]
 ```
 
-**② `_classify_county` 内，在 `labels_city.append(...)` 之后**：
+#### `from_file`
 
 ```python
-# ★ 新增：县界（所有 type 都收，不做过滤）
+@classmethod
+def from_file(cls, path):
+    with open(path, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    states = raw.get("states") or []
+    data = cls()
+    data._classify(states)
+    data._assign_lod(data.shapes_city_boundary)   # ★
+    data._compute_bbox()
+    data._build_index()
+    return data
+```
+
+#### `_classify_county`
+
+在 `labels_city.append(...)` 之后：
+
+```python
 boundary = city.get("boundary")
 if boundary and len(boundary) >= 3:
     b = self._coords_bbox(boundary)
@@ -237,24 +285,64 @@ if boundary and len(boundary) >= 3:
     })
 ```
 
-**③ `from_file` 里赋 LOD**：
+#### `_build_index`（★ 本轮新增一步）
 
 ```python
-data._classify(states)
-data._assign_lod(data.shapes_city_boundary)   # ★ 新增
-data._compute_bbox()
-data._build_index()
+def _build_index(self):
+    # ... 现有 state / county 索引 ...
+    self._build_city_index()      # ★ 新增
+
+def _build_city_index(self):
+    """县界多边形索引。只收有 boundary 的项。"""
+    self._city_index = []
+    feats = getattr(self, "shapes_city_boundary", None) or []
+    for feat in feats:
+        ring = feat["geometry"]["coordinates"]
+        if len(ring) < 3:
+            continue
+        name = feat["properties"].get("县名")
+        if not name:
+            continue
+        self._city_index.append((feat["bbox"], name, ring))
 ```
 
-**`_compute_bbox` / `_build_index` 不改**：县界不扩展 bbox，也不参与空间反查。
+#### 查询（★ 本轮新增 + 修改）
 
-**`labels_city` 保持五元组**：`(lon, lat, name, level, id)`，id 目前无人消费，保留以备将来。
+```python
+def find_city_at(self, lon, lat):
+    """按县界多边形反查县名。多个命中取 bbox 面积最小的。"""
+    best_name = None
+    best_area = None
+    for (minx, miny, maxx, maxy), name, ring in self._city_index:
+        if not (minx <= lon <= maxx and miny <= lat <= maxy):
+            continue
+        if not point_in_polygon(lon, lat, ring):
+            continue
+        area = (maxx - minx) * (maxy - miny)
+        if best_area is None or area < best_area:
+            best_area, best_name = area, name
+    return best_name
+
+def find_location(self, lon, lat):
+    """返回 (州名, 郡名, 县名)，没有的为 None。
+
+    三级全部多边形反查；县界查不到时退回最近标签兜底。
+    """
+    state  = self.find_state_at(lon, lat)
+    county = self.find_county_at(lon, lat)
+    city   = self.find_city_at(lon, lat)                              # ★ 精确
+    if city is None:
+        city = self.find_nearest_label(lon, lat, self.labels_city, 0.4)  # 兜底
+    return state, county, city
+```
+
+**兜底的必要性**：非"县"类型的 boundary 是极小圆环，鼠标几乎不可能落进去；`find_nearest_label` 接住这种情况。
 
 ### 5.12 `game/map/viewport.py`
 
-不变。
+未改动。`project` / `unproject` / `fit_to_bbox` / `zoom` / `pan_pixels` / `span_px`。
 
-### 5.13 `game/map/renderer.py`（★ 本轮改动）
+### 5.13 `game/map/renderer.py`
 
 #### 类常量
 
@@ -266,12 +354,11 @@ POLYGON_TAG   = "polygon"
 LINE_TAG      = "line"
 POINT_TAG     = "point"
 TERRITORY_TAG = "territory"
-CITY_TAG      = "city"         # ★ 本轮新增：县界
+CITY_TAG      = "city"          # 县界
 
-# 从底到顶
 _LAYER_ORDER = (
     "polygon",      # 州面（透明填充 + 黑描边）
-    "city",         # ★ 县界（黑虚线）
+    "city",         # 县界（黑虚线）
     "territory",    # 郡面势力染色（唯一的着色层）
     "water",
     "road",
@@ -281,165 +368,90 @@ _LAYER_ORDER = (
 )
 ```
 
-#### `_draw_geometry`
+#### 方法
 
-```python
-def _draw_geometry(self):
-    if LAYER_VISIBILITY.get("polygon", True):
-        self.render_polygons()
-    if LAYER_VISIBILITY.get("city", True):      # ★ 新增
-        self.render_city_boundaries()
-    if LAYER_VISIBILITY.get("territory", True):
-        self.render_territory()
-    if LAYER_VISIBILITY.get("line", True):
-        self.render_lines()
-```
+| 方法 | 说明 |
+|---|---|
+| `set_data(geo_data)` | 注入数据 |
+| `set_world(world)` | 注入 World，触发 `_county_stats` 重算；**不负责重绘** |
+| `draw_full()` | 全量重绘 |
+| `pan(dx, dy)` / `zoom(f, mx, my)` | canvas 变换；`_cum_scale` 越界时 `draw_full` |
+| `refresh_dynamic()` | 重建动态层（水/路/点/标签），末尾 `_restack` |
+| `_restack()` | 用 `tag_raise` 从底到顶一遍，空图层免疫 |
+| `_draw_geometry()` | `render_polygons → render_city_boundaries → render_territory → render_lines` |
+| `render_polygons()` / `render_polygon(feat)` | 州面（透明 + 黑描边，`width = base["width"]`） |
+| **`render_city_boundaries()`** | 县界：只画黑色虚线轮廓，`create_line` + `dash` |
+| `render_territory()` | 郡面染色，`outline=color` 避免亚像素缝 |
+| `render_lines()` / `render_line(feat)` | 郡界 |
+| `render_points()` / `render_point(...)` | 县点 |
+| `render_state_labels()` | 州名 |
+| `render_county_labels()` | 郡名（**不再随势力着色**） |
+| `render_city_labels()` | 县名（**不再随势力着色**） |
+| `render_label_group(labels, style_key)` | 通用标签绘制（州名用） |
+| `draw_text(x, y, text, style)` | 单条文字 + halo |
+| `resolve_style(key)` | 按当前 `span_px` 决定字号 |
+| `_visible_bounds(margin_px=20)` | 视口经纬度范围 |
+| `_point_lonlat(feat)` / `_point_radius(level, style)` | 县点辅助 |
+| `_road_width(difficulty)` / `render_roads()` | 道路 |
+| `render_water_polygons()` / `render_water_lines()` | 水域 |
 
-#### 新增方法 `render_city_boundaries`
-
-```python
-def render_city_boundaries(self):
-    """县界：只画黑色虚线轮廓，不填充。
-
-    - 按 LOD（feat["min_scale"]）与视口裁剪粗筛
-    - 所有 type 的据点都画（数据层已收集）
-    - 首尾闭合：create_line 不自动闭合
-    """
-    feats = getattr(self.data, "shapes_city_boundary", None)
-    if not feats:
-        return
-
-    line_style = MAP_STYLE.get("city_line") or {}
-    color = line_style.get("color")
-    if not color:
-        return
-    width = line_style.get("width", 1)
-    dash  = line_style.get("dash", (3, 3))
-
-    vx0, vy0, vx1, vy1 = self._visible_bounds()
-    scale = self.viewport.scale
-
-    for feat in feats:
-        if scale < feat.get("min_scale", 0):
-            continue
-        b = feat["bbox"]
-        if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
-            continue
-        ring = feat["geometry"]["coordinates"]
-        if len(ring) < 3:
-            continue
-        try:
-            pts = []
-            for lon, lat in ring:
-                x, y = self.viewport.project(lon, lat)
-                pts.extend((x, y))
-            if pts[0] != pts[-2] or pts[1] != pts[-1]:
-                pts.extend((pts[0], pts[1]))
-            self.canvas.create_line(
-                *pts, fill=color, width=width, dash=dash,
-                tags=self.CITY_TAG,
-            )
-        except Exception:
-            pass
-```
-
-#### `render_county_labels` 重写
-
-不再调 `_county_label_color`，直接用 `style`：
-
-```python
-for lon, lat, text, cid in labels:
-    x, y = self.viewport.project(lon, lat)
-    if x < -pad or x > w + pad or y < -pad or y > h + pad:
-        continue
-    self.draw_text(x, y, text, style)
-```
-
-#### `render_city_labels` 简化
-
-```python
-for lon, lat, text, level, cid in labels:
-    min_scale = CITY_LEVEL_MIN_SCALE.get(level, default_min)
-    if scale < min_scale:
-        continue
-    x, y = self.viewport.project(lon, lat)
-    if x < -pad or x > w + pad or y < -pad or y > h + pad:
-        continue
-    r = self._point_radius(level, point_style)
-    offset = r + text_half + gap
-    self.draw_text(x, y - offset, text, style)   # ★ 不换色
-```
-
-#### 删除的方法
-
-- `_city_label_color(cid, default)` —— 死代码，删除
-- `_county_label_color(cid, default)` —— 死代码，删除
-
-#### 未变
-
-`draw_full` / `pan` / `zoom` / `refresh_dynamic` / `_restack` / `_visible_bounds` / `render_polygons` / `render_polygon` / `render_territory` / `render_lines` / `render_line` / `render_points` / `render_point` / `_draw_point_shape` / `render_state_labels` / `render_label_group` / `draw_text` / `resolve_style` / `_point_lonlat` / `_point_radius` / `_road_width` / `render_roads` / 水域相关方法。
+**已删除的方法**：`_county_label_color` / `_city_label_color`（不再随势力着色）。
 
 ### 5.14 `game/ui/main_window.py`
 
-不变。
+未改动。`_auto_load_default` → `load_geojson` + `_load_default_scenario`；`_load_default_scenario` 里调 `renderer.set_world(world)` + `map_canvas.redraw()`。
 
 ### 5.15 – 5.19
 
-不变。
+`top_bar.py` / `side_panel.py` / `panels/*` **未改动**。
 
-### 5.20 `game/config/style.py`（★ 本轮改动）
-
-**州面**：
+### 5.20 `game/config/style.py`（当前生效值）
 
 ```python
-"polygon": {
-    "fill":    "",           # ★ 透明：不填充
-    "outline": "#000000",    # ★ 黑：州界
-    "width":   4,            # ★ 最粗
-},
-```
+MAP_STYLE = {
+    "polygon": {
+        "fill":    "",           # 空串 = 不填充（★ 关键：不能写成 "#"）
+        "outline": "#000000",
+        "width":   4,            # 州界最粗
+    },
+    "line": {
+        "color": "#000000",      # 郡界黑实线
+        "width": 1,              # ★ 建议整数（Tk 取整到像素）
+    },
+    "city_line": {
+        "color": "#000000",
+        "width": 1,
+        "dash": (3, 3),          # 虚线
+    },
+    "road": { ... },
+    "point": { ... },
+    "water_polygon": { ... },
+    "water_line": { ... },
+    "territory": {
+        "major_fade": 0.4,
+    },
+    "label_state": {
+        "color": "#1A1A1A", "halo": "#FFFFFF",
+        "size_divisor": 55, "min_size": 11, "max_size": 44,
+        "min_scale": 0, "max_scale": 40,
+    },
+    "label_county": {
+        "color": "#000000", "halo": "#FFFFFF",   # ★ 不随势力
+        "size_divisor": 105, "min_size": 9, "max_size": 22,
+        "min_scale": 12, "max_scale": 150,
+    },
+    "label_city": {
+        "color": "#000000", "halo": "#FFFFFF",   # ★ 不随势力
+        "size_divisor": 140, "min_size": 8, "max_size": 16,
+        "min_scale": 30,
+        "point_gap": 6,
+    },
+}
 
-**郡界**：
-
-```python
-"line": {
-    "color": "#000000",      # ★ 黑
-    "width": 1,
-},
-```
-
-**县界**（新增，代替已废弃的 `city_polygon`）：
-
-```python
-"city_line": {
-    "color": "#000000",      # ★ 黑
-    "width": 1,
-    "dash": (3, 3),          # ★ 虚线
-},
-```
-
-**已删除**：`city_polygon` 整段。
-
-**标签**：
-
-```python
-"label_county": {
-    "color": "#000000",      # ★ 黑（原 #333333）
-    ...
-},
-"label_city": {
-    "color": "#000000",      # ★ 黑（原 #7A3B00）
-    ...
-},
-```
-
-**图层显隐**：
-
-```python
 LAYER_VISIBILITY = {
     "polygon":      True,
-    "city":         True,     # ★ 新增
-    "line":         True,
+    "city":         True,     # 县界
+    "line":         True,     # 郡界
     "point":        True,
     "road":         True,
     "water":        False,
@@ -451,54 +463,44 @@ LAYER_VISIBILITY = {
 }
 ```
 
-**视觉效果总结**：
+**视觉分层总结**：
 
-| 层 | 线型 | 颜色 | 宽度 |
-|---|---|---|---|
-| 州界 | 实线 | 黑 | 4（可调，上限已放到 20） |
-| 郡界 | 实线 | 黑 | 1 |
-| 县界 | 虚线 | 黑 | 1 |
-| 郡面染色 | 实心面 | 势力色 | — |
-| 县点 / 标签 | — | 黑 / 深灰 | — |
+| 层 | 线型 | 颜色 | 宽度 | 备注 |
+|---|---|---|---|---|
+| 州界 | 实线 | 黑 | 4 | 最粗 |
+| 郡界 | 实线 | 黑 | 1 | |
+| 县界 | 虚线 | 黑 | 1 | |
+| 郡面染色 | 实心面 | 势力色 | — | 唯一着色层 |
+| 县点 / 标签 | — | 黑 / 深灰 | — | 不随势力变化 |
 
-### 5.21 `game/config/settings_schema.py`（★ 本轮改动）
+### 5.21 `game/config/settings_schema.py`
 
-**`GROUPS` 新增一组**（在 `"line"` 之后、`"point"` 之前）：
+**`GROUPS`**：
 
-```python
-{"key": "city", "tab": "appearance", "title": "县界样式",
- "desc": "各县据点的边界，黑色虚线。州/郡/县三级边界均不再着色，"
-         "着色由势力染色层负责。"},
-```
+- `theme` / `font` （restart = True）
+- `polygon` / `line` / `city` / `point` / `road` / `water`
+- `label_state` / `label_county` / `label_city`
+- `lod`
+- `territory`
+- `visibility`
 
-**`ITEMS` 变更**：
+**`ITEMS`（与 `style.py` 对应的关键项）**：
 
-- **删除**：`MAP_STYLE.polygon.fill`（颜色，州面填充色）
-- **删除**：`MAP_STYLE.city_polygon.fill`（颜色，县面填充色）
-- **新增**（`city` 分组）：
+| path | group | type | label | 范围 |
+|---|---|---|---|---|
+| `MAP_STYLE.polygon.outline` | polygon | color | 州面描边色 | — |
+| `MAP_STYLE.polygon.width` | polygon | int | 描边宽度 | 0–20 |
+| `MAP_STYLE.line.color` | line | color | 郡界颜色 | — |
+| `MAP_STYLE.line.width` | line | int | 线宽 | 0–8 |
+| `MAP_STYLE.city_line.color` | city | color | 县界轮廓色 | — |
+| `MAP_STYLE.city_line.width` | city | int | 轮廓线宽 | 0–8 |
+| `LAYER_VISIBILITY.city` | visibility | bool | 县界（虚线轮廓） | — |
+| ... | | | | |
 
-```python
-{"path": "MAP_STYLE.city_line.color", "group": "city", "type": "color",
- "label": "县界轮廓色"},
-{"path": "MAP_STYLE.city_line.width", "group": "city", "type": "int",
- "label": "轮廓线宽（像素）", "min": 0, "max": 8},
-```
+**已删除的 ITEM**（无消费方且会触发 `#` 报错）：
 
-- **修改**：`MAP_STYLE.polygon.width` 的 `max` 从 `8` 调到 `20`：
-
-```python
-{"path": "MAP_STYLE.polygon.width", "group": "polygon", "type": "int",
- "label": "描边宽度（像素）", "min": 0, "max": 20},
-```
-
-- **新增**（`visibility` 分组）：
-
-```python
-{"path": "LAYER_VISIBILITY.city", "group": "visibility", "type": "bool",
- "label": "县界（虚线轮廓）"},
-```
-
-**注意**：`dash` 是 tuple，`SettingsManager` 不支持 tuple path，故不出现在设置项里。
+- `MAP_STYLE.polygon.fill`
+- `MAP_STYLE.city_polygon.fill`
 
 ---
 
@@ -506,7 +508,14 @@ LAYER_VISIBILITY = {
 
 ### 6.1 启动阶段
 
-不变。
+```
+python main.py
+└─ MainWindow()
+   ├─ SettingsManager().apply()
+   ├─ GameState()
+   ├─ TopBar / MapCanvas / SidePanel / StatusBar
+   └─ root.after(120, _auto_load_default)
+```
 
 ### 6.2 地图 + 剧本加载流程
 
@@ -514,29 +523,60 @@ LAYER_VISIBILITY = {
 _auto_load_default()
 ├─ load_geojson(assets/map.geojson)
 │  └─ GeoData.from_file
-│     ├─ _classify → shapes_polygon / shapes_line / shapes_point / labels_*
-│     │                ★ shapes_city_boundary 一并收集
-│     ├─ _assign_lod(shapes_city_boundary)   ★ 新增
+│     ├─ _classify → shapes_polygon / shapes_line / shapes_point
+│     │              + shapes_city_boundary + labels_*
+│     ├─ _assign_lod(shapes_city_boundary)
 │     ├─ _compute_bbox
-│     └─ _build_index
-│  └─ MapCanvas.load_geojson → renderer.set_data → draw_full
-│     └─ _draw_geometry 顺序：
-│        render_polygons → render_city_boundaries ★ → render_territory → render_lines
+│     └─ _build_index → _build_city_index()   ★
+│  └─ MapCanvas → renderer.set_data → draw_full
 │
-└─ _load_default_scenario()  （不变）
+└─ _load_default_scenario()
+   ├─ ScenarioLoader.load → World
+   ├─ game_state.sync_from_world(world)
+   ├─ renderer.set_world(world)
+   └─ map_canvas.redraw()
 ```
 
 ### 6.3 主循环交互
 
 | 触发 | 调用链 |
 |---|---|
-| 图层显隐切换 | `refresh_dynamic` → `_restack()` |
+| 鼠标移动 | `_on_motion` → 40ms 节流 `_process_motion` → `viewport.unproject` → `data.find_location(lon, lat)` → `status_bar.set_location(text)` |
+| 滚轮 / 拖拽 | `viewport.zoom / pan_pixels` → `renderer.zoom / pan` |
+| 顶部信息栏 | 200ms 轮询 `game_state.get_display_items()` |
 | 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()` |
-| 县界开关 | `LAYER_VISIBILITY.city` 改后 → `redraw` → `_draw_geometry` 是否调 `render_city_boundaries` |
+
+**hover 反查链（本轮）**：
+
+```
+_process_motion
+  ├─ lon, lat = viewport.unproject(x, y)
+  ├─ state, county, city = data.find_location(lon, lat)
+  │    ├─ find_state_at  → _state_index  + point_in_polygon
+  │    ├─ find_county_at → _county_index + point_in_polygon
+  │    ├─ find_city_at   → _city_index   + point_in_polygon   ★ 新增
+  │    └─ city 为 None 时 → find_nearest_label(labels_city, 0.4) 兜底
+  └─ parts = [p for p in (state, county, city) if p]
+     text = " · ".join(parts) + "   （lon°E, lat°N）"
+```
 
 ### 6.4 模块协作关系
 
-不变。
+```
+main.py
+└─ ui.main_window ──┬─ config.settings_manager ─ config.style
+                    │                            └ config.settings_schema
+                    ├─ core.game_state
+                    ├─ core.scenario ─────── core.world ─── core.faction / character / node
+                    ├─ ui.top_bar
+                    ├─ ui.status_bar
+                    ├─ ui.map_canvas ─── map.viewport
+                    │                   map.renderer ─── map.geo_data ── core.utils
+                    │                                  └ core.territory
+                    ├─ ui.settings_window
+                    └─ ui.side_panel ──── panels.faction_panel / node_panel / character_panel / troop_panel
+                       config.constants
+```
 
 ---
 
@@ -544,16 +584,21 @@ _auto_load_default()
 
 ### 7.1 `constants.py`
 
-不变。
+| 常量 | 值 |
+|---|---|
+| `MIN_WINDOW_SIZE` | `(1024, 640)` |
+| `APP_TITLE` | `"暗耻三国志"` |
+| `DEFAULT_MAP_PATH` | `assets/map.geojson` |
+| `DEFAULT_WATER_PATH` | `assets/water.geojson` |
+| `DEFAULT_ROADS_PATH` | `assets/roads.geojson` |
+| `SCENARIOS_DIR` | `scenarios/` |
+| `DEFAULT_SCENARIO_PATH` | `scenarios/default.json` |
 
 ### 7.2 设置窗口可改
 
-| 项 | 是否需重启 |
+| 项 | 需重启 |
 |---|---|
-| `THEME` / `FONT_SIZES` / `FONT_CANDIDATES` | **是** |
-| `MAP_STYLE.polygon.outline` / `MAP_STYLE.polygon.width` | 否 |
-| `MAP_STYLE.line.*` | 否 |
-| `MAP_STYLE.city_line.*` | 否 |
+| `THEME` / `FONT_SIZES` / `FONT_CANDIDATES` | 是 |
 | `MAP_STYLE.*` 其余 | 否 |
 | `LAYER_VISIBILITY.*` | 否 |
 
@@ -563,12 +608,16 @@ _auto_load_default()
 
 | 位置 | 值 | 含义 |
 |---|---|---|
-| `MapRenderer._LAYER_ORDER` | 见 §5.13 | 图层底→顶（本轮加 `"city"`） |
-| 各 TAG | `"label"/"water"/"road"/"point"/"polygon"/"line"/"territory"/"city"` | 图层锚点 |
-| `MAP_STYLE.polygon.width` 上限 | `20` | 设置窗口允许的最大值 |
+| `MapCanvas._MIN_VALID_SIZE` | `10` | 布局未完成阈值 |
+| `TopBar._REFRESH_INTERVAL_MS` | `200` | 信息栏轮询 |
+| `MapRenderer._LAYER_ORDER` | 见 §5.13 | 图层底→顶 |
+| `GeoData._assign_lod` 四档 | `0 / 15 / 45 / 100` | 所有 LOD 图层共用 |
 | `MAP_STYLE.city_line.dash` | `(3, 3)` | 虚线节奏（tuple，不入设置项） |
-| `GeoData._assign_lod` 四档 | `0 / 15 / 45 / 100` | 所有 LOD 图层的通用阈值 |
-| 县界 `dash` 无法从设置改 | — | 需直接改 `style.py` |
+| `MAP_STYLE.polygon.width` 上限 | `20` | 设置窗口允许的最大值 |
+| `find_city_at` 复杂度 | O(n) + point_in_polygon | n = 1372，节流 40ms 下可接受 |
+| hover 节流 | `40 ms` | `_process_motion` |
+| 标签刷新节流 | `30 ms` | `_schedule_label_refresh` |
+| settle redraw | `180 ms` | 滚轮静默后补绘 |
 
 ---
 
@@ -578,37 +627,39 @@ _auto_load_default()
 
 | 入口 | 现状 |
 |---|---|
-| 保存/新游戏/读档 | 提示"尚未实现" |
-| 内政/军事/外交 | 空实现 |
-| **外交交互** | 只有 `stance` 字段，无改变入口 |
+| 存档 / 新游戏 / 读档 | 提示"尚未实现" |
+| 内政 / 军事 / 外交 | 空实现 |
+| 外交交互 | 只有 `stance` 字段 |
 | 部队面板 | 只清空 |
-| **type 决定能力** | 未区分 |
+| `type` 决定能力 | 未区分 |
 | 设置窗口「操作」「游戏」tab | 骨架 |
-| **县界 / 郡面 hover / 点击** | 不做交互 |
-| **`dash` 可调** | 不支持（tuple path） |
+| 县界 / 郡面 hover | 不做（县界不做 hover 高亮） |
+| `dash` 可调 | 不支持（tuple path） |
 
 ### 8.2 数据层缺失
 
 - `GameState` 只有日期 + 玩家势力 + 3 项资源
 - `mountains.geojson` 未接入
-- 路网与据点/郡界无拓扑关联
-- **势力间无关系矩阵**
+- 路网无拓扑关联
+- 势力间无关系矩阵
 
 ### 8.3 逻辑与性能限制
 
-1. `render_lines` / `render_city_boundaries` 均全量遍历 + bbox 粗筛
+（承接前一版 1–73 条，本轮新增 74–80）
+
+1. `render_lines` / `render_city_boundaries` 全量遍历 + bbox 粗筛
 2. `<Configure>` 全量重绘
-3. 绘制方法外层 `except Exception: pass`
+3. 绘制方法外层 `except Exception: pass` ← **本轮暴露重大风险，见第 74 条**
 4. 标签不做视口预筛
 5. 空间索引线性扫描
 6. `_build_index` 只取外环
-7. 县名匹配固定 0.4°
+7. 县名匹配 0.4° 兜底距离
 8. `midpoint_of_line` 死代码
 9. Tab 索引硬编码
 10. `FactionPanel` 无选中交互
 11. `WINDOW_SIZE` 定义未用
 12. `_cum_scale` 周期性全量重绘
-13. 无测试/打包/lint
+13. 无测试 / 打包 / lint
 14. 道路无 LOD
 15. 动态图层重建 + tag_lower 开销
 16. `CITY_LEVEL_MIN_SCALE` 硬编码
@@ -625,7 +676,7 @@ _auto_load_default()
 27. `theme` / `font` 的 `restart=True` 硬编码
 28. `ITEMS` 与 `style.py` 结构必须一致
 29. `level_table` 的 draft key 是 `path.LEVEL`
-30. 设置保存/关闭路径必须走 `_do_destroy()`
+30. 设置保存 / 关闭路径必须走 `_do_destroy()`
 31. `hidden=True` 要在 `_populate` / `_apply_filter` 两处都跳过
 32. `water.geojson` 加载 `except: pass`
 33. `LAYER_VISIBILITY.water` 默认 `False`
@@ -639,7 +690,7 @@ _auto_load_default()
 41. 多 Tab 结构下 `_apply_filter` 按"当前 tab"作用
 42. `center_on_parent` 分多轮延迟
 43. 方法缩进事故高发
-44. `tag_lower(A, B)` 的 `B` 必须非空（已被 `_restack` 根治）
+44. `tag_lower(A, B)` 的 `B` 必须非空
 45. `load_geojson` 必须在 `reset_view()` 之前保存 `self._geo_data`
 46. 剧本加载依赖 `shapes_point` 的 `id` 字段
 47. 势力 id = 君主 id 是硬约定
@@ -659,27 +710,51 @@ _auto_load_default()
 61. ★ `CountyStat` 是渲染层缓存
 62. ★ 无主据点计入控制力分母
 63. ★ `style.py` 里 `LAYER_VISIBILITY` 段注释和缩进不齐
-
-**本轮新增：**
-
-64. ★ **`MAP_STYLE.polygon.fill = ""` 是合法的"不填充"值，但不是合法的颜色值**。任何 `color` 类型的设置项若读到空串，会构造出 `"#"` 并被 Tk 拒收（`TclError: invalid color name "#"`）。**修法：把这类无实际意义的 color 设置项从 `settings_schema.ITEMS` 删掉**，保留 `style.py` 里的 `""`。
-65. ★ **`city_polygon` 段被彻底移除后，`style.py` 里不能再有它**。若残留 + `fill` 为空串，同样触发第 64 条的报错。
-66. ★ **县界是 `CITY_TAG` 下的独立图层**，位于 `_LAYER_ORDER` 的 `polygon` 与 `territory` 之间。这意味着**有主郡的县界虚线会被势力染色覆盖**（territory 是不透明实色 polygon，画在 city 之上）。若要让虚线与染色共存，把 `"city"` 移到 `"territory"` 之后。
-67. ★ **`shapes_city_boundary` 收集所有 type**：关隘/仓/谷/山地的 boundary 常常是极小的圆环，视觉上接近一个点。当前不做过滤，视觉噪声很小。
-68. ★ **县界 LOD 与水域共用 `_assign_lod`**：四档 `0 / 15 / 45 / 100`，按 bbox 对角线长度。调整出现密度只需改这一个函数。
-69. ★ **`render_city_boundaries` 用 `create_line` 而非 `create_polygon`**：因为 Tk 的 polygon 不支持 `dash`。代价是要手动补首尾闭合。
-70. ★ **`render_city_labels` 的解包变量 `cid` 无人消费但不能删**：`labels_city` 是五元组，删了会解包错误。
-71. ★ **`render_county_labels` 和 `render_city_labels` 都不再查势力色**：郡名 / 县名颜色完全由 `MAP_STYLE.label_*.color` 决定。`_county_label_color` / `_city_label_color` 已删除。
-72. ★ **州 / 郡 / 县三级边界的区分完全靠粗细与虚实**：州 4px 实线、郡 1px 实线、县 1px 虚线，全黑。着色完全交给 `territory` 层。
-73. ★ **州界宽度在设置窗口内受 `max` 限制**：当前 `MAP_STYLE.polygon.width` 的 `max=20`。若在 `style.py` 里直接改到超过 20，设置窗口打开时会读成 20 并可能回写覆盖，看起来像"改了没反应"。**要改上限只能改 `settings_schema.ITEMS` 里的 `max`**。
-74. ⚠️ **待排查：州界宽度改后地图无变化**。可能原因：① `SettingsManager.apply()` 未真正写回 `MAP_STYLE`；② `_on_settings_applied` 未触发 `map_canvas.redraw()`；③ 改的值被 `max` 钳制。需要看 `settings_manager.py` / `settings_window.py` / `main_window._on_settings_applied` 定位。
+64. ★ **`MAP_STYLE.polygon.fill = ""` 是合法的"不填充"值，但不是合法颜色值**。任何 `color` 类型设置项读到空串会构出 `"#"`，Tk 拒收（`TclError: invalid color name "#"`）。**修法：这类无意义的 color 设置项从 `settings_schema.ITEMS` 删掉**
+65. ★ **`city_polygon` 段已彻底移除**，`style.py` 里不能再有
+66. ★ **县界是 `CITY_TAG` 下的独立图层**，位于 `polygon` 与 `territory` 之间。有主郡的县界虚线会被染色覆盖；若要共存，把 `"city"` 移到 `"territory"` 之后
+67. ★ **`shapes_city_boundary` 收集所有 type**：非县类型的极小 boundary 视觉上接近一个点
+68. ★ **县界 LOD 与水域共用 `_assign_lod`**：四档 `0 / 15 / 45 / 100`
+69. ★ **`render_city_boundaries` 用 `create_line` 而非 `create_polygon`**：Tk polygon 不支持 `dash`
+70. ★ **`render_city_labels` 解包变量 `cid` 无人消费但不能删**（五元组）
+71. ★ **`render_county_labels` / `render_city_labels` 都不再查势力色**
+72. ★ **州 / 郡 / 县三级边界区分靠粗细与虚实**：州 4px 实线、郡 1px 实线、县 1px 虚线，全黑
+73. ★ **州界宽度在设置窗口内受 `max` 限制**，要改上限只能改 `settings_schema.ITEMS` 里的 `max`
+74. ★ **`render_polygons` / `render_lines` 的 `except Exception: pass` 是重大排查障碍**。症状："改 `polygon.width` 毫无效果"。真因：`MAP_STYLE.polygon.fill = "#"` → `create_polygon` 抛 `TclError` → 被静默吞 → **整个 polygon 层一个都没画出来**。用户看到的"州界"其实是 `line` 层的郡界。**修法**：① `fill` 写成 `""`（空串）；② 给每个 `render_*` 的 except 加"每种异常只打印一次"的调试日志（见 §8.4 第 1 条）
+75. ★ **Tk 线宽取整到整数像素**：`1.00 ~ 1.49 → 1px`，`1.50 ~ 2.49 → 2px`。所以 `width = 1.42` 和 `1.5` 视觉差别巨大。**写浮点无意义，`MAP_STYLE.line.width` / `polygon.width` 直接用整数**
+76. ★ **`_city_index` 与 `_state_index` / `_county_index` 同构**：`(bbox, 名称, ring)` 三元组列表，构建在 `_build_index` 里
+77. ★ **`find_city_at` 多命中取 bbox 面积最小者**：极小 boundary（关隘/仓/谷/山地）套在县内时，命中县界和极小环两者，取面积小的那个更精确
+78. ★ **`find_location` 的县查询是"精确优先 + 最近兜底"**：`find_city_at` 命中则用精确值；否则 `find_nearest_label(labels_city, 0.4)` 兜底接住极小 boundary 的据点
+79. ★ **hover 反查是 O(n) 线性 + 40ms 节流**：1372 项 bbox 比较，纯 Python 完全够用，无需额外空间结构
+80. ★ **UI 层（`map_canvas` / `status_bar`）对县名显示"零改动"**：`_process_motion` 早已是 `" · ".join(parts)` + `None` 段跳过，`find_location` 一返回县名，状态栏自动补上
 
 ### 8.4 建议的下一步
 
-1. **排查州界宽度不生效**（见 8.3 第 74 条）
-2. **决定县界与染色层的相对位置**（见 8.3 第 66 条）
+1. **给 `render_*` 的 `except` 加"首次异常打印"**（防止第 74 条重演）：
+
+```python
+_warned = set()   # 类属性
+
+def render_polygons(self):
+    min_lon, min_lat, max_lon, max_lat = self._visible_bounds()
+    for feat in self.data.shapes_polygon:
+        b = feat["bbox"]
+        if b[2] < min_lon or b[0] > max_lon or b[3] < min_lat or b[1] > max_lat:
+            continue
+        try:
+            self.render_polygon(feat)
+        except Exception as e:
+            key = type(e).__name__
+            if key not in MapRenderer._warned:
+                MapRenderer._warned.add(key)
+                print(f"[renderer] {key}: {e}")
+```
+
+`render_lines` / `render_city_boundaries` / `render_points` 同理。
+
+2. **决定县界与染色层的相对位置**（见第 66 条）
 3. 回合流程
-4. 据点交互
+4. 据点点击详情
 5. 人物面板联动
 6. 势力面板交互
 7. 外交入口（改 `stance`）
@@ -687,7 +762,7 @@ _auto_load_default()
 9. `type` 能力矩阵
 10. 存档系统
 11. 新游戏流程
-12. 县界样式细化：`dash` 可调、或区分据点 type
+12. 县界样式细化：`dash` 可调、区分据点 type、hover 高亮
 
 ---
 
@@ -695,96 +770,97 @@ _auto_load_default()
 
 ### 9.1 前两轮（摘要）
 
-同前版。
+剧本系统 + 外交分组 + 层序修复。术语：武将→人物 / 城市→据点 / 势力 id = 君主人物 id。
 
-### 9.2 势力染色（上一轮）
+### 9.2 势力染色（第三轮）
 
-同前版。
+`game/core/territory.py` + `CountyStat` + `compute_county_stats`；`MAP_STYLE.territory.major_fade`；`LAYER_VISIBILITY.territory`；`render_territory()`；`set_world(world)`。
 
-### 9.3 本轮 · 县界渲染 + 几何层去色
+### 9.3 县界渲染 + 几何层去色（第四轮）
+
+**新增**：
+
+- `GeoData.shapes_city_boundary`
+- `MapRenderer.CITY_TAG` + `render_city_boundaries()`
+- `_LAYER_ORDER` 插入 `"city"`（`polygon` 与 `territory` 之间）
+- `style.py` 里 `MAP_STYLE.city_line` + `LAYER_VISIBILITY.city`
+- `settings_schema` 里 `city` 分组 + 3 条 ITEM
+
+**修改**：
+
+- `MAP_STYLE.polygon.fill = ""` / `outline = "#000000"` / `width = 4`
+- `MAP_STYLE.line.color = "#000000"`
+- `MAP_STYLE.label_county.color = "#000000"`
+- `MAP_STYLE.label_city.color = "#000000"`
+- `MAP_STYLE.polygon.width` 的 `max` 从 `8` → `20`
+- `LAYER_VISIBILITY.city` 的 label → `"县界（虚线轮廓）"`
+
+**删除**：
+
+- `render_county_labels` / `render_city_labels` 里的换色调用
+- `_county_label_color` / `_city_label_color` 方法
+- `MAP_STYLE.city_polygon` 整段
+- `MAP_STYLE.polygon.fill` / `MAP_STYLE.city_polygon.fill` 两条 ITEM
+
+**修复**：
+
+- `TclError: invalid color name "#"`（`settings_schema` 删掉两条无意义的 color 项）
+
+**设计决策**：
+
+- 几何层只留黑边，着色全交 `territory`
+- 三级边界用粗细与虚实区分：州 4px 实线、郡 1px 实线、县 1px 虚线
+- 县界不做面填充
+- 县界范围 = 所有 type
+- 县界 LOD 复用 `_assign_lod`
+- 标签去势力色
+
+### 9.4 本轮 · hover 反查县名 + 州界渲染修复
 
 #### 新增
 
 - **`game/map/geo_data.py`**：
-  - `shapes_city_boundary` 容器
-  - `_classify_county` 内收集 city 的 `boundary`
-  - `from_file` 里 `_assign_lod(shapes_city_boundary)`
-- **`game/map/renderer.py`**：
-  - `CITY_TAG` 类常量
-  - `_LAYER_ORDER` 插入 `"city"`（`polygon` 与 `territory` 之间）
-  - `_draw_geometry` 调 `render_city_boundaries`
-  - `render_city_boundaries()` 方法
-- **`game/config/style.py`**：
-  - `MAP_STYLE.city_line`（`color` / `width` / `dash`）
-  - `LAYER_VISIBILITY.city`
-- **`game/config/settings_schema.py`**：
-  - `GROUPS` 加 `city` 分组
-  - `ITEMS` 加 `city_line.color` / `city_line.width` 两条
-  - `ITEMS` 加 `LAYER_VISIBILITY.city` 一条
+  - `self._city_index` 容器
+  - `_build_city_index()` 方法
+  - `find_city_at(lon, lat)` 方法
+- **`_build_index`**：末尾调 `_build_city_index()`
 
 #### 修改
 
-- **`game/config/style.py`**：
-  - `MAP_STYLE.polygon.fill` 改为 `""`（透明）
-  - `MAP_STYLE.polygon.outline` 改为 `#000000`
-  - `MAP_STYLE.polygon.width` 改为 `4`
-  - `MAP_STYLE.line.color` 改为 `#000000`
-  - `MAP_STYLE.label_county.color` 改为 `#000000`
-  - `MAP_STYLE.label_city.color` 改为 `#000000`
-- **`game/map/renderer.py`**：
-  - `render_county_labels` 去掉 `_county_label_color` 调用
-  - `render_city_labels` 去掉 `_city_label_color` 调用
-- **`game/config/settings_schema.py`**：
-  - `MAP_STYLE.polygon.width` 的 `max` 从 `8` 调到 `20`
-  - `LAYER_VISIBILITY.city` 的 label 改为"县界（虚线轮廓）"
-
-#### 删除
-
-- **`game/map/renderer.py`**：
-  - `_county_label_color(cid, default)` 方法
-  - `_city_label_color(cid, default)` 方法
-- **`game/config/style.py`**：
-  - `MAP_STYLE.city_polygon` 整段
-- **`game/config/settings_schema.py`**：
-  - `MAP_STYLE.polygon.fill` 这条 ITEM
-  - `MAP_STYLE.city_polygon.fill` 这条 ITEM
+- **`game/map/geo_data.py`**：
+  - `find_location` 改为"先精确后兜底"：
+    ```python
+    city = self.find_city_at(lon, lat)
+    if city is None:
+        city = self.find_nearest_label(lon, lat, self.labels_city, 0.4)
+    ```
 
 #### 修复
 
-- **`TclError: invalid color name "#"`**：
-  - 症状：打开游戏设置窗口立刻报错
-  - 原因：`MAP_STYLE.polygon.fill = ""`（及残留的 `city_polygon.fill`），`_build_color` 读到空串后构出 `"#"`，Tk 拒收
-  - 修复：从 `settings_schema.ITEMS` 删掉这两条无意义的 color 设置项
+- **`MAP_STYLE.polygon.fill = "#"` 导致州界渲染静默失败**：
+  - 症状：改 `polygon.width` 毫无效果；关掉 `LAYER_VISIBILITY.polygon` 后"州界"仍在
+  - 原因：`fill = "#"` → `create_polygon` 抛 `TclError` → 被 `except: pass` 吞 → polygon 层一个都没画。用户看到的"州界"其实是 `line` 层的郡界
+  - 修复：`fill = ""`（空串）；清 `userdata/settings.json` 里可能残留的 `"MAP_STYLE.polygon.fill": "#"`
+
+#### 记录（非代码改动）
+
+- **Tk 线宽整数取整**：`1.42` 落到 1px 档，`1.5` 落到 2px 档，视觉差别翻倍。`style.py` 里 `width` 直接用整数
+- **UI 层"零改动"**：`map_canvas._process_motion` 早已是 `" · ".join(parts)` + `None` 段跳过，只需 `find_location` 返回县名
 
 #### 设计决策（本轮定稿）
 
-- **几何层只留黑边，着色全部交给 `territory`**：地图上唯一的色块 = 郡势力染色
-- **三级边界用粗细与虚实区分**：州 4px 实线、郡 1px 实线、县 1px 虚线，全黑
-- **县界不做面填充**：`city_polygon` 废弃，仅保留 `city_line` 虚线轮廓
-- **县界范围 = 所有 type**：不做过滤，非县类型的极小 boundary 视觉上接近一个点
-- **县界 LOD 复用 `_assign_lod`**：调密度只需改一个函数
-- **标签去势力色**：`_county_label_color` / `_city_label_color` 删除，颜色完全由 `MAP_STYLE.label_*.color` 决定
-- **`dash` 不进设置项**：tuple path 不被 `SettingsManager` 支持
+- **县查询走"精确优先 + 最近兜底"**：`find_city_at` 命中则用多边形内判断；否则 `find_nearest_label` 接住极小 boundary 的据点
+- **多命中取 bbox 面积最小者**：极小环套在县内时，取更精确的那个
+- **hover 反查复杂度可接受**：O(n) 线性 + 40ms 节流，无需额外空间结构
+- **`_city_index` 与 `_state_index` / `_county_index` 同构**：保持代码一致
+- **状态栏显示格式**：`州 · 郡 · 县`，`None` 段跳过（C 方案）
 
 #### 数据约定（本轮新增）
 
-- city（所有 type）新增 `boundary` 字段，闭合环
-- 县界 LOD 四档：`0 / 15 / 45 / 100`，与水域共用
-- 三级边界视觉：
-
-  | 层 | 线型 | 颜色 | 宽度 |
-  |---|---|---|---|
-  | 州界 | 实线 | 黑 | 4（上限 20） |
-  | 郡界 | 实线 | 黑 | 1 |
-  | 县界 | 虚线 | 黑 | 1 |
-  | 郡面染色 | 实心面 | 势力色 | — |
-
-- 标签颜色：州名 `#1A1A1A`、郡名 `#000000`、县名 `#000000`，均不随势力变化
-
-#### 待排查
-
-- 州界宽度改后地图无变化（可能：`apply` 未写回 / 未触发 `redraw` / `max` 钳制）—— 见 §8.3 第 74 条
+- 县界多边形用于两件事：**渲染**（虚线）+ **反查**（`find_city_at`）
+- hover 反查结果三元组：`(州名, 郡名, 县名)`，任一可为 `None`
+- 兜底距离 0.4° 与旧行为一致
 
 ---
 
-**本轮核心变动集中在 §3.8（CityBoundary）**、**§4.1（map.geojson 新增 boundary）**、**§5.11（geo_data 新容器）/ 5.13（renderer 新图层）/ 5.20（style 去色）/ 5.21（settings_schema 增删）**、**§6.2（绘制顺序）**、**§8.3 第 64–74 条**、**§9.3**。
+**本轮核心变动集中在 §3.9（CityIndex）**、**§5.11（geo_data 新增索引与查询）/ 5.20（style.py 现状）/ 5.21（settings_schema 现状）**、**§6.3（hover 反查链）**、**§8.3 第 74–80 条**、**§9.4**。

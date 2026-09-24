@@ -43,6 +43,7 @@ class GeoData:
         # 空间查询缓存：(minx, miny, maxx, maxy, 名称, 外环顶点)
         self._state_index = []
         self._county_index = []
+        self._city_index = []
 
     # ---------- 构造 ----------
     @classmethod
@@ -248,6 +249,22 @@ class GeoData:
                 continue
             self._county_index.append((self._ring_bbox(ring), name, ring))
 
+        self._build_city_index() 
+
+    def _build_city_index(self):
+        """县界多边形索引。仅收有 boundary 的项。"""
+        self._city_index = []
+        feats = getattr(self, "shapes_city_boundary", None) or []
+        for feat in feats:
+            ring = feat["geometry"]["coordinates"]
+            if len(ring) < 3:
+                continue
+            name = feat["properties"].get("县名")
+            if not name:
+                continue
+            bbox = feat["bbox"]
+            self._city_index.append((bbox, name, ring))
+
     @staticmethod
     def _ring_bbox(ring):
         xs = [p[0] for p in ring]
@@ -296,6 +313,25 @@ class GeoData:
                 return name
         return None
 
+    def find_city_at(self, lon, lat):
+        """按县界多边形反查县名。多个命中时返回 bbox 面积最小的（最精确）。
+
+        1372 个项线性扫描 + 4 次比较，配合 40ms 节流可接受；
+        bbox 命中通常 0–3 个，point_in_polygon 只在命中项上跑。
+        """
+        best_name = None
+        best_area = None
+        for (minx, miny, maxx, maxy), name, ring in self._city_index:
+            if not (minx <= lon <= maxx and miny <= lat <= maxy):
+                continue
+            if not point_in_polygon(lon, lat, ring):
+                continue
+            area = (maxx - minx) * (maxy - miny)
+            if best_area is None or area < best_area:
+                best_area, best_name = area, name
+        return best_name
+
+
     @staticmethod
     def find_nearest_label(lon, lat, candidates, max_dist):
         """在候选标签里找距离最近的，超过 max_dist 就返回 None。"""
@@ -308,12 +344,9 @@ class GeoData:
         return best
 
     def find_location(self, lon, lat):
-        """返回 (州名, 郡名, 县名)，没有的为 None。
-
-        州/郡用点在多边形内判断（新数据有准确的州面、郡面），
-        县用最近标签 + 距离上限（县只有首府一个点）。
-        """
         state = self.find_state_at(lon, lat)
         county = self.find_county_at(lon, lat)
-        city = self.find_nearest_label(lon, lat, self.labels_city, 0.4)
+        city = self.find_city_at(lon, lat)                          # ★ 精确
+        if city is None:
+            city = self.find_nearest_label(lon, lat, self.labels_city, 0.4)   # 兜底
         return state, county, city
