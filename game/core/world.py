@@ -24,6 +24,9 @@ class World:
         self.factions = {}      # id -> Faction
         self.characters = {}    # id -> Character
         self.nodes = {}         # id -> Node
+        # 州 / 郡 名字表（由 ScenarioLoader 从 GeoData 填）
+        self.state_names = {}     # "01"   -> "并州"
+        self.county_names = {}    # "0101" -> "上党郡"
 
     # ---------- 查询 ----------
     def player_faction(self):
@@ -51,6 +54,16 @@ class World:
 
     def faction(self, fid):
         return self.factions.get(fid)
+
+    def state_name(self, sid):
+        if not sid:
+            return "—"
+        return self.state_names.get(sid, sid)
+
+    def county_name(self, cid):
+        if not cid:
+            return "—"
+        return self.county_names.get(cid, cid)
 
     # ---------- 统计 ----------
     def summary(self):

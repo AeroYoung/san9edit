@@ -25,6 +25,7 @@ from game.ui.window_utils import maximize, center_on_parent
 from game.config.settings_manager import SettingsManager
 from game.ui.settings_window import SettingsWindow
 from game.core.scenario import ScenarioLoader
+from game.ui.map_controller import MapController
 
 class MainWindow:
     def __init__(self):
@@ -92,8 +93,9 @@ class MainWindow:
         pane.grid(row=1, column=0, sticky="nsew")
 
         self.map_canvas = MapCanvas(pane, self.font_family)
-        self.side_panel = SidePanel(pane, self.game_state)
-
+        self.map_controller = MapController(self.map_canvas)                  # ★
+        self.side_panel = SidePanel(pane, self.game_state, self.map_controller)  # ★
+        
         pane.add(self.map_canvas, weight=4)
         pane.add(self.side_panel, weight=1)
 

@@ -87,6 +87,51 @@ class MapCanvas(ttk.Frame):
         self._try_fit_now()
         return data
 
+    def center_on(self, lon, lat, min_scale=None):
+        """把视图中心移到 (lon, lat)；必要时把 scale 抬到 min_scale。"""
+        if not self.data:
+            return
+        self._sync_canvas_size()
+        self.viewport.cx = lon
+        self.viewport.cy = lat
+        if min_scale is not None and self.viewport.scale < min_scale:
+            self.viewport.scale = min_scale
+        self._notify_zoom()
+        self.renderer.draw_full()
+
+    def fit_to_node(self, node_id, fallback_lonlat=None,
+                    margin=0.7, max_scale=200):
+        """把某个县移到视图中心，并缩放到恰好显示其边界。
+
+        找不到县界时退回 fallback_lonlat（节点中心点），只移不缩。
+        max_scale 防止关隘/渡口这类小 boundary 被放大到离谱。
+        """
+        if not self.data:
+            return
+        bbox = self._node_bbox(node_id)
+        self._sync_canvas_size()
+
+        if bbox is not None:
+            self.viewport.fit_to_bbox(bbox, margin=margin)
+            if max_scale is not None:
+                self.viewport.scale = min(self.viewport.scale, max_scale)
+        elif fallback_lonlat is not None:
+            self.viewport.cx, self.viewport.cy = fallback_lonlat
+            if max_scale is not None:
+                self.viewport.scale = min(self.viewport.scale, max_scale)
+        else:
+            return
+
+        self._notify_zoom()
+        self.renderer.draw_full()
+
+    def _node_bbox(self, node_id):
+        for feat in getattr(self.data, "shapes_city_boundary", []):
+            props = feat.get("properties") or {}
+            if props.get("id") == node_id:
+                return feat.get("bbox")
+        return None
+
     def reset_view(self):
         """用户主动复位：重新 fit 到全图，不受 _need_fit 影响。"""
         if not self.data or not self.data.bbox:

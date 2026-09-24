@@ -6,6 +6,9 @@
     "CITY_LEVEL_MIN_SCALE.8": 300,
     "CITY_LEVEL_MIN_SCALE.9": 300,
     "CITY_LEVEL_MIN_SCALE.10": 350,
-    "LAYER_VISIBILITY.water": true
+    "LAYER_VISIBILITY.road": false,
+    "LAYER_VISIBILITY.water": true,
+    "LAYER_VISIBILITY.label_state": false,
+    "LAYER_VISIBILITY.label_county": false
   }
 }

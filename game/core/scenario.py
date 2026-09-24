@@ -43,6 +43,7 @@ class ScenarioLoader:
             world.characters[cid] = cls._build_character(cid, cdata)
 
         cls._build_nodes_from_geo(world, geo_data)
+        cls._build_region_names(world, geo_data)
         cls._apply_node_overrides(world, raw.get("nodes") or {})
 
         return world
@@ -72,6 +73,27 @@ class ScenarioLoader:
             politics=cdata.get("politics", 50),
             charisma=cdata.get("charisma", 50),
         )
+
+    @staticmethod
+    def _build_region_names(world, geo_data):
+        """从 geo_data.shapes_line 填州/郡名字表。
+
+        shapes_line 的 properties 里有 {州名, 郡名, 郡id}，
+        是唯一同时含州名和郡 id 的地方（labels_state 无 id，不能用）。
+        """
+        if geo_data is None:
+            return
+        for feat in getattr(geo_data, "shapes_line", []):
+            props = feat.get("properties") or {}
+            cid = props.get("郡id")
+            if not cid:
+                continue
+            cname = props.get("郡名")
+            sname = props.get("州名")
+            if cname:
+                world.county_names[cid] = cname
+            if sname:
+                world.state_names[cid[:2]] = sname
 
     @staticmethod
     def _build_nodes_from_geo(world, geo_data):

@@ -1,6 +1,6 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**统一术语「县 = 据点」**（一个县 = 一个据点 = `map.geojson` 里的一个 `city` = 一个 `Node`）、**`type` 枚举收缩为 `城 / 关隘 / 渡口`**、县面势力染色 / 图层顺序 / 郡名 KaiTi 字体等前几轮改动一并归档。新增 §9.7 变更日志。
+> 本轮更新重点：**`Character` 类全展开**（44 列字段全覆盖，带中文注释）、**新增 `tools/build_characters.py` 基础数据生成脚本**、**新增 `assets/characters.json` 基础人物数据（1049 人）**、**关系字段由名字转 id**、**势力 / 所在 / 所属 / 身份 留空由剧本填充**。新增 §9.9 变更日志。
 
 ---
 
@@ -12,6 +12,11 @@
 | 郡 | `counties` / `shapes_line` / `_county_index` / `labels_county` | 二级行政区，4 位 id |
 | **县 = 据点** | `cities` / `shapes_point` / `shapes_city_boundary` / `_city_index` / `labels_city` / `Node` 类 | **三级单元，一个县就是一个据点**，6 位 id |
 | 县的 type | `city["type"]` / `Node.type` | 只有三种：`城` / `关隘` / `渡口` |
+| **人物** | `characters` / `Character` 类 | 四位 id，全局唯一 |
+| **基础数据** | `assets/characters.json` | 1049 人的静态数据（五维 / 关系 / 个性 / 阵型 / 战法…） |
+| **剧本覆盖** | `scenarios/*.json` 的 `characters` 段 | 只覆盖 `势力 / 据点 / 所在 / 所属 / 身份`（暂未实现） |
+| **主官** | （预留，未实现） | 将来由剧本指定 |
+| **人物数** | （预留，未实现） | 将来按 `Character.node == 据点 id` 统计 |
 
 **「县 = 据点」的核心约定：**
 
@@ -24,6 +29,14 @@
    - 三种 type 都参与势力染色、都参与 hover 反查、都有 `Node` 对象
 5. 代码里遗留的 `city*` / `*_city_*` 命名（如 `shapes_city_boundary` / `labels_city` / `find_city_at`），**语义等于「县 / 据点」**，不是「城市」。改名成本大、收益为零，保留。
 
+**「人物」的核心约定（本轮新增）：**
+
+1. **静态数据 + 剧本覆盖** 双层结构：
+   - `assets/characters.json`：五维 / 生卒年 / 相性 / 关系 / 个性 / 阵型 / 战法 等**静态字段**
+   - `scenarios/*.json`：`势力 / 据点 / 所在 / 所属 / 身份` 等**动态字段**
+2. **关系字段用 id 引用**，不用名字（避免重名歧义）。
+3. **`faction / node / location_name / affiliation / role` 在基础数据里恒为 `null`**，由剧本填充。
+
 ---
 
 ## 1. 项目概述
@@ -33,9 +46,9 @@
 | 项目名称 | 暗耻三国志（`APP_TITLE`） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | `main.py` → `MainWindow().run()` |
-| 核心功能 | 中国全图矢量渲染（州/郡/县三级边界 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、**光标精确反查州/郡/县**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、势力关系分组展示、**县面势力染色（唯一着色图层）** |
-| 运行环境 | Python 3 + 标准库 `tkinter`。仅依赖标准库，**无第三方依赖、无 requirements.txt** |
-| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县（= 1372 据点，`states → counties → cities`）；`assets/roads.geojson`：约 600 条道路；`assets/water.geojson`：205 条河流/湖泊；`assets/mountains.geojson`：42 个山地区块（未接入） |
+| 核心功能 | 中国全图矢量渲染（州/郡/县三级边界 + 道路路网 + 水域湖泊/河流）、鼠标缩放平移、**光标精确反查州/郡/县**、旬回合制时钟、顶部信息栏与菜单、右侧 Tab 面板框架、多 Tab 设置窗口、剧本系统、势力关系分组展示、**县面势力染色（唯一着色图层）**、**据点面板（多列 + 排序 + 分组 + 右键菜单 + 定位）**、**人物基础数据（1049 人）** |
+| 运行环境 | Python 3 + 标准库 `tkinter`。仅依赖标准库，**无第三方依赖、无 requirements.txt**（生成 `characters.json` 时临时用 `openpyxl`） |
+| 数据来源 | `assets/map.geojson`：13 州 / 106 郡 / 1372 县（= 1372 据点）；`assets/roads.geojson`：约 600 条道路；`assets/water.geojson`：205 条河流/湖泊；`assets/mountains.geojson`：42 个山地区块（未接入）；**`assets/characters.json`：1049 位人物基础数据（本轮新增）** |
 | 剧本来源 | `scenarios/default.json` |
 | 用户数据 | `userdata/settings.json` |
 | 平台 | Windows 优先 |
@@ -52,8 +65,16 @@
 - ✅ 多 Tab 设置系统（外观 tab 有内容，操作/游戏 tab 空骨架）
 - ✅ 剧本系统
 - ✅ 势力面板分组列表
+- ✅ **据点面板**：8 列 + 点列头排序 + 正交嵌套分组（默认州>郡）+ 右键菜单 + 全部展开/折叠 + 定位到地图
+- ✅ **`MapController`** 作为面板访问地图的唯一中介
+- ✅ **`MapCanvas.center_on` / `fit_to_node`**
+- ✅ **`Character` 类全展开**（44 列字段，含中文注释）
+- ✅ **`assets/characters.json`**：1049 位人物基础数据
+- ✅ **`tools/build_characters.py`**：从 xlsx/csv 一键生成 JSON
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
+- ❌ **剧本覆盖基础数据（加载逻辑）未实现**
+- ❌ 主官 / 人物数 / 情报三项右键均为占位
 
 ---
 
@@ -63,8 +84,11 @@
 san9edit/
 ├── main.py
 ├── README.md
+├── tools/                         ★ 新增
+│   └── build_characters.py        从 xlsx/csv 生成 characters.json
 ├── assets/
 │   ├── map.geojson                 city 带 boundary，type ∈ {城, 关隘, 渡口}
+│   ├── characters.json            ★ 新增：1049 位人物基础数据
 │   ├── roads.geojson
 │   ├── water.geojson
 │   └── mountains.geojson           未接入
@@ -82,29 +106,38 @@ san9edit/
     │   ├── game_state.py
     │   ├── utils.py
     │   ├── faction.py
-    │   ├── character.py
+    │   ├── character.py           ★ 全展开重写（44 字段）
     │   ├── node.py                 Node = 县 = 据点
-    │   ├── world.py
-    │   ├── scenario.py
+    │   ├── world.py                加 state_names / county_names
+    │   ├── scenario.py             加 _build_region_names
     │   └── territory.py            郡级统计保留，当前渲染层不再消费
     ├── map/
     │   ├── geo_data.py
     │   ├── viewport.py
     │   └── renderer.py
     └── ui/
-        ├── main_window.py
+        ├── main_window.py          创建 MapController 并注入
         ├── top_bar.py
         ├── status_bar.py
-        ├── map_canvas.py
-        ├── side_panel.py
+        ├── map_canvas.py           加 center_on / fit_to_node
+        ├── map_controller.py       新增：地图中介
+        ├── side_panel.py           接收 map_controller
         ├── settings_window.py
         ├── window_utils.py
         ├── widgets/collapsible.py
         └── panels/
             ├── faction_panel.py
-            ├── node_panel.py
             ├── character_panel.py
-            └── troop_panel.py
+            ├── troop_panel.py
+            └── node/               新增包，取代 node_panel.py
+                ├── __init__.py
+                ├── panel.py        主面板
+                ├── model.py        NodeRow
+                ├── columns.py      列定义（单一真相源）
+                ├── sorting.py      排序
+                ├── grouping.py     分组 + 嵌套树构建
+                ├── group_bar.py    分组维度选择条
+                └── context_menu.py 右键菜单
 ```
 
 **依赖方向单向**：`main → ui → core/map → config`。
@@ -129,11 +162,70 @@ san9edit/
 `id` = 君主人物 id。字段：`id` / `name` / `color` / `prestige` / `gold` / `food` / `stance`。
 `stance_label()` → `"敌对"` / `"盟友"` / `"中立"`。
 
-### 3.3 人物（Character）
+### 3.3 人物（Character）★ 本轮全展开
 
-四位 id，五维。
+四位 id（"0001"–"1049"），全局唯一。**静态字段来自 `assets/characters.json`，动态字段由剧本覆盖。**
 
-### 3.4 县 = 据点（Node）★ 术语统一
+#### 字段一览（共 33 项 + 剧本 5 项）
+
+| 分组 | 字段 | 汉语 | 类型 | 说明 |
+|---|---|---|---|---|
+| **标识** | `id` | 编号 | str | 四位字符串 |
+| | `name` | 姓名 | str | |
+| | `family_name` | 字 | str | 表字，如「云长」 |
+| | `sex` | 性别 | str | 「男」/「女」 |
+| | `portrait` | 头像编号 | int | 立绘资源索引 |
+| **五维** | `leadership` | 统率 | int | 带兵能力 |
+| | `might` | 武力 | int | 武艺 / 单挑 |
+| | `intelligence` | 智力 | int | 谋略 / 计策 |
+| | `politics` | 政治 | int | 内政 / 外交 |
+| | `charisma` | 魅力 | int | 人格魅力 |
+| **时间** | `appear_year` | 登场年 | int | |
+| | `birth_year` | 出生年 | int | |
+| | `death_year` | 死亡年 | int | |
+| **相性** | `affinity` | 相性 | int | 0–149，决定天然亲疏 |
+| **关系（id 引用）** | `blood` | 血缘 | str | 家族 / 氏族标签，**不转 id** |
+| | `father` | 父亲 | str \| None | id 引用 |
+| | `mother` | 母亲 | str \| None | id 引用 |
+| | `generation` | 世代 | int | 家族辈分 |
+| | `spouse` | 配偶 | str \| None | id 引用 |
+| | `sworn_brothers` | 义兄弟 | list[str] | id 列表 |
+| | `liked` | 亲爱武将 | list[str] | id 列表 |
+| | `disliked` | 厌恶武将 | list[str] | id 列表 |
+| **系统** | `start_official` | 开始仕官年 | int | 0 = 未出仕，251 = 251 年 |
+| | `traits` | 个性 | list[str] | 如 ["神眼","疾走"] |
+| | `formations` | 阵型 | list[str] | 如 ["鱼鳞","锋矢"] |
+| | `tactics` | 战法 | list[str] | 如 ["突击","牵制"] |
+| **剧本动态** | `faction` | 势力 | str \| None | 势力 id，基础数据里 null |
+| | `node` | 据点 | str \| None | 六位据点 id |
+| | `location_name` | 所在 | str \| None | 城池名 |
+| | `affiliation` | 所属 | str \| None | 城池名 |
+| | `role` | 身份 | str \| None | 「君主」/「一般」等 |
+
+#### 方法
+
+| 方法 | 说明 |
+|---|---|
+| `is_ruler()` | 是否为其所属势力的君主（势力 id = 君主 id 约定） |
+| `is_free()` | 是否在野 |
+| `is_appeared(year)` | 该年份是否已登场 |
+| `is_alive(year)` | 该年份是否健在（生卒缺失时不作为约束） |
+| `display_name()` | 带表字的展示名，如「关羽（云长）」 |
+| `from_dict(cid, d)` | 从 JSON 一条 dict 构造 |
+| `to_dict()` | 转回 dict（存档 / 调试） |
+| `apply_override(data)` | 用剧本 dict 覆盖已有字段（防脏数据：只覆盖已有属性） |
+
+#### 数据质量字段（JSON 里）
+
+`characters.json` 顶层还带三个排查字段（游戏加载时忽略）：
+
+| 字段 | 说明 |
+|---|---|
+| `_name_index` | `名字 → id` 索引（重名取编号最小者） |
+| `_ambiguous_names` | 重名表：`名字 → [id, id, ...]` |
+| `_missing_refs` | 关系字段里引用了但表里不存在的人名 |
+
+### 3.4 县 = 据点（Node）
 
 **一个县 = 一个据点 = 一个 `Node` 对象。**
 
@@ -151,11 +243,7 @@ san9edit/
 
 **动态字段**（剧本覆盖）：`owner` / `troops` / `gold` / `food`。
 
-**属性**：
-
-- `state_id` → `id[:2]`
-- `county_id` → `id[:4]`
-- `is_owned()` → `owner is not None`
+**属性**：`state_id` → `id[:2]`，`county_id` → `id[:4]`，`is_owned()`。
 
 **关于 `type` 的约定：**
 
@@ -166,14 +254,34 @@ san9edit/
 
 ### 3.5 游戏世界（World）
 
-聚合容器，`factions` / `characters` / `nodes`。`nodes` 里每个元素就是一个县 = 一个据点。
+聚合容器：`factions` / `characters` / `nodes` / `state_names` / `county_names`。
+
+**新增字段：**
+
+```python
+self.state_names = {}     # "01"   -> "并州"
+self.county_names = {}    # "0101" -> "上党郡"
+```
+
+**新增查询：**
+
+```python
+def state_name(self, sid):  return self.state_names.get(sid, sid or "—")
+def county_name(self, cid): return self.county_names.get(cid, cid or "—")
+```
+
+名字表由 `ScenarioLoader._build_region_names` 从 `geo_data.shapes_line` 的 `properties` 填充。
 
 ### 3.6 剧本加载器（ScenarioLoader）
 
 `ScenarioLoader.load(path, geo_data)` → `World`。
 
 - `_build_nodes_from_geo`：遍历 `geo_data.shapes_point`，**每个 shapes_point 元素 → 一个 Node**
+- `_build_region_names`：遍历 `geo_data.shapes_line`，填 `world.state_names` / `world.county_names`
 - `_apply_node_overrides`：用 `scenarios/default.json` 的 `nodes` 覆盖 `owner / troops / gold / food`
+- **`_build_character`**：从剧本 `characters` 段构造 `Character`（参数与新版 `Character` 完全兼容）
+
+> **未实现（下一步）**：从 `assets/characters.json` 加载全量人物，再用剧本 `characters` 段做**增量覆盖**。
 
 ### 3.7 郡级控制力统计（CountyStat）
 
@@ -195,7 +303,7 @@ ratio > 0.8   → 主导势力
 
 ### 3.8 县界（CityBoundary）
 
-**渲染层 + 查询层 + 染色层共用**，由 `GeoData.shapes_city_boundary` 承载。每个元素对应一个县 = 一个据点。
+**渲染层 + 查询层 + 染色层 + 定位层共用**，由 `GeoData.shapes_city_boundary` 承载。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
@@ -208,15 +316,9 @@ ratio > 0.8   → 主导势力
 | `size` | float | bbox 对角线长度 |
 | `min_scale` | float | `_assign_lod` 赋的显示阈值（0/15/45/100 四档） |
 
-`properties.id` 直接可用于 `world.node(id).owner` —— 这是县面染色的数据入口。
-
 ### 3.9 县界空间索引（CityIndex）
 
 `GeoData._city_index`，结构 `(bbox, 名称, 外环顶点)`，与 `_state_index` / `_county_index` 同构。
-
-- 构建：`_build_index` 末尾调 `_build_city_index`
-- 用途：`find_city_at(lon, lat)` 用 `point_in_polygon` 精确反查县名
-- 只收 `shapes_city_boundary` 中 `boundary` 顶点 ≥ 3 的项
 
 ---
 
@@ -239,22 +341,75 @@ ratio > 0.8   → 主导势力
         "id": "010101", "name": "长子",
         "coords": [lon, lat],
         "is_capital": true, "level": 3,
-        "type": "城",                           // 城 / 关隘 / 渡口
-        "boundary": [[lon,lat], ...]            // 县界多边形（三种 type 都有）
+        "type": "城",
+        "boundary": [[lon,lat], ...]
       }]
     }]
   }]
 }
 ```
 
-**关于 `boundary` 的约定：**
+### 4.2 `assets/characters.json` 结构（本轮新增）
 
-- **所有** type（城 / 关隘 / 渡口）的 city 都带 `boundary`
-- `城` 的 boundary 通常是完整县域多边形，面积较大
-- `关隘` / `渡口` 的 boundary 也覆盖一定区域，但形状更狭长或更小
-- boundary 用于三件事：**绘制县界虚线**、**绘制县面染色**、**hover 反查县名**
+```json
+{
+  "version": 1,
+  "source": "314英雄集结武将数据.xlsx",
+  "count": 1049,
+  "characters": {
+    "0001": {
+      "name": "阿会喃",
+      "family_name": "",
+      "sex": "男",
+      "portrait": 127,
+      "leadership": 65,
+      "might": 74,
+      "intelligence": 26,
+      "politics": 33,
+      "charisma": 44,
+      "appear_year": 217,
+      "birth_year": 190,
+      "death_year": 225,
+      "affinity": 62,
+      "blood": "阿会喃",
+      "father": null,
+      "mother": null,
+      "generation": 1,
+      "spouse": null,
+      "sworn_brothers": [],
+      "liked": ["0023", "0739"],
+      "disliked": [],
+      "start_official": 251,
+      "traits": ["南中", "短虑"],
+      "formations": ["锋矢", "长蛇"],
+      "tactics": ["突击"],
+      "faction": null,
+      "location_name": null,
+      "affiliation": null,
+      "role": null
+    }
+  },
+  "_name_index": { "阿会喃": "0001" },
+  "_ambiguous_names": { "李丰": ["0917", "0918", "0919"] },
+  "_missing_refs": {}
+}
+```
 
-### 4.2 `type` 枚举（★ 本轮收缩）
+**关键约定：**
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `sworn_brothers / liked / disliked` | `list[str]` | id 数组，**空就是 `[]`**，不是 `null` |
+| `father / mother / spouse` | `str \| null` | 单值 id |
+| `blood` | `str` | 血缘家族名，**不转 id** |
+| `traits / formations / tactics` | `list[str]` | 按空格切分 |
+| `faction / location_name / affiliation / role` | `null` | 基础数据里**恒为 null**，剧本填 |
+
+**生成方式**：`python tools/build_characters.py`（脚本与 xlsx 同目录，自动找文件）。
+
+**数据来源**：《314英雄集结武将数据.xlsx》，1049 行，列含义见 §5.7。
+
+### 4.3 `type` 枚举
 
 **只有三种：**
 
@@ -264,19 +419,16 @@ ratio > 0.8   → 主导势力
 | `关隘` | 关口、隘口 | 壶口关、天井关、鸡鹿塞 |
 | `渡口` | 渡口、津 | （本数据集暂未出现，为将来预留） |
 
-**已废弃的旧枚举**（旧数据里存在，新数据已无）：
+**已废弃的旧枚举**：~~`县`~~ / ~~`渡口/津`~~ / ~~`仓/监`~~ / ~~`谷`~~ / ~~`山地`~~。
 
-- ~~`县`~~ → 用 `城` 代替
-- ~~`渡口/津`~~ → 用 `渡口`
-- ~~`仓/监`~~ → 已并入 `城` 或其他
-- ~~`谷`~~ → 已并入 `城` 或其他
-- ~~`山地`~~ → 已并入 `城` 或其他
+**据点面板的显示逻辑**：`is_capital == True` 时，类型列显示「郡治」；否则显示原始 `type`。这是**展示层**的覆盖，不改数据。
 
-**代码里对旧枚举的 fallback 已同步改为 `"城"`**（见 §5.11 / §5.16 / §5.17）。
+### 4.4 `scenarios/default.json` 结构
 
-### 4.3 `scenarios/default.json` 结构
+version 1。字段与前一版一致：
 
-version 1。字段与前一版一致，`nodes` 段以六位 id 为 key，覆盖 `owner / troops / gold / food`。
+- `nodes` 段：以六位 id 为 key，覆盖 `owner / troops / gold / food`
+- `characters` 段：以四位 id 为 key，覆盖 `faction / node / location_name / affiliation / role`（**新语义**）
 
 ---
 
@@ -290,398 +442,144 @@ version 1。字段与前一版一致，`nodes` 段以六位 id 为 key，覆盖 
 
 路径常量：`ASSETS_DIR` / `DEFAULT_MAP_PATH` / `DEFAULT_WATER_PATH` / `DEFAULT_ROADS_PATH` / `SCENARIOS_DIR` / `DEFAULT_SCENARIO_PATH` / `APP_TITLE` / `MIN_WINDOW_SIZE`。
 
-### 5.3 – 5.9
+> **待新增**：`DEFAULT_CHARACTERS_PATH = ASSETS_DIR / "characters.json"`（实现剧本覆盖加载时补）。
 
-`faction.py` / `character.py` / `world.py` / `scenario.py` / `game_state.py` / `utils.py` **未改动**。
+### 5.3 – 5.6
 
-`utils.lighten_color(hex_color, factor=0.4)` / `darken_color(hex_color, factor=0.5)`：向白 / 黑线性插值。**保留**，当前渲染层不调用，供将来复用。
+`faction.py` / `game_state.py` / `utils.py` **未改动**。
 
-### 5.10 `game/core/territory.py`
+`utils.lighten_color` / `darken_color`：**保留**，当前渲染层不调用。
 
-`CountyStat` 数据类 + `compute_county_stats(world)` + `CAPITAL_BONUS = 2.0`。**保留不动**。`set_world` 仍会调用 `compute_county_stats`，结果缓存在 `self._county_stats`，但渲染层不读。
+### 5.7 `game/core/character.py` ★ 本轮全展开重写
 
-### 5.11 `game/map/geo_data.py`
+**类结构**：见 §3.3 字段表 + §5.7 下方方法表。
 
-#### 容器
-
-```python
-self.shapes_polygon = []          # 州面
-self.shapes_line = []             # 郡界
-self.shapes_point = []            # ★ 县（据点）点，每个元素 = 一个 Node
-self.shapes_city_boundary = []    # ★ 县界（闭合 ring），每个元素 = 一个县
-self.shapes_water_line = []
-self.shapes_water_polygon = []
-self.labels_state = []
-self.labels_county = []
-self.labels_city = []             # ★ 县名标签，每个元素对应一个县
-self.bbox = None
-self.roads = []
-self._state_index = []
-self._county_index = []
-self._city_index = []
-```
-
-#### `from_file`
+**构造参数**（全部带中文注释）：
 
 ```python
-@classmethod
-def from_file(cls, path):
-    with open(path, "r", encoding="utf-8") as f:
-        raw = json.load(f)
-    states = raw.get("states") or []
-    data = cls()
-    data._classify(states)
-    data._assign_lod(data.shapes_city_boundary)
-    data._compute_bbox()
-    data._build_index()
-    return data
-```
-
-#### `_classify_county`（★ type fallback 改为 `"城"`）
-
-对每个 `county["cities"][k]`（一个县）：
-
-1. 解析 `level`（含钳制到 1–10）
-2. 向 `shapes_point` 追加：
-   ```python
-   "type": city.get("type", "城"),      # ★ 原 "县" → "城"
-   ```
-3. 向 `labels_city` 追加五元组 `(lon, lat, 县名, level, id)`
-4. 向 `shapes_city_boundary` 追加：
-   ```python
-   "properties": {
-       "id": city.get("id"),
-       "县名": name,
-       "type": city.get("type", "城"),   # ★ 原 "县" → "城"
-       "level": level,
-   },
-   ```
-
-#### 查询
-
-- `find_state_at` / `find_county_at` / `find_city_at`：多边形精确反查
-- `find_location(lon, lat)` → `(州名, 郡名, 县名)`；县查询为"`find_city_at` 精确优先 + `find_nearest_label` 0.4° 兜底"
-
-### 5.12 `game/map/viewport.py`
-
-未改动。`project` / `unproject` / `fit_to_bbox` / `zoom` / `pan_pixels` / `span_px`。
-
-### 5.13 `game/map/renderer.py`
-
-#### 类常量
-
-```python
-LABEL_TAG     = "label"
-WATER_TAG     = "water"
-ROAD_TAG      = "road"
-POLYGON_TAG   = "polygon"
-LINE_TAG      = "line"
-POINT_TAG     = "point"
-TERRITORY_TAG = "territory"
-CITY_TAG      = "city"          # 县界
-
-_LAYER_ORDER = (
-    "polygon",      # 州面（透明填充 + 黑描边）
-    "territory",    # 县面势力染色（在 city 之下）
-    "city",         # 县界（黑虚线）
-    "water",        # 水体（湖泊 / 河流）
-    "road",         # 道路
-    "line",         # 郡界（黑实线）
-    "point",        # 县点（= 据点）
-    "label",        # 文字
+Character(
+    cid, name,
+    # 基础信息
+    family_name="", sex="男", portrait=0,
+    # 五维
+    leadership=50, might=50, intelligence=50, politics=50, charisma=50,
+    # 时间
+    appear_year=0, birth_year=0, death_year=0,
+    # 相性
+    affinity=0,
+    # 关系（id 引用）
+    blood="", father=None, mother=None, generation=1,
+    spouse=None, sworn_brothers=None, liked=None, disliked=None,
+    # 系统
+    start_official=0, traits=None, formations=None, tactics=None,
+    # 剧本动态
+    faction=None, node=None,
+    location_name=None, affiliation=None, role=None,
 )
 ```
 
-#### 方法
+**关键方法：**
 
 | 方法 | 说明 |
 |---|---|
-| `set_data(geo_data)` | 注入数据 |
-| `set_world(world)` | 注入 World，触发 `_county_stats` 重算；**不负责重绘** |
-| `draw_full()` | 全量重绘 |
-| `pan(dx, dy)` / `zoom(f, mx, my)` | canvas 变换；`_cum_scale` 越界时 `draw_full` |
-| `refresh_dynamic()` | 重建动态层（水/路/点/标签），末尾 `_restack` |
-| `_restack()` | 用 `tag_raise` 从底到顶一遍，空图层免疫 |
-| `_draw_geometry()` | `render_polygons → render_territory → render_city_boundaries → render_lines` |
-| `render_polygons()` / `render_polygon(feat)` | 州面（透明 + 黑描边） |
-| **`render_territory()`** | **县面染色**（遍历 `shapes_city_boundary`，按 `world.node(id).owner` 上色；**不区分 type**） |
-| `render_city_boundaries()` | 县界：黑色虚线轮廓（**不区分 type**） |
-| `render_lines()` / `render_line(feat)` | 郡界 |
-| `render_points()` / `render_point(...)` | 县点（**不区分 type**，所有县都画） |
-| `render_state_labels()` | 州名 |
-| `render_county_labels()` | 郡名（**不随势力着色**；KaiTi 字体） |
-| `render_city_labels()` | 县名（**不随势力着色**；**不区分 type**） |
-| `render_label_group(labels, style_key)` | 通用标签绘制（州名用） |
-| **`draw_text(x, y, text, style)`** | 单条文字 + halo；**支持 `style["font_family"]` 覆盖** |
-| `resolve_style(key)` | 按当前 `span_px` 决定字号；返回 `{**base, "size": size}` |
-| `_visible_bounds(margin_px=20)` | 视口经纬度范围 |
-| `_point_lonlat(feat)` / `_point_radius(level, style)` | 县点辅助 |
-| `_road_width(difficulty)` / `render_roads()` | 道路 |
-| `render_water_polygons()` / `render_water_lines()` | 水域 |
+| `is_ruler()` | 是否为其所属势力的君主（势力 id = 君主 id） |
+| `is_free()` | 是否在野 |
+| `is_appeared(year)` | 该年份是否已登场 |
+| `is_alive(year)` | 该年份是否健在（生卒缺失时不作为约束） |
+| `display_name()` | 带表字的展示名，如「关羽（云长）」 |
+| `from_dict(cid, d)` | classmethod，从 JSON 一条 dict 构造 |
+| `to_dict()` | 转回 dict（存档 / 调试） |
+| `apply_override(data)` | 用剧本 dict 覆盖已有字段 |
 
-#### `render_territory`（县面染色）
+**兼容性**：`scenario.py::_build_character` 的 keyword 调用不受影响。
 
-```python
-def render_territory(self):
-    """县面按所属势力上色。
+### 5.8 `tools/build_characters.py` ★ 本轮新增
 
-    - 无 World：跳过
-    - 遍历所有县（城 / 关隘 / 渡口），按其 owner 用势力原色填充
-    - 无主县不染色，州面底色透出
-    - 不区分 type；不画 stipple、不画斜线
-    - LOD 与县界层一致：scale < feat["min_scale"] 时跳过
-    """
-    if not self._world or not self.data:
-        return
+**用途**：从《314英雄集结武将数据.xlsx》（或 CSV）生成 `characters.json`。
 
-    feats = getattr(self.data, "shapes_city_boundary", None)
-    if not feats:
-        return
+**用法**（脚本与 xlsx 同目录，直接运行）：
 
-    vx0, vy0, vx1, vy1 = self._visible_bounds()
-    scale = self.viewport.scale
-
-    for feat in feats:
-        if scale < feat.get("min_scale", 0):
-            continue
-        b = feat["bbox"]
-        if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
-            continue
-        props = feat.get("properties") or {}
-        nid = props.get("id")
-        if not nid:
-            continue
-        node = self._world.node(nid)
-        if node is None or node.owner is None:
-            continue
-        faction = self._world.faction(node.owner)
-        if faction is None:
-            continue
-        color = faction.color
-
-        ring = feat["geometry"]["coordinates"]
-        if len(ring) < 3:
-            continue
-        try:
-            pts = []
-            for lon, lat in ring:
-                x, y = self.viewport.project(lon, lat)
-                pts.extend((x, y))
-            self.canvas.create_polygon(
-                *pts, fill=color, outline=color, width=1,
-                tags=self.TERRITORY_TAG,
-            )
-        except Exception:
-            pass
+```bash
+pip install openpyxl
+python build_characters.py
 ```
 
-**关键设计：**
+**行为**：
+1. 在脚本同目录找第一个 `.xlsx` / `.xlsm` / `.csv`
+2. 读表，跳过表头
+3. 第一遍建 `名字 → [id, ...]` 索引，记录重名
+4. 第二遍构造人物，关系字段由名字转 id（**重名取编号最小者**）
+5. 输出 `characters.json` 到脚本同目录
+6. 控制台打印重名列表与找不到的引用
 
-- **数据源**：`shapes_city_boundary`（县界），每个元素对应一个县
-- **数据入口**：`feat["properties"]["id"]` → `world.node(id).owner`
-- **不区分 type**：城 / 关隘 / 渡口一视同仁
-- **无主不上色**：`owner is None` 跳过
-- **不用 `_county_stats`**：郡级统计不参与渲染
+**列映射**（0-based）：
 
-#### `set_world`
+| 索引 | 列名 | 用途 |
+|---|---|---|
+| 0 | 编号 | → `id`（补零四位） |
+| 1 | 姓名 | → `name` |
+| 2 | 字 | → `family_name` |
+| 3 | 军团 | **不读**（改名「势力」，留空） |
+| 4–6 | 所在 / 所属 / 身份 | **不读**（留空） |
+| 7–11 | 统率 / 武力 / 智力 / 政治 / 魅力 | → 五维 |
+| 12 | 头像 | → `portrait` |
+| 13–15 | 个性 / 阵型 / 战法 | → 空格切分字符串列表 |
+| 16 | 开始仕官 | → `start_official` |
+| 17 | 性别 | → `sex` |
+| 18–20 | 登场年 / 出生年 / 死亡年 | → 时间 |
+| 21 | 相性 | → `affinity` |
+| 22 | 血缘 | → `blood`（**不转 id**） |
+| 23 | 父亲 | → `father`（转 id） |
+| 24 | 母亲 | → `mother`（转 id） |
+| 25 | 世代 | → `generation` |
+| 26 | 配偶 | → `spouse`（转 id） |
+| 27 | 义兄弟 | → `sworn_brothers`（转 id） |
+| 28–35 | 亲爱武将 1–8 | → `liked`（转 id） |
+| 36–43 | 厌恶武将 1–8 | → `disliked`（转 id） |
 
-```python
-def set_world(self, world):
-    """注入 World。
+### 5.9 – 5.11
 
-    - 更新 self._world，供 render_territory 按据点 owner 查势力色
-    - 仍会重算 _county_stats（郡级控制力），当前渲染层不用，
-      保留给将来可能恢复的郡面染色 / 分级调色
-    - 不负责重绘；调用方（MainWindow）按需 redraw
-    """
-    self._world = world
-    self._county_stats = compute_county_stats(world)
-```
+`game/core/node.py` / `world.py` / `scenario.py` 同上轮（World 加名字表、ScenarioLoader 加 `_build_region_names`）。
 
-#### `draw_text`（字体覆盖）
+### 5.12 `game/core/territory.py`
 
-```python
-def draw_text(self, x, y, text, style):
-    family = style.get("font_family") or self.font_family   # ★ 字体覆盖
-    font = (family, style["size"], "bold")
-    halo = style.get("halo")
-    if halo:
-        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
-            self.canvas.create_text(x + dx, y + dy, text=text,
-                                    fill=halo, font=font, anchor="center",
-                                    tags=self.LABEL_TAG)
-    self.canvas.create_text(x, y, text=text,
-                            fill=style["color"], font=font, anchor="center",
-                            tags=self.LABEL_TAG)
-```
+`CountyStat` 数据类 + `compute_county_stats(world)` + `CAPITAL_BONUS = 2.0`。**保留不动**。
 
-### 5.14 `game/ui/main_window.py`
+### 5.13 `game/map/geo_data.py`
 
-未改动。`_auto_load_default` → `load_geojson` + `_load_default_scenario`；`_load_default_scenario` 里调 `renderer.set_world(world)` + `map_canvas.redraw()`。
+**未改动**（本轮）。容器、`from_file`、`_classify`、`_classify_county`、查询方法、索引均同上轮。
 
-### 5.15 `game/ui/map_canvas.py`
+### 5.14 `game/map/viewport.py`
 
-`load_geojson` 里状态栏文案：
+未改动。`project` / `unproject` / `fit_to_bbox` / `zoom` / `pan_pixels` / `span_px`。
 
-```python
-f"据点 {len(data.labels_city)}"    # ★ 原 "县 N" → "据点 N"
-```
+### 5.15 `game/map/renderer.py`
 
-`labels_city` 变量名保留（语义已统一为"县 / 据点"，不改）。
+未改动。`_LAYER_ORDER`、`render_territory`、`set_world`、`draw_text` 等均同上轮。
 
-### 5.16 `game/core/node.py`（★ 默认 type 改为 `"城"`）
+### 5.16 `game/ui/map_canvas.py`
 
-```python
-def __init__(self, nid, name, coords, type_="城",   # ★ 原 "县" → "城"
-             level=5, is_capital=False,
-             owner=None, troops=0, gold=0, food=0):
-```
+**本轮未改动**。`center_on` / `fit_to_node` / `_node_bbox` 同上轮。
 
-`state_id` / `county_id` / `is_owned()` 不变。
+### 5.17 `game/ui/map_controller.py`
 
-### 5.17 `game/core/scenario.py`（★ 默认 type 改为 `"城"`）
+**本轮未改动**。`center_on` / `fit_to_node` / `reset_view` / `zoom` 同上轮。
 
-`_build_nodes_from_geo`：
+### 5.18 `game/ui/panels/node/`（据点面板包）
 
-```python
-world.nodes[nid] = Node(
-    nid=nid,
-    name=props.get("县名", ""),
-    coords=(coords[0], coords[1]),
-    type_=props.get("type", "城"),   # ★ 原 "县" → "城"
-    level=props.get("level", 5),
-    is_capital=props.get("is_capital", False),
-)
-```
+**本轮未改动**。目录结构、`panel.py` / `model.py` / `columns.py` / `sorting.py` / `grouping.py` / `group_bar.py` / `context_menu.py` 均同上轮。
 
-### 5.18 `game/config/style.py`（当前生效值）
+### 5.19 `game/ui/side_panel.py` / `main_window.py`
 
-```python
-MAP_STYLE = {
-    "polygon": {
-        "fill":    "",
-        "outline": "#000000",
-        "width":   4,
-    },
-    "line": {
-        "color": "#000000",
-        "width": 1,
-    },
-    "city_line": {
-        "color": "#000000",
-        "width": 1,
-        "dash": (3, 3),
-    },
-    "road": { ... },
-    "point": { ... },
-    "water_polygon": { ... },
-    "water_line": { ... },
-    "territory": {
-        "major_fade": 0.4,       # 保留字段，当前渲染层不消费
-    },
-    "label_state": {
-        "color": "#1A1A1A", "halo": "#FFFFFF",
-        "size_divisor": 55, "min_size": 11, "max_size": 44,
-        "min_scale": 0, "max_scale": 40,
-    },
-    "label_county": {
-        "color": "#000000", "halo": "#FFFFFF",
-        "font_family": "KaiTi",
-        "size_divisor": 124, "min_size": 8, "max_size": 19,
-        "min_scale": 12, "max_scale": 150,
-    },
-    "label_city": {
-        "color": "#000000", "halo": "#FFFFFF",
-        "size_divisor": 140, "min_size": 8, "max_size": 16,
-        "min_scale": 30, "point_gap": 6,
-    },
-}
+**本轮未改动**。`SidePanel` 接收 `map_controller`，`MainWindow` 创建 `MapController` 并注入，均同上轮。
 
-LAYER_VISIBILITY = {
-    "polygon":      True,
-    "territory":    True,
-    "city":         True,
-    "line":         True,
-    "point":        True,
-    "road":         True,
-    "water":        False,
-    "mountain":     False,
-    "label_state":  True,
-    "label_county": True,
-    "label_city":   True,
-}
-```
+### 5.20 `game/config/style.py`
 
-**视觉分层总结：**
+**本轮未改动**。`MAP_STYLE` / `LAYER_VISIBILITY` 同上轮。
 
-| 层 | 线型 | 颜色 | 宽度 | 备注 |
-|---|---|---|---|---|
-| 州面 | 描边 | 黑 | 4 | 不填充 |
-| 县面染色 | 实心面 | 势力色 | — | **唯一着色层**；只染州内部；不区分 type |
-| 县界 | 虚线 | 黑 | 1 | 在染色之上；不区分 type |
-| 水体 | 线/面 | 蓝系 | — | 在染色之上 |
-| 道路 | 实线 | — | 按 difficulty | 在染色之上 |
-| 郡界 | 实线 | 黑 | 1 | 在染色之上 |
-| 县点 | — | 黑 | — | 不随势力变化；不区分 type |
-| 州名 / 县名标签 | — | 黑 / 深灰 | — | 全局字体 |
-| 郡名标签 | — | 黑 | — | **KaiTi 字体**，字号较其他标签小 15% |
+### 5.21 `game/config/settings_schema.py`
 
-### 5.19 `game/config/settings_schema.py`
-
-**`GROUPS`：**
-
-- `theme` / `font`（restart = True）
-- `polygon` / `line` / `city` / `point` / `road` / `water`
-- `label_state` / `label_county` / `label_city`
-- `lod`
-- `territory`
-- `visibility`
-
-**`territory` 分组**：
-
-```python
-{"key": "territory", "tab": "appearance", "title": "势力染色",
- "desc": "按各县所属势力给县面上色。有主县用势力原色，"
-         "无主县不染色（州面底色透出）。"},
-```
-
-**`label_county` 分组**：
-
-```python
-{"key": "label_county", "tab": "appearance", "title": "郡名标签",
- "desc": "郡名文字的显隐区间与字号。郡名使用独立字体（style.py 里 "
-         "MAP_STYLE.label_county.font_family，默认楷体 KaiTi）。"},
-```
-
-**`point` 分组**（★ 文案更新）：
-
-```python
-{"key": "point", "tab": "appearance", "title": "据点样式",
- "desc": "各据点（城 / 关隘 / 渡口）小点的颜色、大小、描边与形状分级。"},
-```
-
-**`ITEMS` 关键项**（部分）：
-
-| path | group | type | label |
-|---|---|---|---|
-| `MAP_STYLE.polygon.outline` | polygon | color | 州面描边色 |
-| `MAP_STYLE.polygon.width` | polygon | int | 描边宽度 |
-| `MAP_STYLE.line.color` | line | color | 郡界颜色 |
-| `MAP_STYLE.line.width` | line | int | 线宽 |
-| `MAP_STYLE.city_line.color` | city | color | 县界轮廓色 |
-| `MAP_STYLE.city_line.width` | city | int | 轮廓线宽 |
-| `MAP_STYLE.label_county.size_divisor` | label_county | int | 字号分母 |
-| `MAP_STYLE.label_county.min_size` | label_county | int | 字号下限 |
-| `MAP_STYLE.label_county.max_size` | label_county | int | 字号上限 |
-| `LAYER_VISIBILITY.city` | visibility | bool | 县界 |
-| `LAYER_VISIBILITY.territory` | territory | bool | 启用势力染色 |
-
-**已删除的 ITEM**：
-
-- `MAP_STYLE.territory.major_fade`（县面染色不再使用）
-- `MAP_STYLE.polygon.fill` / `MAP_STYLE.city_polygon.fill`（历史）
-
-**未纳入设置窗口**：`MAP_STYLE.*.font_family`（无 `font` 类型控件）。
+**本轮未改动**。`GROUPS` / `ITEMS` 同上轮。
 
 ---
 
@@ -692,7 +590,7 @@ LAYER_VISIBILITY = {
 ```
 python main.py
 └─ MainWindow()
-   ├─ SettingsManager().apply()      # 会用 userdata 覆盖 style.py
+   ├─ SettingsManager().apply()
    ├─ GameState()
    ├─ TopBar / MapCanvas / SidePanel / StatusBar
    └─ root.after(120, _auto_load_default)
@@ -713,37 +611,64 @@ _auto_load_default()
 │
 └─ _load_default_scenario()
    ├─ ScenarioLoader.load → World
-   │  └─ _build_nodes_from_geo：shapes_point → Node（一县一 Node）
+   │  ├─ _build_nodes_from_geo：shapes_point → Node
+   │  ├─ _build_region_names：shapes_line.properties → state_names / county_names
+   │  └─ _apply_node_overrides
+   │  └─ 【未实现】_load_base_characters + 剧本覆盖
    ├─ game_state.sync_from_world(world)
    ├─ renderer.set_world(world)
-   └─ map_canvas.redraw()          # 触发 render_territory 按县面上色
+   └─ map_canvas.redraw()
 ```
 
-### 6.3 主循环交互
+### 6.3 人物数据生成流程（离线，一次性）
+
+```
+python tools/build_characters.py
+├─ 找脚本同目录 *.xlsx / *.xlsm / *.csv
+├─ read_xlsx (openpyxl) 或 read_csv
+├─ 第一遍：建 name → [id, ...] 索引，记录重名
+├─ 第二遍：构造 characters{}，关系字段名字转 id
+│  └─ 重名取编号最小者
+└─ 输出 characters.json（同目录）
+   └─ 手动移到 assets/characters.json
+```
+
+### 6.4 主循环交互
 
 | 触发 | 调用链 |
 |---|---|
-| 鼠标移动 | `_on_motion` → 40ms 节流 `_process_motion` → `viewport.unproject` → `data.find_location(lon, lat)` → `status_bar.set_location(text)` |
+| 鼠标移动 | `_on_motion` → 40ms 节流 → `viewport.unproject` → `data.find_location` → `status_bar.set_location` |
 | 滚轮 / 拖拽 | `viewport.zoom / pan_pixels` → `renderer.zoom / pan` |
 | 顶部信息栏 | 200ms 轮询 `game_state.get_display_items()` |
 | 设置保存 | `_on_settings_applied` → 地图相关则 `map_canvas.redraw()` |
+| 据点右键 → 定位 | `context_menu._locate` → `MapController.fit_to_node` → `MapCanvas.fit_to_node` → `_node_bbox` → `viewport.fit_to_bbox` → `draw_full` |
+| 据点右键 → 展开/折叠 | `context_menu._set_all_open` → `tree.item(open=...)` 递归 |
+| 据点列头点击 | `_on_heading_click` → `self._sort_key/_sort_desc` → `refresh` |
+| 据点分组切换 | `GroupBar._toggle` → `on_change` → `NodePanel.refresh` |
 
-### 6.4 模块协作关系
+### 6.5 模块协作关系
 
 ```
 main.py
 └─ ui.main_window ──┬─ config.settings_manager ─ config.style
                     │                            └ config.settings_schema
                     ├─ core.game_state
-                    ├─ core.scenario ─────── core.world ─── core.faction / character / node
+                    ├─ core.scenario ─────── core.world ─── core.faction
+                    │                                    ├─ core.character ★
+                    │                                    └─ core.node
                     ├─ ui.top_bar
                     ├─ ui.status_bar
                     ├─ ui.map_canvas ─── map.viewport
                     │                   map.renderer ─── map.geo_data ── core.utils
                     │                                  └ core.territory（保留备用）
+                    ├─ ui.map_controller ─── ui.map_canvas
                     ├─ ui.settings_window
-                    └─ ui.side_panel ──── panels.faction_panel / node_panel / character_panel / troop_panel
+                    └─ ui.side_panel ──── panels.faction_panel
+                                       ├─ panels.node ── map_controller
+                                       ├─ panels.character_panel
+                                       └─ panels.troop_panel
                        config.constants
+tools.build_characters ──── assets/characters.json （离线，独立）
 ```
 
 ---
@@ -761,6 +686,7 @@ main.py
 | `DEFAULT_ROADS_PATH` | `assets/roads.geojson` |
 | `SCENARIOS_DIR` | `scenarios/` |
 | `DEFAULT_SCENARIO_PATH` | `scenarios/default.json` |
+| **`DEFAULT_CHARACTERS_PATH`** | **`assets/characters.json`（待新增）** |
 
 ### 7.2 设置窗口可改
 
@@ -776,12 +702,16 @@ main.py
 |---|---|---|
 | `MapCanvas._MIN_VALID_SIZE` | `10` | 布局未完成阈值 |
 | `TopBar._REFRESH_INTERVAL_MS` | `200` | 信息栏轮询 |
-| `MapRenderer._LAYER_ORDER` | 见 §5.13 | 图层底→顶 |
+| `MapRenderer._LAYER_ORDER` | 见 §5.15 | 图层底→顶 |
 | `GeoData._assign_lod` 四档 | `0 / 15 / 45 / 100` | 所有 LOD 图层共用 |
 | `MAP_STYLE.city_line.dash` | `(3, 3)` | 虚线节奏 |
+| `MapCanvas.fit_to_node` 的 `margin` | `0.7` | 定位时留 30% 边距 |
+| `MapCanvas.fit_to_node` 的 `max_scale` | `200` | 小 boundary 放大上限 |
 | hover 节流 | `40 ms` | `_process_motion` |
 | 标签刷新节流 | `30 ms` | `_schedule_label_refresh` |
 | settle redraw | `180 ms` | 滚轮静默后补绘 |
+| 据点面板默认分组 | `["state", "county"]` | `GroupBar.initial_selected` |
+| **`Character._DEFAULT_STAT`** | **`50`** | **五维缺省值（本轮）** |
 
 ---
 
@@ -795,12 +725,22 @@ main.py
 | 内政 / 军事 / 外交 | 空实现 |
 | 外交交互 | 只有 `stance` 字段 |
 | 部队面板 | 只清空 |
-| **`type` 差异化的能力 / 玩法** | **未做**（城 / 关隘 / 渡口目前只是标记） |
+| `type` 差异化的能力 / 玩法 | 未做（城 / 关隘 / 渡口目前只是标记） |
 | 设置窗口「操作」「游戏」tab | 骨架 |
 | 县界 / 县面 hover | 不做 |
 | `dash` 可调 | 不支持（tuple path） |
-| 郡面分级调色 | `lighten_color` / `major_fade` / `_county_stats` 全保留但不消费 |
+| 郡面分级调色 | 相关字段全保留但不消费 |
 | 字体可在 UI 里改 | 不支持（无 `font` 类型控件） |
+| 据点面板「主官」列 | 占位，恒显示 `—` |
+| 据点面板「人物」列 | 占位，恒显示 `0` |
+| 据点面板右键三项 | 占位，只 `print` |
+| 据点面板字体 / 字号可调 | 不支持（走 ttk 全局默认 + 组头硬编码 9 号粗体） |
+| 据点面板列宽 / 分组 / 排序持久化 | 不支持，重启后恢复默认 |
+| **剧本覆盖 `characters.json`** | **未实现（本轮明确记录）** |
+| **`characters.json` 加载入口** | **未实现** |
+| **人物面板展示新字段** | **未实现（`character_panel.py` 未动）** |
+| **`Character` 的 `affinity` 参与计算** | **未实现**（字段已存） |
+| **人物头像加载** | **未实现**（`portrait` 字段已存） |
 
 ### 8.2 数据层缺失
 
@@ -809,231 +749,136 @@ main.py
 - 路网无拓扑关联
 - 势力间无关系矩阵
 - `渡口` 类型在本数据集暂未出现
+- **`characters.json` 生成后需要人工核查 `_ambiguous_names` / `_missing_refs`**
+- **`Character.affinity` 与 `Faction.stance` 的关系未建立**
+- **人物与据点的归属（`faction / node`）完全依赖剧本，剧本未更新**
 
 ### 8.3 逻辑与性能限制
 
-（承接前几版 1–89 条，本轮新增 90–94）
+（承接前几轮，本轮新增 104–110）
 
-1. `render_lines` / `render_city_boundaries` 全量遍历 + bbox 粗筛
-2. `<Configure>` 全量重绘
-3. 绘制方法外层 `except Exception: pass`
-4. 标签不做视口预筛
-5. 空间索引线性扫描
-6. `_build_index` 只取外环
-7. 县名匹配 0.4° 兜底距离
-8. `midpoint_of_line` 死代码
-9. Tab 索引硬编码
-10. `FactionPanel` 无选中交互
-11. `WINDOW_SIZE` 定义未用
-12. `_cum_scale` 周期性全量重绘
-13. 无测试 / 打包 / lint
-14. 道路无 LOD
-15. 动态图层重建 + tag_lower 开销
-16. `CITY_LEVEL_MIN_SCALE` 硬编码
-17. `*_by_level` 表同问题
-18. 县点与县名"同显同隐"两处判断
-19. `_drawn` 置位时机是易错点
-20. `refresh_dynamic` 绘制顺序 → `_LAYER_ORDER` 表达
-21. `shapes_point` 的 `level` 解析必须先于 `append`
-22. 静态层依赖 `draw_full`
-23. `_cum_scale` 触发点是"当前视图"
-24. 拖拽路径不做静态层补画
-25. `SettingsManager.apply()` 必须就地修改
-26. `SettingsManager` 必须在 `MainWindow.__init__` 早期创建
-27. `theme` / `font` 的 `restart=True` 硬编码
-28. `ITEMS` 与 `style.py` 结构必须一致
-29. `level_table` 的 draft key 是 `path.LEVEL`
-30. 设置保存 / 关闭路径必须走 `_do_destroy()`
-31. `hidden=True` 要在 `_populate` / `_apply_filter` 两处都跳过
-32. `water.geojson` 加载 `except: pass`
-33. `LAYER_VISIBILITY.water` 默认 `False`
-34. 县名避让偏移与 `_point_radius` 同源
-35. 县点放大三字段联动
-36. 外环绘制顺序：先外环再主体
-37. 空心 / 外环用不同描边
-38. `update_idletasks()` 不在 `<Configure>` 里调
-39. 设置窗口滚轮用 `bind` 递归
-40. `scrollregion` 用 `winfo_reqheight()`
-41. 多 Tab 结构下 `_apply_filter` 按"当前 tab"作用
-42. `center_on_parent` 分多轮延迟
-43. 方法缩进事故高发
-44. `tag_lower(A, B)` 的 `B` 必须非空
-45. `load_geojson` 必须在 `reset_view()` 之前保存 `self._geo_data`
-46. 剧本加载依赖 `shapes_point` 的 `id` 字段
-47. 势力 id = 君主 id 是硬约定
-48. `GameState.__init__` 处于"未初始化"状态
-49. `change_gold/food/prestige` 双路径
-50. `tag_lower(A, B)` 的 `belowThis` 参数 B 必须非空
-51. `_restack()` 用 `tag_raise`
-52. 图层"内容"与层序解耦
-53. `FactionPanel.__init__` 先调一次 `refresh()`
-54. `FactionPanel._bucket_factions` 是纯函数
-55. `stance` 默认 0
-56. ★ `settings_schema.ITEMS` 每项必须含 `group`
-57. ★ `SettingsManager` 只支持"名字.子键"或"顶层字典"
-58. ★ `labels_county` 是四元组、`labels_city` 是五元组
-59. ★ `render_territory` 的 `outline=color` 是刻意的
-60. ★ `set_world` 不负责重绘
-61. ★ `CountyStat` 现在是渲染层"未消费缓存"
-62. ★ 无主据点计入控制力分母
-63. ★ `style.py` 里 `LAYER_VISIBILITY` 段注释和缩进不齐
-64. ★ `MAP_STYLE.polygon.fill = ""` 是合法的"不填充"值
-65. ★ `city_polygon` 段已彻底移除
-66. ★ 县界是 `CITY_TAG` 下的独立图层，位于 `territory` 之上
-67. ★ **`shapes_city_boundary` 收集所有 type（城 / 关隘 / 渡口）**
-68. ★ 县界 LOD 与水域共用 `_assign_lod`
-69. ★ `render_city_boundaries` 用 `create_line` 而非 `create_polygon`
-70. ★ `render_city_labels` 解包变量 `cid` 无人消费但不能删
-71. ★ `render_county_labels` / `render_city_labels` 都不再查势力色
-72. ★ 州 / 郡 / 县三级边界区分靠粗细与虚实
-73. ★ 州界宽度在设置窗口内受 `max` 限制
-74. ★ **`render_*` 的 `except Exception: pass` 是重大排查障碍**
-75. ★ Tk 线宽取整到整数像素
-76. ★ `_city_index` 与 `_state_index` / `_county_index` 同构
-77. ★ `find_city_at` 多命中取 bbox 面积最小者
-78. ★ `find_location` 的县查询是"精确优先 + 最近兜底"
-79. ★ hover 反查是 O(n) 线性 + 40ms 节流
-80. ★ UI 层对县名显示"零改动"
-81. ★ `_LAYER_ORDER` 中 `territory` 位于 `city` 之下
-82. ★ `render_territory` 数据源是 `shapes_city_boundary`
-83. ★ `render_territory` 不再消费 `_county_stats`
-84. ★ 县面染色的 LOD 与县界层严格一致
-85. ★ 一个县一个据点，`owner` 就是染色依据
-86. ★ **所有 type 都参与染色、县界、点位、标签渲染**（城 / 关隘 / 渡口一视同仁）
-87. ★ `LAYER_VISIBILITY.territory` 语义为"县面染色"
-88. ★ `MAP_STYLE.territory.major_fade` 保留在 `style.py`，设置窗口已移除
-89. ★ `settings_schema` 里 `territory` 分组描述已更新
-90. ★ **郡名标签有独立字体覆盖**（`MAP_STYLE.label_county.font_family`，默认 `"KaiTi"`）
-91. ★ **郡名字号三字段联动缩 15%**（`size_divisor 105→124`、`min_size 9→8`、`max_size 22→19`）
-92. ★ **术语「县 = 据点」已统一**
-    - 一个县 = 一个据点 = 一个 `Node` 对象 = `map.geojson` 里的一个 `city`
-    - 代码里 `city*` / `*_city_*` 命名的变量，语义等于"县 / 据点"
-    - 文档、注释、UI 文案里不再出现"一个县含多个据点"或"据点分属多个县"的表述
-93. ★ **`type` 枚举已收缩为 `城 / 关隘 / 渡口`**
-    - 代码里对 type 的 fallback 默认值全部改为 `"城"`
-    - 旧枚举 `县 / 渡口\/津 / 仓\/监 / 谷 / 山地` 已废弃
-    - **渲染层、查询层、剧本层、染色层对 type 无任何分支**
-94. ★ **`userdata/settings.json` 会覆盖 `style.py` 默认值**
-    - `MainWindow.__init__` 里 `SettingsManager().apply()` 在 `style.py` 被 import 之后运行
-    - 排查"改了没效果"时优先看 `userdata/settings.json`
+1–94. （同上轮，略）
+95–103. （同上轮，略）
+104. ★ **`Character` 全展开但未接入加载**：`characters.json` 存在，但 `ScenarioLoader` 不读它
+105. ★ **剧本覆盖未实现**：剧本 `characters` 段仍**新建**人物而非覆盖基础数据
+106. ★ **`apply_override` 用 `hasattr` 防脏数据**：剧本写错字段名会被静默忽略
+107. ★ **关系字段转 id 取"编号最小者"**：重名歧义需人工核对 `_ambiguous_names`
+108. ★ **`blood` 不转 id**：它是家族 / 氏族标签，不是人名
+109. ★ **`start_official = 0` 表示未出仕**：不是错误数据
+110. ★ **`tools/build_characters.py` 依赖 `openpyxl`**：仅生成阶段需要，游戏运行时零依赖
 
 ### 8.4 建议的下一步
 
-1. **给 `render_*` 的 `except` 加"首次异常打印"**：
-
-```python
-_warned = set()   # 类属性
-
-def render_polygons(self):
-    min_lon, min_lat, max_lon, max_lat = self._visible_bounds()
-    for feat in self.data.shapes_polygon:
-        b = feat["bbox"]
-        if b[2] < min_lon or b[0] > max_lon or b[3] < min_lat or b[1] > max_lat:
-            continue
-        try:
-            self.render_polygon(feat)
-        except Exception as e:
-            key = type(e).__name__
-            if key not in MapRenderer._warned:
-                MapRenderer._warned.add(key)
-                print(f"[renderer] {key}: {e}")
-```
-
-2. **给 `type` 赋予玩法差异**（城 / 关隘 / 渡口的不同能力）
-3. **据点点击详情面板**（`node_panel` 接入）
-4. **人物面板 / 势力面板交互**
-5. **外交入口（改 `stance`）**
-6. **接入 `mountains.geojson`**
-7. **存档系统 / 新游戏流程**
-8. **回合流程**
-9. **县界样式细化**：`dash` 可调、按 type 区分样式、hover 高亮
-10. **恢复郡级统计图层**（若将来需要"郡面 + 县面"双层染色）
-11. **给 `settings_schema` 增加 `font` 类型**，把 `MAP_STYLE.*.font_family` 暴露到设置窗口
+1. **实现剧本覆盖加载**（§6.2 里标注的 `_load_base_characters` + 剧本增量覆盖）
+2. **`constants.py` 加 `DEFAULT_CHARACTERS_PATH`**
+3. **`character_panel.py` 展示新字段**（五维 / 表字 / 个性 / 关系）
+4. **给 `render_*` 的 `except` 加"首次异常打印"**
+5. **给 `type` 赋予玩法差异**
+6. **据点点击详情面板**（`node_panel` 的右键三项接入真实窗口）
+7. **外交入口（改 `stance`）**
+8. **接入 `mountains.geojson`**
+9. **存档系统 / 新游戏流程 / 回合流程**
+10. **县界样式细化**
+11. **`settings_schema` 增加 `font` 类型**
+12. **主官 / 人物数两列的真实数据**（`world.characters_at(node_id)` 聚合）
+13. **据点面板字体 / 字号可调**
+14. **据点面板状态持久化**
+15. **★ 人工核查 `characters.json` 的 `_ambiguous_names` / `_missing_refs`**
+16. **★ `Character.affinity` 参与势力关系计算**
 
 ---
 
 ## 9. 变更日志
 
-### 9.1 – 9.5（摘要）
+### 9.1 – 9.8（摘要）
 
 - 9.1：剧本系统 + 外交分组 + 层序修复
-- 9.2：郡面势力染色（`territory.py` + `render_territory`）
+- 9.2：郡面势力染色
 - 9.3：县界渲染 + 几何层去色
 - 9.4：hover 反查县名 + 州界渲染修复
-- 9.5：县面势力染色 + 图层顺序调整（`territory` 降到 `city` 之下）
+- 9.5：县面势力染色 + 图层顺序调整
+- 9.6：郡名标签独立字体（KaiTi）+ 缩小 15%
+- 9.7：术语「县 = 据点」统一 + `type` 枚举收缩为 `城 / 关隘 / 渡口`
+- 9.8：据点面板重构 + `MapController` + `fit_to_node` + 右键展开/折叠 + 郡治显示 + 默认州>郡分组
 
-### 9.6 郡名标签独立字体 + 缩小 15%（第七轮）
-
-**需求**：
-
-1. 郡名标签换字体（KaiTi）
-2. 郡名字号稍微小一点（缩 15%）
-
-**改动**：
-
-- **`game/map/renderer.py`**：`draw_text` 增加字体覆盖（`style.get("font_family") or self.font_family`）
-- **`game/config/style.py`**：`MAP_STYLE.label_county` 新增 `"font_family": "KaiTi"`，`size_divisor 105→124`，`min_size 9→8`，`max_size 22→19`
-- **`game/config/settings_schema.py`**：`label_county` 分组 `desc` 补字体说明
-
-### 9.7 县 = 据点 · `type` 枚举收缩（第八轮）
+### 9.9 人物基础数据 + `Character` 全展开（第十轮）
 
 #### 需求
 
-1. **统一术语「县 = 据点」**：一个县 = 一个据点 = `map.geojson` 里的一个 `city` = 一个 `Node` 对象。
-2. **`type` 枚举收缩**：从 `县 / 关隘 / 渡口\/津 / 仓\/监 / 谷 / 山地` 变为 `城 / 关隘 / 渡口`。
-3. 在文档中把这两件事说清楚。
+1. 基于《314英雄集结武将数据.xlsx》（1049 行 × 49 列）**构建人物类**
+2. 形成 **JSON 文件保存信息作为基础数据**
+3. **独立基础数据**（`assets/characters.json`）
+4. **游戏运行时剧本覆盖基础数据**
+5. **`Character` 全展开**（每字段显式属性 + 中文注释）
+6. **关系字段转 id**（名字 → id 引用）
+7. **`军团` 改为 `势力`**
+8. **基础数据里 `势力 / 所在 / 所属 / 身份` 留空**（剧本决定）
 
 #### 改动
 
-**`game/map/geo_data.py`**：
+**新增文件：**
 
-- `_classify_county` 里两处 `type` fallback 默认值 `"县"` → `"城"`
-  - `shapes_point` 元素
-  - `shapes_city_boundary` 的 `properties`
-- 顶部 docstring / 容器注释统一为"县（据点）"
+- `tools/build_characters.py` —— xlsx/csv → characters.json 转换脚本
+- `assets/characters.json` —— 1049 位人物基础数据（脚本生成，手动移入 assets/）
 
-**`game/core/node.py`**：
+**重写文件：**
 
-- `Node.__init__` 默认 `type_="县"` → `"城"`
+- `game/core/character.py` —— 全展开，44 列字段全覆盖，每字段带中文注释
 
-**`game/core/scenario.py`**：
+**未改动文件（兼容）：**
 
-- `_build_nodes_from_geo` 里 `type_=props.get("type", "城")`（原 `"县"`）
+- `game/core/scenario.py` 的 `_build_character` —— keyword 调用方式与新版 `Character` 兼容
+- `game/core/world.py` / `node.py` / `territory.py` 等
 
-**`game/ui/map_canvas.py`**：
+#### 设计决策
 
-- `load_geojson` 状态栏文案 `f"县 {len(data.labels_city)}"` → `f"据点 {len(data.labels_city)}"`
+- **静态 + 动态双层数据**：
+  - `assets/characters.json` = 静态（五维 / 关系 / 生卒 / 个性 / 阵型 / 战法…）
+  - `scenarios/*.json` = 动态（`faction / node / location_name / affiliation / role`）
+- **关系字段一律用 id 引用**：避免重名歧义
+- **重名取编号最小者**：`李丰` → `0917`（不写特殊规则，让用户接受默认；剧本可显式指定 id）
+- **`blood` 不转 id**：它是家族标签，不是人名
+- **`_ambiguous_names` / `_missing_refs`**：JSON 顶层带排查字段，游戏加载时忽略
+- **`apply_override`**：只覆盖已有属性（`hasattr` 防脏数据）
+- **`sex / traits / formations / tactics`** 全部是字符串列表
+- **`start_official = 0`**：表示未出仕（合法值）
+- **`from_dict` / `to_dict`**：JSON 双向映射，方便存档
 
-**`game/config/settings_schema.py`**：
+#### 数据映射（xlsx → JSON）
 
-- `point` 分组 `title` `"县点样式"` → `"据点样式"`
-- `point` 分组 `desc` 改为"各据点（城 / 关隘 / 渡口）小点的颜色、大小、描边与形状分级。"
-
-**代码逻辑层**：
-
-- **零改动**。渲染层 / 查询层 / 剧本层 / 染色层从来不对 `type` 做分支判断，所有 type 一视同仁。
+| xlsx 列 | JSON 字段 | 说明 |
+|---|---|---|
+| 编号 | `id` | 补零四位 |
+| 姓名 / 字 | `name` / `family_name` | |
+| 性别 / 头像 | `sex` / `portrait` | |
+| 五维 | `leadership` … `charisma` | |
+| 登场 / 出生 / 死亡 | `appear_year` … `death_year` | |
+| 相性 | `affinity` | |
+| 血缘 | `blood` | **不转 id** |
+| 父亲 / 母亲 / 配偶 | `father` / `mother` / `spouse` | 转 id |
+| 义兄弟 | `sworn_brothers` | 转 id |
+| 亲爱 / 厌恶 1–8 | `liked` / `disliked` | 转 id |
+| 世代 | `generation` | |
+| 开始仕官 | `start_official` | |
+| 个性 / 阵型 / 战法 | `traits` / `formations` / `tactics` | 空格切分 |
+| **军团** | **不读** | 改名「势力」，由剧本填 |
+| **所在 / 所属 / 身份** | **不读** | 由剧本填 |
 
 #### 记录（非代码改动）
 
-- **`userdata/settings.json` 会覆盖 `style.py` 默认值**：排查"改了没效果"时优先查看
-- **KaiTi 字体名可能不匹配**：Windows 上可能是 `"KaiTi"` / `"楷体"` / `"KaiTi_GB2312"`；缺失时 Tk 静默回退 `TkDefaultFont`
-- **只改 `style.py` 不改 `draw_text`，字号变但字体不变**
+- **穿越人物（编号 1001–1049）保留**：所在 / 所属 / 身份均为「无」，`世代 = 0`
+- **脏值原样存**（如「所在: 61」）：不做清洗，保证源头可信
+- **数据源文件**《314英雄集结武将数据.xlsx》与脚本**同目录**运行即可
 
-#### 设计决策（本轮定稿）
+#### 待办（本轮明确记录）
 
-- **术语统一**：全文以"县"为主称，"据点"为同义补充，不再混用其他叫法
-- **`type` 只标记形态**：城 / 关隘 / 渡口三者字段、渲染、逻辑完全平等
-- **代码里保留 `city*` 命名**：语义已等同"县 / 据点"，改名成本大于收益
-- **fallback 默认值统一为 `"城"`**：数据里都有 `type`，fallback 只为防御脏数据
-- **文档显眼处（§0）单列术语表**：先读术语再读代码，避免"城市 vs 据点"的旧歧义重演
-
-#### 数据约定（本轮明确）
-
-- 一个 `cities[]` 元素 = 一个县 = 一个据点 = 一个 `Node`
-- `type ∈ {"城", "关隘", "渡口"}`
-- 三种 type 的字段完全一样
-- 三种 type 都参与：势力染色 / 县界虚线 / 县点点位 / 县名标签 / hover 反查 / 剧本覆盖
+- **剧本覆盖加载**：`ScenarioLoader` 加 `_load_base_characters` + `_apply_character_overrides`
+- **`constants.py` 加 `DEFAULT_CHARACTERS_PATH`**
+- **人工核查 `_ambiguous_names` / `_missing_refs`**（生成后看控制台输出）
+- **`character_panel.py` 展示新字段**
+- **`Character.affinity` 参与势力关系计算**
+- **人物头像加载**（`portrait` 字段已存）
 
 ---
 
-**本轮核心变动集中在 §0（新增术语表）**、**§3.4（县 = 据点 定义）**、**§4.2（type 枚举收缩）**、**§5.11 / 5.16 / 5.17 / 5.18 / 5.19（fallback + 文案）**、**§8.3 第 92–94 条**、**§9.7**。
+**本轮核心变动集中在 §0（人物约定）**、**§2（新增 tools / characters.json）**、**§3.3（Character 全展开）**、**§4.2（characters.json 结构）**、**§5.7 / 5.8（character.py + build_characters.py）**、**§6.3（数据生成流程）**、**§8.3 第 104–110 条**、**§9.9**。
