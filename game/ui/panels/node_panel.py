@@ -87,8 +87,12 @@ class NodePanel(GenericListPanel):
 
     def context_menu_items(self, ctx):
         row = ctx.right_click_row
+        can_edit = (self.edit_session is not None
+                    and len(ctx.selected_rows) == 1)
         return [
             MenuItem(row.name, enabled=False),
+            MenuItem.sep(),
+            MenuItem("编辑", lambda: self._edit(row), enabled=can_edit),
             MenuItem.sep(),
             MenuItem("据点情报", lambda: self._intel("node", ctx.selected_rows)),
             MenuItem("人物情报", lambda: self._intel("character", ctx.selected_rows)),
@@ -99,6 +103,55 @@ class NodePanel(GenericListPanel):
             MenuItem("全部展开", lambda: self._toggle_all(True)),
             MenuItem("全部折叠", lambda: self._toggle_all(False)),
         ]
+
+    def _edit(self, row):
+        if self.edit_session is None:
+            return
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            return
+        node = world.nodes.get(row.node_id)
+        if node is None:
+            return
+
+        from game.ui.dialogs.edit_dialog import EditDialog
+        from game.ui.dialogs.node_fields import NODE_FIELDS
+        from game.core.edit_commands import NodeEditCommand
+        from game.core.edit_session import CompositeCommand
+        from tkinter import messagebox
+
+        dlg = self._open_dialog(lambda: EditDialog(
+            self, NODE_FIELDS, node, world=world, title="编辑据点"))
+        if dlg is None or not dlg.ok:
+            return
+
+        new_values, old_values = dlg.get_changed()
+        if not new_values:
+            return
+
+        # 郡治互斥（§3.3 场景 2）：同郡已有郡治 → 弹窗二选一
+        cmds = []
+        if new_values.get("is_capital") is True:
+            for other in world.nodes.values():
+                if other.id == node.id or other.county_id != node.county_id:
+                    continue
+                if not other.is_capital:
+                    continue
+                ans = messagebox.askyesno(
+                    "郡治冲突",
+                    f"{other.name} 已是本郡郡治。\n"
+                    f"确定将其改为非郡治，本县设为郡治？",
+                )
+                if not ans:
+                    return
+                cmds.append(NodeEditCommand(
+                    other.id, {"is_capital": True}, {"is_capital": False}))
+                break
+
+        cmds.append(NodeEditCommand(node.id, old_values, new_values))
+        cmd = cmds[0] if len(cmds) == 1 else CompositeCommand(cmds, "设置郡治")
+        self.edit_session.execute(cmd)
+        self._notify_edit()
 
     def _intel(self, kind, rows):
         names = "、".join(r.name for r in rows[:5])

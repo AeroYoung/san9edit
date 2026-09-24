@@ -19,6 +19,10 @@ class SidePanel(ttk.Frame):
         self.pack_propagate(False)
         self.panels = {}          # key -> panel widget
 
+        # 编辑会话回调（由 MainWindow 注入）
+        self._edit_callback = None
+        self._open_dialog_callback = None
+
         self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill="both", expand=True, padx=2, pady=2)
         self._add_tabs()
@@ -68,3 +72,24 @@ class SidePanel(ttk.Frame):
                     hook()
                 except Exception:
                     pass
+
+    def set_edit_session(self, session, on_edit=None, open_dialog=None):
+        """后置注入编辑会话。MainWindow 建好 session 后调用。"""
+        self._edit_callback = on_edit
+        self._open_dialog_callback = open_dialog
+        for p in self.panels.values():
+            p.edit_session = session
+
+    def on_panel_edit(self):
+        """面板编辑执行后：刷新所有面板 + 转发给 MainWindow。"""
+        self.refresh_all()
+        cb = getattr(self, "_edit_callback", None)
+        if callable(cb):
+            cb()
+
+    def open_edit_dialog(self, dlg_factory):
+        """面板通过 master 链找到本方法，转发给 MainWindow.open_edit_dialog。"""
+        cb = getattr(self, "_open_dialog_callback", None)
+        if callable(cb):
+            return cb(dlg_factory)
+        return dlg_factory()

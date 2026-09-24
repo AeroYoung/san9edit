@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.model import Group
+from .list.context_menu import MenuItem
 
 
 @dataclass(frozen=True)
@@ -154,6 +155,43 @@ class FactionPanel(GenericListPanel):
 
     def row_key(self, row):
         return row.id
+
+    def context_menu_items(self, ctx):
+        row = ctx.right_click_row
+        can_edit = (self.edit_session is not None
+                    and len(ctx.selected_rows) == 1)
+        return [
+            MenuItem(row.name, enabled=False),
+            MenuItem.sep(),
+            MenuItem("编辑", lambda: self._edit(row), enabled=can_edit),
+        ]
+
+    def _edit(self, row):
+        if self.edit_session is None:
+            return
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            return
+        f = world.factions.get(row.id)
+        if f is None:
+            return
+
+        from game.ui.dialogs.edit_dialog import EditDialog
+        from game.ui.dialogs.faction_fields import FACTION_FIELDS
+        from game.core.edit_commands import FactionEditCommand
+
+        dlg = self._open_dialog(lambda: EditDialog(
+            self, FACTION_FIELDS, f, world=world, title="编辑势力"))
+        if dlg is None or not dlg.ok:
+            return
+
+        new_values, old_values = dlg.get_changed()
+        if not new_values:
+            return
+
+        self.edit_session.execute(
+            FactionEditCommand(row.id, old_values, new_values))
+        self._notify_edit()
 
     def build_groups(self, rows):
         world = getattr(self.game_state, "world", None)

@@ -32,6 +32,7 @@ class GenericListPanel(ttk.Frame):
     DEFAULT_GROUP: tuple = ()        # 默认选中的分组
     PRIORITY_NAME: str = None        # 置顶组名（只最外层）
     CUSTOM_GROUPING: bool = False    # True = 用 build_groups() 覆盖默认维度分组
+    edit_session = None              # ★ 由 SidePanel.set_edit_session 注入
 
     def __init__(self, master, game_state, map_controller=None):
         super().__init__(master)
@@ -304,6 +305,31 @@ class GenericListPanel(ttk.Frame):
                     self.tree.item(item, open=open_)
                 walk(item)
         walk("")
+
+    # ==========================================================
+    # 编辑会话
+    # ==========================================================
+    def _open_dialog(self, dlg_factory):
+        """向上找带 open_edit_dialog 的对象（SidePanel 转发给 MainWindow）。"""
+        w = self.master
+        while w is not None:
+            hook = getattr(w, "open_edit_dialog", None)
+            if callable(hook):
+                return hook(dlg_factory)
+            w = getattr(w, "master", None)
+        # 兜底：直接开
+        return dlg_factory()
+
+    def _notify_edit(self):
+        """向上找 SidePanel 的 on_panel_edit。"""
+        w = self.master
+        while w is not None:
+            hook = getattr(w, "on_panel_edit", None)
+            if callable(hook):
+                hook()
+                return
+            w = getattr(w, "master", None)
+        self.refresh()
 
     # ==========================================================
     # 列配置（PANEL_COLUMNS）
