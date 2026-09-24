@@ -23,18 +23,21 @@ class FactionRow:
     food: int
     stance: int
     ruler_name: str
+    node_count: int = 0      # ★ 新增
+    char_count: int = 0      # ★ 新增
 
     @property
     def stance_text(self):
         return f"+{self.stance}" if self.stance > 0 else f"{self.stance}"
 
     @classmethod
-    def from_faction(cls, f, world):
+    def from_faction(cls, f, world, node_count=0, char_count=0):   # ★ 签名扩展
         ruler = world.characters.get(f.ruler_id)
         return cls(
             id=f.id, name=f.name, color=f.color,
             prestige=f.prestige, gold=f.gold, food=f.food, stance=f.stance,
             ruler_name=ruler.name if ruler is not None else "—",
+            node_count=node_count, char_count=char_count,          # ★
         )
 
 
@@ -43,11 +46,14 @@ COLUMNS = (
     Column("prestige", "威望", 60, "e", lambda r: f"{r.prestige:,}", sort_numeric=True),
     Column("gold",     "金",   60, "e", lambda r: f"{r.gold:,}",     sort_numeric=True),
     Column("food",     "粮",   70, "e", lambda r: f"{r.food:,}",     sort_numeric=True),
+    Column("nodes",    "据点", 55, "e", lambda r: str(r.node_count), sort_numeric=True),  # ★
+    Column("chars",    "人物", 55, "e", lambda r: str(r.char_count), sort_numeric=True),  # ★
     Column("stance",   "关系", 50, "center", lambda r: r.stance_text),
 )
 
 
 class FactionPanel(GenericListPanel):
+    COLUMNS = COLUMNS              # ★ 补这一行
     CUSTOM_GROUPING = True
 
     _GROUPS = [
@@ -131,7 +137,19 @@ class FactionPanel(GenericListPanel):
         world = getattr(self.game_state, "world", None)
         if world is None or not getattr(world, "factions", None):
             return []
-        return [FactionRow.from_faction(f, world) for f in world.factions.values()]
+
+        # ★ 聚合只算一次，避免逐行遍历
+        node_counts = world.count_nodes_by_owner()
+        char_counts = world.count_characters_by_faction()
+
+        return [
+            FactionRow.from_faction(
+                f, world,
+                node_count=node_counts.get(f.id, 0),
+                char_count=char_counts.get(f.id, 0),
+            )
+            for f in world.factions.values()
+        ]
 
     def row_key(self, row):
         return row.id

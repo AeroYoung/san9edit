@@ -4,7 +4,7 @@
 World 不负责加载（由 ScenarioLoader 负责），只做数据容器。
 nodes 包含 map.geojson 里的全部据点，剧本只覆盖部分。
 """
-
+from collections import Counter
 
 class World:
     def __init__(self):
@@ -45,6 +45,14 @@ class World:
 
     def characters_of(self, faction_id):
         return [c for c in self.characters.values() if c.faction == faction_id]
+
+    def count_nodes_by_owner(self):
+        """每个势力拥有的据点数。返回 dict[fid, int]，无主据点不计。"""
+        return Counter(n.owner for n in self.nodes.values() if n.owner)
+
+    def count_characters_by_faction(self):
+        """每个势力的人物数。返回 dict[fid, int]，无势力人物不计。"""
+        return Counter(c.faction for c in self.characters.values() if c.faction)
 
     def node(self, nid):
         return self.nodes.get(nid)
