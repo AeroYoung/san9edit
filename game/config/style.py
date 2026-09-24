@@ -198,3 +198,16 @@ MAP_INTERACTION = {
     "highlight_hover_tooltip":     True,    # tooltip：县名 + 势力 + 驻军
     "highlight_hover_region":      False,   # hover 州/郡边界高亮整片区域
 }
+
+# ============================================================
+# 面板列配置（§7.3 新增）
+# ============================================================
+# 每个面板一份。order = 列 key 顺序（空 = 用 COLUMNS 声明顺序）；
+# hidden = 需要隐藏的列 key。NAME_COLUMN（#0）不参与，锁定必显。
+# 新增列时不需要改这里 —— order 中未出现的 key 会自动追加到末尾并默认显示。
+PANEL_COLUMNS = {
+    "node":      {"order": [], "hidden": []},
+    "character": {"order": [], "hidden": []},
+    "faction":   {"order": [], "hidden": []},
+    "troop":     {"order": [], "hidden": []},
+}

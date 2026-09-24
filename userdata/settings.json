@@ -10,7 +10,42 @@
     "LAYER_VISIBILITY.water": true,
     "LAYER_VISIBILITY.label_state": false,
     "LAYER_VISIBILITY.label_county": false,
-    "MAP_INTERACTION.highlight_hover_border": false,
-    "MAP_INTERACTION.highlight_hover_fill": false
+    "PANEL_COLUMNS.node.order": [
+      "state",
+      "county",
+      "level",
+      "type",
+      "owner",
+      "governor",
+      "persons"
+    ],
+    "PANEL_COLUMNS.character.order": [
+      "faction",
+      "node",
+      "role",
+      "lead",
+      "might",
+      "int",
+      "pol",
+      "cha"
+    ],
+    "PANEL_COLUMNS.faction.order": [
+      "ruler",
+      "nodes",
+      "chars",
+      "gold",
+      "food",
+      "prestige",
+      "stance"
+    ],
+    "PANEL_COLUMNS.faction.hidden": [
+      "ruler"
+    ],
+    "PANEL_COLUMNS.troop.order": [
+      "general",
+      "troops",
+      "morale",
+      "state"
+    ]
   }
 }

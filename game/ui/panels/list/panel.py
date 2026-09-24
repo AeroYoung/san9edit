@@ -45,7 +45,9 @@ class GenericListPanel(ttk.Frame):
         self._search_query = ""
         self._syncing = False        # 反向定位防递归
         self._menus = []             # 持有菜单引用防 GC
-
+        # ★ 按 PANEL_COLUMNS 解析可见列（先于 _build_ui）
+        self._visible_columns, self._visible_name = self._resolve_columns()
+        
         self._build_ui()
         self.refresh()
 
@@ -69,11 +71,17 @@ class GenericListPanel(ttk.Frame):
             )
             self.group_bar.pack(side="left", fill="x", expand=True)
 
-        # 表体
-        body = ttk.Frame(self)
-        body.pack(fill="both", expand=True, padx=2, pady=2)
+        # 表体（可重建）
+        self._body = ttk.Frame(self)
+        self._body.pack(fill="both", expand=True, padx=2, pady=2)
+        self._build_tree_in(self._body)
 
-        cols = [c.key for c in self.COLUMNS]
+    def _build_tree_in(self, body):
+        """在 body 里构建 Treeview + 滚动条。可被 reload_columns 复用。"""
+        for w in body.winfo_children():
+            w.destroy()
+
+        cols = [c.key for c in self._visible_columns]
         self.tree = ttk.Treeview(
             body, columns=cols, show="tree headings", selectmode="extended",
         )
@@ -86,7 +94,7 @@ class GenericListPanel(ttk.Frame):
             self.tree.column("#0", width=self.NAME_COLUMN.width,
                              anchor=self.NAME_COLUMN.anchor, stretch=False)
 
-        for c in self.COLUMNS:
+        for c in self._visible_columns:
             self.tree.heading(c.key, text=c.title,
                               command=lambda k=c.key: self._on_heading_click(k))
             self.tree.column(c.key, width=c.width, anchor=c.anchor, stretch=False)
@@ -103,10 +111,14 @@ class GenericListPanel(ttk.Frame):
 
         self.tree.tag_configure("group", background="#F3F4F6",
                                 font=("", 9, "bold"))
-
         self.tree.bind("<Button-3>", self._on_right_click)
         self.tree.bind("<Button-2>", self._on_right_click)
         self.tree.bind("<Control-a>", self._on_select_all)
+
+        # 子类自定义 tag（faction_panel 有 _configure_tags）
+        hook = getattr(self, "_configure_tags", None)
+        if callable(hook):
+            hook()
 
     # ==========================================================
     # 搜索
@@ -128,7 +140,7 @@ class GenericListPanel(ttk.Frame):
         if self.NAME_COLUMN is not None \
                 and self._value_contains(self.NAME_COLUMN.value(row), tok):
             return True
-        for c in self.COLUMNS:
+        for c in self._visible_columns:
             if self._value_contains(c.value(row), tok):
                 return True
         return False
@@ -149,7 +161,7 @@ class GenericListPanel(ttk.Frame):
         self.refresh()
 
     def _column_index(self):
-        idx = {c.key: c for c in self.COLUMNS}
+        idx = {c.key: c for c in self._visible_columns}
         if self.NAME_COLUMN is not None:
             idx[self.NAME_COLUMN.key] = self.NAME_COLUMN
         return idx
@@ -199,7 +211,7 @@ class GenericListPanel(ttk.Frame):
                     self._insert_row(gid, r, row_tag=g.row_tag)
 
     def _insert_row(self, parent, row, row_tag=None):
-        values = [c.value(row) for c in self.COLUMNS]
+        values = [c.value(row) for c in self._visible_columns]
         text = self.NAME_COLUMN.value(row) if self.NAME_COLUMN is not None else ""
         kwargs = {}
         if row_tag:
@@ -292,6 +304,55 @@ class GenericListPanel(ttk.Frame):
                     self.tree.item(item, open=open_)
                 walk(item)
         walk("")
+
+    # ==========================================================
+    # 列配置（PANEL_COLUMNS）
+    # ==========================================================
+    def _resolve_columns(self):
+        """读 style.PANEL_COLUMNS，返回 (可见列 tuple, name_column)。
+
+        规则：
+          - order 中的 key 优先排前面，未出现的按声明顺序追加
+          - hidden 中的列被过滤（NAME_COLUMN 不参与）
+          - order / hidden 里的未知 key 忽略
+        子类没声明 PANEL_KEY 时，退化为直接返回类属性 COLUMNS。
+        """
+        panel_key = getattr(self, "PANEL_KEY", None)
+        if not panel_key:
+            return self.COLUMNS, self.NAME_COLUMN
+
+        try:
+            from game.config.style import PANEL_COLUMNS
+        except Exception:
+            return self.COLUMNS, self.NAME_COLUMN
+
+        cfg = (PANEL_COLUMNS or {}).get(panel_key) or {}
+        order = list(cfg.get("order") or [])
+        hidden = set(cfg.get("hidden") or [])
+
+        by_key = {c.key: c for c in self.COLUMNS}
+        arranged = [by_key[k] for k in order if k in by_key]
+        seen = set(order)
+        for c in self.COLUMNS:
+            if c.key not in seen:
+                arranged.append(c)
+
+        visible = tuple(c for c in arranged if c.key not in hidden)
+        return visible, self.NAME_COLUMN
+
+    def reload_columns(self):
+        """设置保存后由 MainWindow 调用：重读配置，重建表格。"""
+        self._visible_columns, self._visible_name = self._resolve_columns()
+        # 若排序键已被隐藏，则清除排序状态
+        if self._sort_key:
+            visible_keys = {c.key for c in self._visible_columns}
+            if self.NAME_COLUMN is not None:
+                visible_keys.add(self.NAME_COLUMN.key)
+            if self._sort_key not in visible_keys:
+                self._sort_key = None
+                self._sort_desc = False
+        self._build_tree_in(self._body)
+        self.refresh()
 
     # ==========================================================
     # 子类覆盖的钩子

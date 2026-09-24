@@ -405,17 +405,29 @@ class MainWindow:
         - THEME / FONT_SIZES / FONT_CANDIDATES：需重启，窗口自己已提示。
         """
         map_dirty = False
+        panel_dirty = False
         for p in changed_paths:
             if p.startswith("MAP_STYLE.") \
             or p.startswith("CITY_LEVEL_MIN_SCALE") \
             or p.startswith("LAYER_VISIBILITY."):
                 map_dirty = True
-                break
+            elif p.startswith("PANEL_COLUMNS"):      # ★
+                panel_dirty = True
+                
         if map_dirty and getattr(self, "map_canvas", None) is not None:
             try:
                 self.map_canvas.redraw()
             except Exception:
                 pass
+
+        if panel_dirty:                              # ★
+            side = getattr(self, "side_panel", None)
+            if side is not None and hasattr(side, "reload_panel_columns"):
+                try:
+                    side.reload_panel_columns()
+                except Exception:
+                    pass
+
         self.status_bar.set_message("设置已保存")
 
     def _confirm_and_new_game(self):

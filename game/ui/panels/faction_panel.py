@@ -53,6 +53,7 @@ COLUMNS = (
 
 
 class FactionPanel(GenericListPanel):
+    PANEL_KEY = "faction"
     COLUMNS = COLUMNS              # ★ 补这一行
     CUSTOM_GROUPING = True
 
@@ -190,10 +191,6 @@ class FactionPanel(GenericListPanel):
     # ------------------------------------------------------------
     # 组 / 行配色
     # ------------------------------------------------------------
-    def _build_ui(self):
-        super()._build_ui()
-        self._configure_tags()
-
     def _configure_tags(self):
         self.tree.tag_configure("group_player",  background="#DBEAFE", font=("", 10, "bold"))
         self.tree.tag_configure("group_ally",    background="#DCFCE7", font=("", 10, "bold"))

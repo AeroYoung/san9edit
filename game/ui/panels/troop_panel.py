@@ -27,6 +27,7 @@ NAME_COLUMN = Column("name", "部队", 100, "w", lambda r: r.name)
 
 
 class TroopPanel(GenericListPanel):
+    PANEL_KEY = "troop" 
     COLUMNS = COLUMNS
     NAME_COLUMN = NAME_COLUMN
 

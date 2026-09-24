@@ -33,7 +33,9 @@ class SettingsWindow(tk.Toplevel):
         self.draft = {}
         self._rows = {}         # path -> {"setter": fn, "kind": ...}
         self._sections = {}     # group_key -> CollapsibleSection
-
+        self._panel_states = {}       # ★ panel_key -> [(col_key, title, visible), ...]
+        self._panel_listboxes = {}    # ★ panel_key -> Listbox
+        
         # 顶部工具条
         self._build_toolbar()
         # 主体：Canvas + Scrollbar
@@ -187,6 +189,8 @@ class SettingsWindow(tk.Toplevel):
         # 空 tab 占位
         for tab_meta in schema.TABS:
             tab_key = tab_meta["key"]
+            if tab_key == "panels":        # ★ panels 走自定义构建
+                continue
             has_items = any(
                 any(not it.get("hidden")
                     for it in schema.items_of_group(g["key"]))
@@ -201,6 +205,9 @@ class SettingsWindow(tk.Toplevel):
                              font=(self.font_family,
                                    FONT_SIZES["panel_body"] + 2),
                              ).pack(pady=60)
+
+        # 面板列配置（自定义构建）
+        self._populate_panel_columns()
 
         # 给每个 tab 的 content 及其后代绑滚轮 / configure
         for tab_key, tab_data in self._tabs.items():
@@ -245,6 +252,159 @@ class SettingsWindow(tk.Toplevel):
 
         # 行数据登记（供筛选用）
         item["_row_widget"] = row
+
+    # ==========================================================
+    # 面板列配置
+    # ==========================================================
+    def _populate_panel_columns(self):
+        tab_data = self._tabs.get("panels")
+        if tab_data is None:
+            return
+        content = tab_data["content"]
+
+        meta = schema.get_panel_columns_meta()
+        for key in schema.PANEL_KEYS:
+            title = schema.PANEL_TITLES.get(key, key)
+            cols = meta.get(key) or []
+            sec = CollapsibleSection(
+                content, title=f"{title}面板",
+                desc="● 显示 / ○ 隐藏。选中后用「上移 / 下移」调整顺序，"
+                     "双击或「显示/隐藏」切换。保存后立即生效。",
+                on_reset=lambda s, k=key: self._reset_panel_columns(k),
+                expanded=False, font_family=self.font_family,
+            )
+            sec.pack(fill="x", padx=8, pady=4)
+
+            if not cols:
+                tk.Label(sec.body, text="（该面板暂无列）",
+                         bg=THEME["panel_bg"], fg="#999999",
+                         font=(self.font_family, FONT_SIZES["panel_body"]),
+                         ).pack(anchor="w")
+                self._panel_states[key] = []
+                continue
+
+            self._init_panel_state(key, cols)
+            self._build_panel_columns_ui(sec.body, key)
+
+    def _init_panel_state(self, panel_key, declared_cols):
+        """从 settings.current 读 order / hidden，套到声明列上。"""
+        try:
+            cfg = self.settings.get(f"PANEL_COLUMNS.{panel_key}") or {}
+        except KeyError:
+            cfg = {}
+        order = list(cfg.get("order") or [])
+        hidden = set(cfg.get("hidden") or [])
+
+        by_key = {k: t for k, t in declared_cols}
+        items = []
+        for k in order:
+            if k in by_key:
+                items.append((k, by_key.pop(k), k not in hidden))
+        for k, t in declared_cols:
+            if k in by_key:
+                items.append((k, t, k not in hidden))
+        self._panel_states[panel_key] = items
+
+    def _build_panel_columns_ui(self, parent, panel_key):
+        row = tk.Frame(parent, bg=THEME["panel_bg"])
+        row.pack(fill="x")
+
+        lb = tk.Listbox(
+            row, height=min(12, max(3, len(self._panel_states[panel_key]))),
+            activestyle="none", exportselection=False,
+            font=(self.font_family, FONT_SIZES["panel_body"]),
+            selectbackground="#CCE4FF",
+        )
+        lb.pack(side="left", fill="both", expand=True)
+        self._panel_listboxes[panel_key] = lb
+
+        btns = tk.Frame(row, bg=THEME["panel_bg"])
+        btns.pack(side="left", fill="y", padx=(6, 0))
+
+        def _btn(text, cmd):
+            tk.Button(btns, text=text, command=cmd, width=9,
+                      font=(self.font_family, FONT_SIZES["panel_body"]),
+                      relief="flat", bd=0, padx=6, pady=3,
+                      bg="#E8EDF2", activebackground="#D6DEE6",
+                      cursor="hand2").pack(fill="x", pady=1)
+
+        _btn("上移",       lambda: self._panel_move(panel_key, -1))
+        _btn("下移",       lambda: self._panel_move(panel_key, +1))
+        _btn("显示/隐藏",  lambda: self._panel_toggle(panel_key))
+        _btn("全部显示",   lambda: self._panel_show_all(panel_key))
+
+        lb.bind("<Double-Button-1>", lambda e: self._panel_toggle(panel_key))
+        self._render_panel_listbox(panel_key)
+
+    def _render_panel_listbox(self, panel_key):
+        lb = self._panel_listboxes.get(panel_key)
+        if lb is None:
+            return
+        sel = lb.curselection()
+        sel_idx = sel[0] if sel else 0
+
+        lb.delete(0, "end")
+        for i, (k, title, visible) in enumerate(self._panel_states[panel_key]):
+            lb.insert("end", f"{'●' if visible else '○'}  {title}")
+            lb.itemconfigure(i,
+                             foreground="#222222" if visible else "#AAAAAA")
+        if lb.size() > 0:
+            lb.selection_clear(0, "end")
+            lb.selection_set(min(sel_idx, lb.size() - 1))
+
+        # 同步 draft
+        items = self._panel_states[panel_key]
+        self.draft[f"PANEL_COLUMNS.{panel_key}.order"] = \
+            [k for k, _, _ in items]
+        self.draft[f"PANEL_COLUMNS.{panel_key}.hidden"] = \
+            [k for k, _, v in items if not v]
+        self._refresh_dirty_label()
+
+    def _panel_move(self, panel_key, delta):
+        lb = self._panel_listboxes.get(panel_key)
+        if lb is None:
+            return
+        sel = lb.curselection()
+        if not sel:
+            return
+        i = sel[0]
+        j = i + delta
+        if j < 0 or j >= len(self._panel_states[panel_key]):
+            return
+        items = self._panel_states[panel_key]
+        items[i], items[j] = items[j], items[i]
+        self._render_panel_listbox(panel_key)
+        lb.selection_clear(0, "end")
+        lb.selection_set(j)
+
+    def _panel_toggle(self, panel_key):
+        lb = self._panel_listboxes.get(panel_key)
+        if lb is None:
+            return
+        sel = lb.curselection()
+        if not sel:
+            return
+        i = sel[0]
+        items = self._panel_states[panel_key]
+        k, t, v = items[i]
+        items[i] = (k, t, not v)
+        self._render_panel_listbox(panel_key)
+        lb.selection_clear(0, "end")
+        lb.selection_set(i)
+
+    def _panel_show_all(self, panel_key):
+        items = self._panel_states[panel_key]
+        self._panel_states[panel_key] = [(k, t, True) for k, t, _ in items]
+        self._render_panel_listbox(panel_key)
+
+    def _reset_panel_columns(self, panel_key):
+        """恢复该面板默认：顺序 = 声明顺序，全部显示。"""
+        meta = schema.get_panel_columns_meta().get(panel_key) or []
+        self._panel_states[panel_key] = [(k, t, True) for k, t in meta]
+        self._render_panel_listbox(panel_key)
+        for suffix in ("order", "hidden"):
+            self.draft.pop(f"PANEL_COLUMNS.{panel_key}.{suffix}", None)
+        self._refresh_dirty_label()
 
     # ---------- 各控件 ----------
     def _build_bool(self, parent, item):
@@ -532,6 +692,22 @@ class SettingsWindow(tk.Toplevel):
                 row["setter"](self.settings.get_default(p))
             except Exception:
                 pass
+
+        # ★ 面板列 state 一并重置
+        for key in list(self._panel_states.keys()):
+            meta = schema.get_panel_columns_meta().get(key) or []
+            self._panel_states[key] = [(k, t, True) for k, t in meta]
+            lb = self._panel_listboxes.get(key)
+            if lb is None:
+                continue
+            lb.delete(0, "end")
+            for i, (k, t, v) in enumerate(self._panel_states[key]):
+                lb.insert("end", f"●  {t}")
+                lb.itemconfigure(i, foreground="#222222")
+            if lb.size() > 0:
+                lb.selection_clear(0, "end")
+                lb.selection_set(0)
+        
         self._refresh_dirty_label()
 
     # ==========================================================

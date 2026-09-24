@@ -41,6 +41,7 @@ _DEFAULTS: Dict[str, Any] = {
     "CITY_LEVEL_MIN_SCALE": dict(getattr(_style, "CITY_LEVEL_MIN_SCALE", {})),
     "LAYER_VISIBILITY":    deepcopy(getattr(_style, "LAYER_VISIBILITY", {})),
     "MAP_INTERACTION":     deepcopy(getattr(_style, "MAP_INTERACTION", {})),
+    "PANEL_COLUMNS":       deepcopy(getattr(_style, "PANEL_COLUMNS", {})),
 }
 
 
@@ -200,6 +201,9 @@ class SettingsManager:
                        self.current["LAYER_VISIBILITY"])
         _apply_inplace(getattr(_style, "MAP_INTERACTION", {}),
                        self.current["MAP_INTERACTION"])
+        _apply_inplace(getattr(_style, "PANEL_COLUMNS", {}),
+                       self.current["PANEL_COLUMNS"])
+        
         try:
             _style.FONT_CANDIDATES = tuple(self.current["FONT_CANDIDATES"])
         except Exception:

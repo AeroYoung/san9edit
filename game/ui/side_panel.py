@@ -57,3 +57,14 @@ class SidePanel(ttk.Frame):
             widget = self.notebook.nametowidget(tab_id)
             if hasattr(widget, "refresh"):
                 widget.refresh()
+
+    def reload_panel_columns(self):
+        """设置保存后刷新所有面板的列。panels 是 {key: panel} 字典。"""
+        panels = getattr(self, "panels", None) or {}
+        for p in panels.values():
+            hook = getattr(p, "reload_columns", None)
+            if callable(hook):
+                try:
+                    hook()
+                except Exception:
+                    pass

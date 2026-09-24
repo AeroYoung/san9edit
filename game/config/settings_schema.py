@@ -21,6 +21,7 @@ level_table 附加字段：
 TABS = [
     {"key": "appearance", "title": "外观"},
     {"key": "operation",  "title": "操作"},
+    {"key": "panels",     "title": "面板列"}, 
     {"key": "game",       "title": "游戏"},
 ]
 
@@ -323,3 +324,39 @@ def group_meta(group_key):
         if g["key"] == group_key:
             return g
     return None
+
+# ============================================================
+# 面板列元数据（供设置窗口构建列配置 UI）
+# ============================================================
+# 延迟导入 panel 类，避免与 UI 层形成模块级循环依赖。
+# 返回 {panel_key: [(col_key, col_title), ...]}。
+# NAME_COLUMN（#0）不返回 —— 锁定必显，不参与配置。
+PANEL_KEYS = ("node", "character", "faction", "troop")
+PANEL_TITLES = {
+    "node": "据点", "character": "人物",
+    "faction": "势力", "troop": "部队",
+}
+
+def get_panel_columns_meta():
+    out = {k: [] for k in PANEL_KEYS}
+    try:
+        from game.ui.panels.node_panel import NodePanel
+        out["node"] = [(c.key, c.title) for c in NodePanel.COLUMNS]
+    except Exception:
+        pass
+    try:
+        from game.ui.panels.character_panel import CharacterPanel
+        out["character"] = [(c.key, c.title) for c in CharacterPanel.COLUMNS]
+    except Exception:
+        pass
+    try:
+        from game.ui.panels.faction_panel import FactionPanel
+        out["faction"] = [(c.key, c.title) for c in FactionPanel.COLUMNS]
+    except Exception:
+        pass
+    try:
+        from game.ui.panels.troop_panel import TroopPanel
+        out["troop"] = [(c.key, c.title) for c in TroopPanel.COLUMNS]
+    except Exception:
+        pass
+    return out

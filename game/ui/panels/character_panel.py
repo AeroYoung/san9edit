@@ -90,6 +90,7 @@ GROUP_DIMS = {
 
 
 class CharacterPanel(GenericListPanel):
+    PANEL_KEY = "character"
     COLUMNS = COLUMNS
     NAME_COLUMN = NAME_COLUMN
     GROUP_DIMS = GROUP_DIMS

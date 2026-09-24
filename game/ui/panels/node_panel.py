@@ -70,6 +70,7 @@ GROUP_DIMS = {
 
 
 class NodePanel(GenericListPanel):
+    PANEL_KEY = "node"
     COLUMNS = COLUMNS
     NAME_COLUMN = NAME_COLUMN
     GROUP_DIMS = GROUP_DIMS
