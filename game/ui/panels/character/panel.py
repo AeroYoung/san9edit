@@ -94,7 +94,7 @@ class CharacterPanel(ttk.Frame):
     def _on_intel(self, kind, row):
         print(f"[人物情报] kind={kind} id={row.id} {row.display_name}")
 
-    def refresh(self):
+        def refresh(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
         self._item_rows = {}
@@ -107,11 +107,15 @@ class CharacterPanel(ttk.Frame):
                 for c in world.characters.values()]
         group_keys = self.group_bar.selected()
 
+        # ★ 玩家势力组名（用于置顶）
+        priority = self._player_faction_name(world)
+
         if group_keys:
             tree = build_tree(
                 rows, group_keys,
                 sort_key=self._sort_key, sort_desc=self._sort_desc,
                 columns_by_key=COLUMN_INDEX,
+                priority_name=priority,
             )
             self._insert_group_nodes("", tree)
         else:
@@ -120,6 +124,14 @@ class CharacterPanel(ttk.Frame):
                                  self._sort_key, self._sort_desc)
             for r in rows:
                 self._insert_row("", r)
+
+    def _player_faction_name(self, world):
+        """玩家势力的展示名；无则 None。"""
+        pfid = getattr(world, "player_faction_id", None)
+        if not pfid:
+            return None
+        f = world.faction(pfid)
+        return f.name if f else None
 
     def _insert_group_nodes(self, parent, nodes):
         for title, children in nodes:

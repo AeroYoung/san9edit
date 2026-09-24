@@ -94,11 +94,7 @@ class MapRenderer:
             self.draw_full()
             return
         self.canvas.scale("all", mx, my, factor, factor)
-        print("染色层 item 数：", len(self.canvas.find_withtag("territory")))
-        print("染色层用 stipple 的：", sum(
-            1 for i in self.canvas.find_withtag("territory")
-            if self.canvas.itemcget(i, "stipple")
-        ))
+        
         
     def refresh_dynamic(self):
         if not self._drawn:
