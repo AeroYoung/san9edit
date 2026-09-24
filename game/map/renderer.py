@@ -244,11 +244,12 @@ class MapRenderer:
 
     def render_territory(self):
         """县面按所属势力上色。
-        - 无 World：跳过
-        - 每个县（含关隘/渡口/仓/谷/山地）按其 owner 用势力原色填充
-        - 无主县不染色，州面底色透出
-        - 不画 stipple、不画斜线；县界由 city 层单独画虚线
-        - LOD 与县界层保持一致：scale < feat["min_scale"] 时跳过
+
+        染色是主信息（不是细节），不吃 LOD——
+        否则缩小时大量有主县会被跳过，玩家误以为无主。
+        只做视口粗筛（屏幕外的不画），保证铺满可视区域。
+
+        无主县不染色，州面底色透出。
         """
         if not self._world or not self.data:
             return
@@ -258,19 +259,14 @@ class MapRenderer:
             return
 
         vx0, vy0, vx1, vy1 = self._visible_bounds()
-        scale = self.viewport.scale
 
         for feat in feats:
-            # 1) LOD 粗筛（与县界层一致）
-            if scale < feat.get("min_scale", 0):
-                continue
-
-            # 2) 视口粗筛
+            # 1) 视口粗筛（屏幕外跳过）
             b = feat["bbox"]
             if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
                 continue
 
-            # 3) 查 owner
+            # 2) 查 owner
             props = feat.get("properties") or {}
             nid = props.get("id")
             if not nid:
@@ -283,7 +279,7 @@ class MapRenderer:
                 continue
             color = faction.color
 
-            # 4) 画多边形
+            # 3) 画多边形
             ring = feat["geometry"]["coordinates"]
             if len(ring) < 3:
                 continue
