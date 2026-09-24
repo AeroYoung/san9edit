@@ -20,6 +20,9 @@ class World:
         # 玩家势力 id（可为 None）
         self.player_faction_id = None
 
+        # 人物 id 加载范围（剧本级过滤，可为 None）
+        self.character_id_range = None
+
         # 数据容器
         self.factions = {}      # id -> Faction
         self.characters = {}    # id -> Character
@@ -74,6 +77,28 @@ class World:
         return self.county_names.get(cid, cid)
 
     # ---------- 统计 ----------
+    def bind_factions(self):
+        """给每个 Faction 注入 nodes dict 引用（供 gold/food property 用）。
+        由 ScenarioLoader.from_dict 末尾调用。
+        """
+        for f in self.factions.values():
+            f._nodes_ref = self.nodes
+
+    def add_faction(self, faction):
+        """新增势力。只能被 Command 调用，UI 不得直接调。"""
+        # TODO(phase2): 实现
+        raise NotImplementedError("phase2")
+
+    def remove_faction(self, fid):
+        """删除势力。只能被 Command 调用。"""
+        # TODO(phase2): 实现
+        raise NotImplementedError("phase2")
+
+    def remove_faction_if_empty(self, fid):
+        """势力据点归零时删除。供 CompositeCommand 级联调用。"""
+        # TODO(phase2): 实现
+        raise NotImplementedError("phase2")
+
     def summary(self):
         return (f"{self.name} "
                 f"({self.year}年{self.month}月) — "

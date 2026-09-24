@@ -52,6 +52,8 @@ class GameState:
     def change_gold(self, delta):
         pf = self._player_faction()
         if pf is not None:
+            # TODO(phase3): GameState.change_gold 需适配派生值
+            # Faction.gold 已是 property（名下据点求和，无 setter），此处赋值会报错。
             pf.gold = max(0, pf.gold + delta)
         else:
             self.gold = max(0, self.gold + delta)
@@ -59,6 +61,7 @@ class GameState:
     def change_food(self, delta):
         pf = self._player_faction()
         if pf is not None:
+            # TODO(phase3): GameState.change_food 需适配派生值
             pf.food = max(0, pf.food + delta)
         else:
             self.food = max(0, self.food + delta)

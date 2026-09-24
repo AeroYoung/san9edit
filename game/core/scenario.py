@@ -40,6 +40,7 @@ class ScenarioLoader:
         world.xun = int(start.get("xun", 0))
 
         world.player_faction_id = raw.get("player_faction")
+        world.character_id_range = raw.get("character_id_range")
 
         for fid, fdata in (raw.get("factions") or {}).items():
             world.factions[fid] = cls._build_faction(fid, fdata)
@@ -53,6 +54,8 @@ class ScenarioLoader:
         cls._build_region_names(world, geo_data)
         cls._apply_node_overrides(world, raw.get("nodes") or {})
 
+        world.bind_factions()   # ★ 注入 nodes 引用（供 Faction.gold/food property）
+
         return world
 
     # ============================================================
@@ -60,15 +63,7 @@ class ScenarioLoader:
     # ============================================================
     @staticmethod
     def _build_faction(fid, fdata):
-        return Faction(
-            fid=fid,
-            name=fdata.get("name", fid),
-            color=fdata.get("color", "#888888"),
-            prestige=fdata.get("prestige", 0),
-            gold=fdata.get("gold", 0),
-            food=fdata.get("food", 0),
-            stance=fdata.get("stance", 0),
-        )
+        return Faction.from_dict(fid, fdata)
 
     # ============================================================
     # 人物：第一层 基础数据

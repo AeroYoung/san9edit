@@ -40,6 +40,18 @@ class Node:
     def is_owned(self):
         return self.owner is not None
 
+    def to_dict(self):
+        """序列化（编辑用）。写全字段，含静态 + 动态。"""
+        return {
+            "owner": self.owner,
+            "troops": self.troops,
+            "gold": self.gold,
+            "food": self.food,
+            "type": self.type,
+            "level": self.level,
+            "is_capital": self.is_capital,
+        }
+
     def __repr__(self):
         return (f"<Node {self.id} {self.name} "
                 f"{self.type} Lv{self.level}>")

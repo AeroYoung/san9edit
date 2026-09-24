@@ -20,3 +20,10 @@ DEFAULT_SCENARIO_PATH = SCENARIOS_DIR / "default.json"
 APP_TITLE = "暗耻三国志"
 WINDOW_SIZE = "1440x900"
 MIN_WINDOW_SIZE = (1024, 640)
+
+# ============================================================
+# 应用模式
+# ============================================================
+MODE_EDIT = "edit"     # 剧本编辑模式
+MODE_GAME = "game"     # 游戏模式（本轮不实现）
+APP_MODE = MODE_EDIT   # 全局开关：编译期切换
