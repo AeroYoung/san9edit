@@ -12,7 +12,7 @@ id 为六位字符串 "州(2)+郡(2)+县(2)"，例如 "010101"。
 
 
 class Node:
-    def __init__(self, nid, name, coords, type_="县",
+    def __init__(self, nid, name, coords, type_="城",
                  level=5, is_capital=False,
                  owner=None, troops=0, gold=0, food=0):
         # 静态

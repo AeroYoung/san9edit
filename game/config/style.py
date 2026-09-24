@@ -132,7 +132,10 @@ MAP_STYLE = {
     },
     "label_county": {
         "color": "#333333", "halo": "#FFFFFF",
-        "size_divisor": 105, "min_size": 9, "max_size": 22,
+        "font_family": "楷体",
+        "size_divisor": 124, 
+        "min_size": 8,
+        "max_size": 19,
         "min_scale": 12, "max_scale": 150,
     },
     "label_city": {

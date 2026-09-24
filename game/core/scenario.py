@@ -75,7 +75,7 @@ class ScenarioLoader:
 
     @staticmethod
     def _build_nodes_from_geo(world, geo_data):
-        """遍历 geo_data.shapes_point，为每个县/关/津/... 建 Node。
+        """遍历 geo_data.shapes_point，为每个城/关/津/... 建 Node。
 
         依赖 shapes_point[i].properties 里有 id/县名/level/type/is_capital。
         """
@@ -96,7 +96,7 @@ class ScenarioLoader:
                 nid=nid,
                 name=props.get("县名", ""),
                 coords=(coords[0], coords[1]),
-                type_=props.get("type", "县"),
+                type_=props.get("type", "城"),
                 level=props.get("level", 5),
                 is_capital=props.get("is_capital", False),
             )

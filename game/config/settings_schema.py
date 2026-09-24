@@ -44,7 +44,7 @@ GROUPS = [
     "desc": "各县据点的边界，黑色虚线。州/郡/县三级边界均不再着色，"
             "着色由势力染色层负责。"},
     {"key": "point", "tab": "appearance", "title": "县点样式",
-     "desc": "各县治所小点的颜色、大小、描边与形状分级。"},
+     "desc": "各县据点小点的颜色、大小、描边与形状分级。"},
     {"key": "road", "tab": "appearance", "title": "道路样式",
      "desc": "道路线段的颜色与宽度。"},
     {"key": "water", "tab": "appearance", "title": "水域样式",
@@ -53,7 +53,10 @@ GROUPS = [
     {"key": "label_state", "tab": "appearance", "title": "州名标签",
      "desc": "州名文字的显隐区间与字号。"},
     {"key": "label_county", "tab": "appearance", "title": "郡名标签",
-     "desc": "郡名文字的显隐区间与字号。"},
+    "desc": "郡名文字的显隐区间与字号。郡名使用独立字体（style.py 里 "
+         "MAP_STYLE.label_county.font_family，默认楷体）。"},
+
+
     {"key": "label_city", "tab": "appearance", "title": "县名标签",
      "desc": "县名文字的显隐区间与字号。县名与县点共用分级阈值。"},
 
@@ -61,8 +64,8 @@ GROUPS = [
      "desc": "县点与县名按 level 决定显示所需的最小缩放。级别越小越重要，越早出现。"},
 
     {"key": "territory", "tab": "appearance", "title": "势力染色",
-     "desc": "按郡内主导势力给郡面上色。控制力 = 据点(11-level)之和，"
-             "郡治 ×2；势力值 >80% 用原色，50%~80% 用变浅色。"},
+    "desc": "按各县所属势力给县面上色。有主县用势力原色，"
+         "无主县不染色（州面底色透出）。"},
 
     {"key": "visibility", "tab": "appearance", "title": "图层显隐",
      "desc": "各图层总开关。关闭后该层完全不绘制。"},
@@ -247,10 +250,7 @@ ITEMS = [
     # ---------------- 势力染色 ----------------
     {"path": "LAYER_VISIBILITY.territory", "group": "territory", "type": "bool",
      "label": "启用势力染色"},
-    {"path": "MAP_STYLE.territory.major_fade", "group": "territory", "type": "float",
-     "label": "主要势力郡面变浅比例", "min": 0.0, "max": 1.0, "step": 0.05,
-     "desc": "势力值 50%~80% 的郡，底色 = 势力色向白色插值。0 = 不变浅，1 = 纯白。"},
-
+    
     # ---------------- 图层显隐 ----------------
     {"path": "LAYER_VISIBILITY.polygon",      "group": "visibility", "type": "bool",
      "label": "州面"},

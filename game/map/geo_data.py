@@ -30,8 +30,8 @@ class GeoData:
     def __init__(self):
         self.shapes_polygon = []   # 州面（MultiPolygon）
         self.shapes_line = []      # 郡界（闭合线）
-        self.shapes_point = []     # 县（Point，即各郡首府）
-        self.shapes_city_boundary = []   # ★ 新增：县界（闭合 ring，面填充 + 虚线轮廓共用）
+        self.shapes_point = []     # 县，也叫据点（Point，含城 / 关隘 / 渡口）
+        self.shapes_city_boundary = []   # 县界（闭合 ring，面填充 + 虚线轮廓共用）
         self.shapes_water_line = []      # 河流（LineString/MultiLineString）
         self.shapes_water_polygon = []   # 湖泊（Polygon/MultiPolygon）
         self.labels_state = []
@@ -191,7 +191,7 @@ class GeoData:
                         "id": city.get("id"),
                         "县名": name,
                         "level": level,
-                        "type": city.get("type", "县"),
+                        "type": city.get("type", "城"),
                         "is_capital": bool(city.get("is_capital", False)),
                     },
                 })
@@ -211,7 +211,7 @@ class GeoData:
                         "properties": {
                             "id": city.get("id"),
                             "县名": name,
-                            "type": city.get("type", "县"),
+                            "type": city.get("type", "城"),
                             "level": level,
                         },
                         "bbox": b,

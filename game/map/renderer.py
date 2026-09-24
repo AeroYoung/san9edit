@@ -25,8 +25,8 @@ class MapRenderer:
     # 从底到顶的图层顺序；越靠后越在上面
     _LAYER_ORDER = (
         "polygon",   # 州/郡面
-        "city",        # ★ 新增：县界（面填充 + 虚线轮廓），在 territory 之前
-        "territory", # ★ 郡面势力染色
+        "territory", # 势力染色
+        "city",        # 县界（面填充 + 虚线轮廓），在 territory 之前
         "water",     # 水域
         "road",      # 道路
         "line",      # 郡界
@@ -49,8 +49,10 @@ class MapRenderer:
 
     def set_world(self, world):
         """注入 World。触发郡级势力统计重算。
-
-        不负责重绘；调用方（MainWindow）按需 redraw。
+        - 更新 self._world，供 render_territory 按据点 owner 查势力色
+        - 仍会重算 _county_stats（郡级控制力），当前渲染层不用，
+        保留给将来可能恢复的郡面染色 / 分级调色
+        - 不负责重绘；调用方（MainWindow）按需 redraw
         """
         self._world = world
         self._county_stats = compute_county_stats(world)
@@ -236,41 +238,47 @@ class MapRenderer:
                 pass
 
     def render_territory(self):
-        """郡面按主导/主要势力上色。
-
-        - 无 World、无统计：跳过
-        - ratio ≤ 0.5：不画（州面底色透出）
-        - 0.5 < ratio ≤ 0.8：势力色 × TERRITORY_MAJOR_FADE 变浅
-        - ratio > 0.8：势力色原色
-        - 不画 stipple、不画斜线；郡界由 line 层单独画
+        """县面按所属势力上色。
+        - 无 World：跳过
+        - 每个县（含关隘/渡口/仓/谷/山地）按其 owner 用势力原色填充
+        - 无主县不染色，州面底色透出
+        - 不画 stipple、不画斜线；县界由 city 层单独画虚线
+        - LOD 与县界层保持一致：scale < feat["min_scale"] 时跳过
         """
-        if not self._world or not self._county_stats or not self.data:
+        if not self._world or not self.data:
+            return
+
+        feats = getattr(self.data, "shapes_city_boundary", None)
+        if not feats:
             return
 
         vx0, vy0, vx1, vy1 = self._visible_bounds()
-        for feat in self.data.shapes_line:
-            props = feat.get("properties") or {}
-            cid = props.get("郡id")
-            if not cid:
-                continue
-            stat = self._county_stats.get(cid)
-            if stat is None or not stat.is_major:
+        scale = self.viewport.scale
+
+        for feat in feats:
+            # 1) LOD 粗筛（与县界层一致）
+            if scale < feat.get("min_scale", 0):
                 continue
 
-            faction = self._world.faction(stat.owner_id)
-            if faction is None:
-                continue
-
-            if stat.is_dominant:
-                color = faction.color
-            else:
-                fade = MAP_STYLE.get("territory", {}).get("major_fade", 0.4)
-                color = lighten_color(faction.color, fade)
-
+            # 2) 视口粗筛
             b = feat["bbox"]
             if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
                 continue
 
+            # 3) 查 owner
+            props = feat.get("properties") or {}
+            nid = props.get("id")
+            if not nid:
+                continue
+            node = self._world.node(nid)
+            if node is None or node.owner is None:
+                continue
+            faction = self._world.faction(node.owner)
+            if faction is None:
+                continue
+            color = faction.color
+
+            # 4) 画多边形
             ring = feat["geometry"]["coordinates"]
             if len(ring) < 3:
                 continue
@@ -562,6 +570,7 @@ class MapRenderer:
             self.draw_text(x, y, text, style)
 
     def draw_text(self, x, y, text, style):
+        family = style.get("font_family") or self.font_family   # ★ 新增
         font = (self.font_family, style["size"], "bold")
         halo = style.get("halo")
         if halo:
