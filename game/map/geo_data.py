@@ -31,6 +31,7 @@ class GeoData:
         self.shapes_polygon = []   # 州面（MultiPolygon）
         self.shapes_line = []      # 郡界（闭合线）
         self.shapes_point = []     # 县（Point，即各郡首府）
+        self.shapes_city_boundary = []   # ★ 新增：县界（闭合 ring，面填充 + 虚线轮廓共用）
         self.shapes_water_line = []      # 河流（LineString/MultiLineString）
         self.shapes_water_polygon = []   # 湖泊（Polygon/MultiPolygon）
         self.labels_state = []
@@ -51,6 +52,7 @@ class GeoData:
         states = raw.get("states") or []
         data = cls()
         data._classify(states)
+        data._assign_lod(data.shapes_city_boundary)   # ★ 新增
         data._compute_bbox()
         data._build_index()
         return data
@@ -197,6 +199,24 @@ class GeoData:
                 self.labels_city.append(
                     (coords[0], coords[1], name, level, city.get("id"))
                 )
+
+                # ★ 新增：县界（所有 type 都收，不做过滤）
+                boundary = city.get("boundary")
+                if boundary and len(boundary) >= 3:
+                    b = self._coords_bbox(boundary)
+                    size = math.hypot(b[2] - b[0], b[3] - b[1])
+                    self.shapes_city_boundary.append({
+                        "geometry": {"type": "LineString", "coordinates": boundary},
+                        "properties": {
+                            "id": city.get("id"),
+                            "县名": name,
+                            "type": city.get("type", "县"),
+                            "level": level,
+                        },
+                        "bbox": b,
+                        "size": size,     # 供 _assign_lod 用
+                    })
+
                 
     # ---------- 外接矩形 ----------
     def _compute_bbox(self):

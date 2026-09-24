@@ -47,14 +47,20 @@ FONT_SIZES = {
 # ============================================================
 MAP_STYLE = {
     "polygon": {
-        "fill":    "#E5D9BC",   # 暖米黄：州面底色，偏亮偏暖
-        "outline": "#6B4226",   # 深咖啡：州界用墨线感，最重
-        "width":   1,
+        "fill":    "",   
+        "outline": "#000000",   
+        "width":   2,
     },
     "line": {
-        "color": "#B0A085",     # 浅灰褐：郡界用细线，最轻
+        "color": "#000000",     
         "width": 1,
     },
+    "city_line": {
+        "color": "#000000",  
+        "width": 1,
+        "dash": (5, 5),      # 3 像素实线 + 3 像素间隔；调大 = 更稀疏
+    },
+
     "road": {
         "color": "#B5442C",     # 暗砖红：道路明显偏暖偏红，一眼区分
         "width_divisor": 2600,
@@ -130,7 +136,8 @@ MAP_STYLE = {
         "min_scale": 12, "max_scale": 150,
     },
     "label_city": {
-        "color": "#7A3B00", "halo": "#FFFFFF",
+        "color": "#000000", 
+        "halo": "#FFFFFF",
         "size_divisor": 140, "min_size": 8, "max_size": 16,
         "min_scale": 30,
         "point_gap": 6,        # 新增：点边缘到文字中心之间的额外间隙（像素）
@@ -174,4 +181,5 @@ LAYER_VISIBILITY = {
     "label_county": True,    # 郡名标签
     "label_city":   True,    # 县名标签
     "territory": True,      # ★ 郡面势力染色
+    "city": True,
 }

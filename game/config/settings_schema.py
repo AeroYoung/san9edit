@@ -39,6 +39,10 @@ GROUPS = [
      "desc": "各州填充面与描边。"},
     {"key": "line", "tab": "appearance", "title": "郡界样式",
      "desc": "各郡分界线。"},
+
+    {"key": "city", "tab": "appearance", "title": "县界样式",
+    "desc": "各县据点的边界，黑色虚线。州/郡/县三级边界均不再着色，"
+            "着色由势力染色层负责。"},
     {"key": "point", "tab": "appearance", "title": "县点样式",
      "desc": "各县治所小点的颜色、大小、描边与形状分级。"},
     {"key": "road", "tab": "appearance", "title": "道路样式",
@@ -107,18 +111,23 @@ ITEMS = [
      "label": "面板正文字号", "min": 6, "max": 32},
 
     # ---------------- 州面 ----------------
-    {"path": "MAP_STYLE.polygon.fill",    "group": "polygon", "type": "color",
-     "label": "州面填充色"},
     {"path": "MAP_STYLE.polygon.outline", "group": "polygon", "type": "color",
      "label": "州面描边色"},
     {"path": "MAP_STYLE.polygon.width",   "group": "polygon", "type": "int",
-     "label": "描边宽度（像素）", "min": 0, "max": 8},
+     "label": "描边宽度（像素）", "min": 0, "max": 28},
 
     # ---------------- 郡界 ----------------
     {"path": "MAP_STYLE.line.color", "group": "line", "type": "color",
      "label": "郡界颜色"},
     {"path": "MAP_STYLE.line.width", "group": "line", "type": "int",
-     "label": "线宽（像素）", "min": 0, "max": 8},
+     "label": "线宽（像素）", "min": 0, "max": 18},
+
+    # ---------------- 县界 ----------------
+    
+    {"path": "MAP_STYLE.city_line.color",   "group": "city", "type": "color",
+    "label": "县界轮廓色"},
+    {"path": "MAP_STYLE.city_line.width",   "group": "city", "type": "int",
+    "label": "轮廓线宽（像素）", "min": 0, "max": 8},
 
     # ---------------- 县点 ----------------
     {"path": "MAP_STYLE.point.fill",          "group": "point", "type": "color",
@@ -261,7 +270,8 @@ ITEMS = [
      "label": "郡名标签"},
     {"path": "LAYER_VISIBILITY.label_city",   "group": "visibility", "type": "bool",
      "label": "县名标签"},
-    
+    {"path": "LAYER_VISIBILITY.city", "group": "visibility", "type": "bool",
+    "label": "县界"},
 ]
 
 
