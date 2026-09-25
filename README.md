@@ -1,6 +1,8 @@
 # 暗耻三国志 — 项目说明文档
 
-> 本轮更新重点：**人物情报窗口**（Pillow 加载头像 + 居中弹窗）、**头像资产规范化**（`tools/check_portraits.py` + `tools/rename_portraits.py`，统一 `{id}-{name}.jpg`）、**人物面板姓名列去表字**。项目**首次引入第三方依赖 Pillow**。新增 §9.16 变更日志。
+> 本轮更新重点：**全流程日志系统**（`game/config/logging_setup.py`，每次启动一个文件 + session id + tkinter 回调异常钩子，零第三方依赖）。新增 §9.18 变更日志。
+>
+> 上一轮（第十七轮）：剧本编辑器（`APP_MODE` 模式切换 + 据点/势力编辑 + 通用 undo/redo + 增量保存），见 §9.17。第十六轮：人物情报窗口 + 头像资产规范化，见 §9.16。
 
 ---
 
@@ -38,6 +40,9 @@
 | **字段描述** | `Field` | ★ 弹窗数据驱动核心，6 种 kind（§10.6） |
 | **编辑类标识** | `MenuItem.edit` / `TopBar._edit_entries` | ★ 标记编辑入口，按 `APP_MODE` 一键全禁（§9.17 需求 8） |
 | **据点编辑共用流程** | `dialogs/node_edit.py::edit_node` | ★ 面板右键与地图右键共用（含郡治互斥） |
+| **日志系统** | `logging_setup.py` / `LOG_DIR` | ★ 每次启动一个文件，DEBUG，保留 30 个（§9.18） |
+| **session id** | `logging_setup._SESSION_ID` | ★ 8 位十六进制，每行日志前缀，区分多次启动 |
+| **异常钩子** | `install_sys_excepthook` / `install_tk_excepthook` | ★ 未捕获异常 + tkinter 回调异常统一入日志 |
 
 **「县 = 据点」的核心约定：**
 
@@ -171,7 +176,8 @@ san9edit/
 ├── scenarios/
 │   └── default.json                  190 剧本（52 势力 / 498 人物 / ~550 据点）
 ├── userdata/
-│   └── settings.json                 用户设置覆盖（只存与默认不同的项）
+│   ├── settings.json                 用户设置覆盖（只存与默认不同的项）
+│   └── logs/                         ★ 运行日志（app_YYYYMMDD_HHMMSS.log，保留 30 个）
 └── game/                             运行时主包
     ├── config/                        配置层（无业务逻辑）
     │   ├── constants.py              路径常量 + 窗口常量
@@ -180,8 +186,9 @@ san9edit/
     │   │                              / hover 开关 MAP_INTERACTION
     │   │                              / 面板列 PANEL_COLUMNS
     │   ├── settings_manager.py       设置加载 / 保存 / 就地写回 style 模块
-    │   └── settings_schema.py        设置窗口元数据（Tabs / Groups / Items）
-    │                                  + get_panel_columns_meta()
+    │   ├── settings_schema.py        设置窗口元数据（Tabs / Groups / Items）
+    │   │                              + get_panel_columns_meta()
+    │   └── logging_setup.py          ★ 日志初始化 + sys/tk 异常钩子（§9.18）
     ├── core/                          核心数据层（与 UI 无关）
     │   ├── game_state.py             回合 / 日期 / 玩家势力 / 资源（信息栏数据源）
     │   ├── world.py                  World：势力 / 人物 / 据点的聚合容器 + 查询
@@ -1119,6 +1126,20 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 - 渲染端（`renderer._effective_level`）与加载端（`scenario._apply_node_overrides`）**都要以 World 为准**
 - 加新的可编辑静态字段时，**三处必须同步**：`Node.to_dict`（写）/ `_apply_node_overrides`（读）/ 渲染或面板（显示）
 
+**153. ★ 日志一律用 `%s` 惰性格式化，禁止 f-string**：
+- 正例：`logger.info("加载剧本：%s", path)`
+- 反例：`logger.info(f"加载剧本：{path}")`（日志未输出时也白拼字符串）
+- 高频路径**不打日志**：`_process_motion` / `find_location_detail` / `_on_location_change` / `draw_full`
+
+**154. ★ 两个异常钩子的安装时机**：
+- `setup_logging()` + `install_sys_excepthook()` 必须在 `MainWindow()` **之前**（`main.py` 里）
+- `install_tk_excepthook(root)` 必须**紧跟 `Tk()` 之后**（越早越好，构造期的回调异常才抓得到）
+- `sys.excepthook` **接不到 tkinter 回调异常**，必须单独覆盖 `Tk.report_callback_exception`
+
+**155. ★ `_SessionFilter` 挂 handler，不挂 logger**：
+- `handler.addFilter(_SessionFilter())` —— filter 在 handler 上才会给每条 record 注入 `session`
+- 格式化串用 `%(session)s`；挂错地方会导致 `KeyError: 'session'`
+
 ### 8.4 建议的下一步
 
 1. **实现"出征 / 调动"**：改 `Character.location`，不动 `node`
@@ -1429,3 +1450,75 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 ---
 
 **本轮核心变动集中在 §0（新增 7 术语：编辑会话 / Command / 增量保存 / Field / APP_MODE / 编辑类标识 / 据点编辑共用流程）**、**§2（dialogs + edit_session / edit_commands / scenario_writer / node_edit + tests）**、**§3.2（Faction 派生值）/ §3.4（Node.to_dict）/ §3.6（bind_factions）**、**§5（新增 edit_session / edit_commands / scenario_writer / dialogs 四组模块）**、**§7.3（编辑相关常量）**、**§8.3 第 147–152 条（编辑框架永久约束）**、**§8.4 第 18–22 条**、**§9.17**。
+
+---
+
+### 9.18 全流程日志系统（第十八轮）
+
+#### 需求
+
+1. **每次启动一个独立 log 文件**：`userdata/logs/app_YYYYMMDD_HHMMSS.log`
+2. **文件级别 DEBUG，控制台不输出**（只挂 `FileHandler`，不挂 `StreamHandler`）
+3. **保留最近 30 个** log 文件，超出自动删最旧
+4. 每行带 **session id 前缀**（8 位十六进制），区分多次启动
+5. **零第三方依赖**：只用标准库 `logging` + `logging.handlers`
+6. `core/` / `map/` 允许 `logging.getLogger(__name__)`，保持无第三方依赖
+7. 现有占位 `print` 迁移到 `logger.debug`
+8. 编辑 / 保存 / undo / redo 用 `INFO`；字段明细用 `DEBUG`
+9. **本轮不加设置窗口入口**，只做后端
+10. `tools/` 下脚本**保持 `print`**（离线工具，不接入 logging）
+
+#### 改动
+
+**新增（1 个）**：
+- `game/config/logging_setup.py` —— `setup_logging` / `install_sys_excepthook` / `install_tk_excepthook` / `_cleanup_old_logs`
+
+**修改（12 个）**：
+- `constants.py`（`LOG_DIR`）
+- `main.py`（★ 清掉误粘贴的 docstring 段落 + 初始化日志 + sys hook）
+- `main_window.py`（★ 紧跟 `Tk()` 装 tk hook + ~30 处日志）
+- `map_canvas.py`（~10 处）/ `top_bar.py`（~4 处）/ `side_panel.py`（~6 处，补异常日志）
+- `settings_manager.py`（~10 处，`notify` / `apply` 的 `except: pass` 补 `logger.warning`）
+- `scenario.py`（~10 处，`print` → `logger.warning`）/ `world.py`（1 处）
+- `edit_session.py`（~8 处）/ `scenario_writer.py`（~4 处，`save` 异常补 ERROR）
+- `geo_data.py`（~4 处）
+
+#### 设计决策
+
+- **只挂 `FileHandler`**：控制台完全静默，`python main.py` 终端无日志行
+- **`_SessionFilter` 注入 session id**：`record.session = _SESSION_ID`，格式化串用 `%(session)s`
+- **`%s` 惰性格式化，不用 f-string**：日志未输出时不拼字符串
+- **两个异常钩子**：
+  - `install_sys_excepthook()` —— `sys.excepthook`，捕获所有未捕获异常（`KeyboardInterrupt` 除外，交回原生）
+  - `install_tk_excepthook(root)` —— 覆盖 `Tk.report_callback_exception`，**tkinter 项目最容易漏日志的地方**（回调异常默认只打 stderr，窗口继续跑但行为异常）
+- **tk hook 紧跟 `Tk()` 之后安装**：越早越好，避免构造期间的回调异常丢失
+- **`setup_logging()` 必须在 `MainWindow()` 之前**：否则构造期间的日志会丢
+- **高频路径不打日志**：`_process_motion`（40ms 节流）/ `find_location_detail` / `_on_location_change` / `draw_full` 一律不加
+- **`main.py` 的 docstring 误粘贴段落清掉**（历史遗留的对话残片）
+
+#### 日志格式
+
+```
+2026-09-25 09:42:24.933 [INFO ] [573b6529] game.ui.main_window: 初始化 MainWindow，APP_MODE=edit
+   ↑ 时间戳(毫秒)         ↑级别   ↑session    ↑模块(__name__)        ↑消息
+```
+
+#### 症状与根因
+
+| 症状 | 根因 |
+|---|---|
+| 日志文件不生成 | `setup_logging()` 在 `MainWindow()` 之后调用，构造期日志丢失；或未挂 `FileHandler` |
+| 每行缺 session id | `_SessionFilter` 未 `addFilter` 到 handler 上（filter 挂 handler，不是 logger） |
+| tkinter 回调异常没进日志 | 必须覆盖 `Tk.report_callback_exception`，`sys.excepthook` 接不到 |
+| 日志文件堆积 | `_cleanup_old_logs` 在 `mkdir` 之后、创建新文件之前调用（顺序不能反） |
+
+#### 待办（本轮明确记录）
+
+- 设置窗口「日志」入口未做（本轮只做后端）
+- `edit_dialog.py` / `node_edit.py` / `node_panel.py` / `faction_panel.py` / `list/panel.py` / `renderer.py` 等未覆盖，留待下轮
+- `tools/` 下脚本保持 `print`，不接入 logging
+- 日志级别 / 保留数量未做配置化（`_MAX_LOG_FILES = 30` 硬编码）
+
+---
+
+**本轮核心变动集中在 §0（新增 1 术语：日志系统）**、**§2（logging_setup.py + userdata/logs）**、**§8.3 第 153–155 条（日志永久约束）**、**§9.18**。

@@ -4,7 +4,11 @@
 World 不负责加载（由 ScenarioLoader 负责），只做数据容器。
 nodes 包含 map.geojson 里的全部据点，剧本只覆盖部分。
 """
+import logging
 from collections import Counter
+
+logger = logging.getLogger(__name__)
+
 
 class World:
     def __init__(self):
@@ -83,6 +87,7 @@ class World:
         """
         for f in self.factions.values():
             f._nodes_ref = self.nodes
+        logger.debug("bind_factions：注入 nodes 引用 %d 个势力", len(self.factions))
 
     def add_faction(self, faction):
         """新增势力。只能被 Command 调用，UI 不得直接调。"""

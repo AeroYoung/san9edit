@@ -5,6 +5,10 @@
 经 EditSession.execute() 执行。
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Command:
     """单步命令基类。"""
@@ -55,23 +59,29 @@ class EditSession:
         self._undo_stack.append(cmd)
         if len(self._undo_stack) > self.max_depth:
             self._undo_stack.pop(0)
+            logger.debug("undo 栈溢出，丢弃最旧命令（max=%d）", self.max_depth)
         self._redo_stack.clear()
+        logger.info("执行命令：%s", cmd.label())
 
     def undo(self):
         """弹 undo + undo + 入 redo 栈。栈空直接返回。"""
         if not self._undo_stack:
+            logger.debug("undo 栈为空，忽略")
             return
         cmd = self._undo_stack.pop()
         cmd.undo(self._world)
         self._redo_stack.append(cmd)
+        logger.info("撤销：%s", cmd.label())
 
     def redo(self):
         """弹 redo + do + 入 undo 栈。栈空直接返回。"""
         if not self._redo_stack:
+            logger.debug("redo 栈为空，忽略")
             return
         cmd = self._redo_stack.pop()
         cmd.do(self._world)
         self._undo_stack.append(cmd)
+        logger.info("重做：%s", cmd.label())
 
     def can_undo(self) -> bool:
         return bool(self._undo_stack)
@@ -94,8 +104,10 @@ class EditSession:
         """清空 undo/redo 栈。保存 / 另存为后调用。"""
         self._undo_stack.clear()
         self._redo_stack.clear()
+        logger.debug("清空 undo/redo 栈")
 
     def rebase(self):
         """重设 baseline = serialize(world)。保存 / 另存为后调用。"""
         from game.core.scenario_writer import ScenarioWriter
         self._baseline = ScenarioWriter.serialize(self._world)
+        logger.debug("重设 baseline 快照")

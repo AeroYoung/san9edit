@@ -8,6 +8,9 @@ save：raw 原样 + 用户增量写回（未改动字段不出现，保留 raw �
 
 import copy
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ScenarioWriter:
@@ -84,8 +87,13 @@ class ScenarioWriter:
         4. 用 current 里的新值覆盖 output 对应字段（id 不存在则新建空 dict）
         5. 写 JSON 到 path
         """
+        logger.info("保存剧本 → %s", path)
         current = ScenarioWriter.serialize(world)
         delta = ScenarioWriter.diff(current, baseline_snap)
+        logger.debug("增量 diff：factions=%d characters=%d nodes=%d",
+                     len(delta.get("factions") or {}),
+                     len(delta.get("characters") or {}),
+                     len(delta.get("nodes") or {}))
 
         output = copy.deepcopy(raw)
         for section, entities in delta.items():
@@ -97,5 +105,10 @@ class ScenarioWriter:
                 for field in fields:
                     entry[field] = cur_entry[field]
 
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(output, f, ensure_ascii=False, indent=2)
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(output, f, ensure_ascii=False, indent=2)
+        except Exception:
+            logger.error("保存失败：%s", path, exc_info=True)
+            raise
+        logger.info("保存成功：%s", path)

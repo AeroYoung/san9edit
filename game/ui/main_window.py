@@ -9,6 +9,7 @@
     [StatusBar  状态栏]
 """
 
+import logging
 import os
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -27,9 +28,17 @@ from game.ui.settings_window import SettingsWindow
 from game.core.scenario import ScenarioLoader
 from game.ui.map_controller import MapController
 
+logger = logging.getLogger(__name__)
+
+
 class MainWindow:
     def __init__(self):
+        logger.info("初始化 MainWindow，APP_MODE=%s", C.APP_MODE)
         self.root = tk.Tk()
+        # ★ 紧跟 Tk() 之后，越早越好，避免构造期间的 tk 回调异常丢失
+        from game.config.logging_setup import install_tk_excepthook
+        install_tk_excepthook(self.root)
+
         self.root.title(C.APP_TITLE)
         self.root.minsize(*C.MIN_WINDOW_SIZE)
 
@@ -125,6 +134,7 @@ class MainWindow:
         # 按 APP_MODE 统一切换编辑入口 / 回合按钮
         self.top_bar.set_game_mode(not self.editable)
         self.top_bar.set_edit_enabled(self.editable)
+        logger.debug("布局构建完成")
 
     def _bind_shortcuts(self):
         r = self.root
@@ -138,13 +148,16 @@ class MainWindow:
         r.bind("<Control-Shift-S>", lambda e: self._on_save_as())
         r.bind("<Control-z>", lambda e: self._on_undo())
         r.bind("<Control-Shift-Z>", lambda e: self._on_redo())
+        logger.debug("快捷键绑定完成")
 
     # ==========================================================
     # 地图加载
     # ==========================================================
     def _auto_load_default(self):
         path = C.DEFAULT_MAP_PATH
+        logger.info("自动加载默认地图：%s", path)
         if not path.is_file():
+            logger.warning("默认地图不存在：%s", path)
             self.status_bar.set_message(
                 f"未找到 {path.name}，请按 Ctrl+O 打开文件"
             )
@@ -163,18 +176,21 @@ class MainWindow:
 
     def _load_scenario(self, path):
         """加载指定剧本文件，构造 World，并（编辑模式）重建编辑会话。"""
+        logger.info("加载剧本：%s", path)
         geo = getattr(self, "_geo_data", None)
         if geo is None:
             # 兜底：从渲染器里拿
             geo = getattr(getattr(self.map_canvas, "renderer", None),
                           "data", None)
         if geo is None:
+            logger.warning("剧本加载失败：GeoData 尚未就绪")
             self.status_bar.set_message("剧本加载失败：GeoData 尚未就绪")
             return
 
         try:
             world = ScenarioLoader.load(str(path), geo)
         except Exception as e:
+            logger.error("剧本加载失败：%s", path, exc_info=True)
             self.status_bar.set_message(f"剧本加载失败：{e}")
             return
 
@@ -190,8 +206,11 @@ class MainWindow:
             f"{world.summary()}  |  玩家势力：{pf_name}"
         )
 
+        logger.info("剧本加载完成：%s", world.summary())
+
         # 编辑模式：建立编辑会话 + baseline 快照（§10.7）
         if self.editable:
+            logger.debug("建立 EditSession，生成 baseline 快照")
             from game.core.scenario_writer import ScenarioWriter
             from game.core.edit_session import EditSession
             baseline_snap = ScenarioWriter.serialize(world)
@@ -217,12 +236,15 @@ class MainWindow:
         try:
             data = self.map_canvas.load_geojson(path)
         except Exception as e:
+            logger.error("地图加载失败：%s", path, exc_info=True)
             if silent:
                 self.status_bar.set_message(f"自动加载失败：{e}")
             else:
                 messagebox.showerror("加载失败", str(e))
             return False
 
+        logger.info("加载地图：%s  要素=%d",
+                    os.path.basename(path), data.feature_count)
         self._geo_data = data
         self.map_canvas.reset_view()
         self.status_bar.set_message(
@@ -332,6 +354,7 @@ class MainWindow:
     # 地图右键菜单
     # ==========================================================
     def _on_map_right_click(self, node_id, event):
+        logger.debug("地图右键：node_id=%s", node_id)
         menu = tk.Menu(self.root, tearoff=0)
         self._map_menus.append(menu)
         if node_id:
@@ -372,10 +395,14 @@ class MainWindow:
 
     def _edit_node_from_map(self, node_id):
         """★ 地图右键 →「编辑据点」：与面板右键共用同一套编辑流程。"""
+        logger.info("地图右键编辑据点：%s", node_id)
         world = getattr(self, "_world", None)
         if world is None or self.edit_session is None:
             return
         node = world.nodes.get(node_id)
+        if node is None:
+            logger.warning("据点不存在：%s", node_id)
+            return
         from game.ui.dialogs.node_edit import edit_node
         if edit_node(self.root, world, node,
                      self.edit_session, self.open_edit_dialog):
@@ -383,7 +410,7 @@ class MainWindow:
             self.on_edit_executed()
 
     def _map_intel(self, kind, node_id):
-        print(f"[地图情报] kind={kind} node={node_id}")
+        logger.debug("地图情报：kind=%s node=%s", kind, node_id)
 
     # ==========================================================
     # 双向定位（地图 → 列表）
@@ -397,6 +424,7 @@ class MainWindow:
         self.status_bar.set_zoom(f"缩放 {scale:.1f}")
 
     def _on_menu_action(self, action, **kw):
+        logger.debug("菜单动作：%s", action)
         if action == "quit":
             self._on_close()
         elif action == "select_scenario":
@@ -451,6 +479,7 @@ class MainWindow:
         )
 
     def _open_settings(self):
+        logger.info("打开设置窗口")
         win = getattr(self, "_settings_win", None)
         if win is not None and win.winfo_exists():
             win.lift()
@@ -467,6 +496,7 @@ class MainWindow:
         - MAP_STYLE / CITY_LEVEL_MIN_SCALE / LAYER_VISIBILITY：立即重绘地图；
         - THEME / FONT_SIZES / FONT_CANDIDATES：需重启，窗口自己已提示。
         """
+        logger.info("设置已应用：%s", changed_paths)
         map_dirty = False
         panel_dirty = False
         for p in changed_paths:
@@ -478,18 +508,20 @@ class MainWindow:
                 panel_dirty = True
                 
         if map_dirty and getattr(self, "map_canvas", None) is not None:
+            logger.debug("地图重绘（设置变更）")
             try:
                 self.map_canvas.redraw()
             except Exception:
-                pass
+                logger.warning("地图重绘失败", exc_info=True)
 
         if panel_dirty:                              # ★
             side = getattr(self, "side_panel", None)
             if side is not None and hasattr(side, "reload_panel_columns"):
+                logger.debug("重载面板列（设置变更）")
                 try:
                     side.reload_panel_columns()
                 except Exception:
-                    pass
+                    logger.warning("面板列重载失败", exc_info=True)
 
         self.status_bar.set_message("设置已保存")
 
@@ -503,6 +535,7 @@ class MainWindow:
     # ==========================================================
     def open_edit_dialog(self, dlg_factory):
         """打开模态弹窗，屏蔽全局快捷键。供面板调用。"""
+        logger.debug("打开编辑弹窗（模态）")
         self._modal_open = True
         try:
             dlg = dlg_factory()
@@ -513,6 +546,7 @@ class MainWindow:
 
     def on_edit_executed(self):
         """面板编辑执行后由 SidePanel 转发。"""
+        logger.debug("编辑已执行：刷新面板 + 重绘地图")
         self._sync_undo_redo_state()
         self._redraw_map()
 
@@ -524,7 +558,7 @@ class MainWindow:
         try:
             canvas.redraw()
         except Exception:
-            pass
+            logger.warning("地图重绘失败", exc_info=True)
 
     def _sync_undo_redo_state(self):
         if self.edit_session is None:
@@ -542,12 +576,14 @@ class MainWindow:
 
     def _on_close(self):
         """关闭窗口 / 退出菜单：有未保存改动时拦截。"""
+        logger.info("请求关闭窗口")
         if self._confirm_discard():
             self.root.destroy()
 
     def _confirm_discard(self):
         """有未保存改动时弹「放弃 / 取消」。True = 可继续（丢弃）。"""
         if self.edit_session is not None and self.edit_session.is_dirty():
+            logger.info("存在未保存改动，询问用户")
             ans = messagebox.askyesnocancel(
                 "未保存的改动", "有未保存的改动，是否放弃？")
             return ans is True
@@ -557,9 +593,11 @@ class MainWindow:
         if self._modal_open:
             return
         if self.edit_session is None:
+            logger.warning("保存失败：未加载剧本")
             self.status_bar.set_message("未加载剧本")
             return
         if not self.edit_session.is_dirty():
+            logger.info("无改动，跳过保存")
             self.status_bar.set_message("无改动，未保存")
             return
         self._save_to_path(self._scenario_path)
@@ -577,6 +615,7 @@ class MainWindow:
             filetypes=[("JSON", "*.json"), ("所有文件", "*.*")],
         )
         if not path:
+            logger.debug("另存为取消")
             return
         self._save_to_path(path)
         self._scenario_path = path   # 上下文切换到新文件
@@ -586,21 +625,25 @@ class MainWindow:
         world = getattr(self, "_world", None)
         if world is None or self.edit_session is None:
             return
+        logger.info("保存剧本 → %s", path)
         try:
             ScenarioWriter.save(world, path, self._baseline_raw,
                                 self.edit_session.baseline)
         except Exception as e:
+            logger.error("保存失败：%s", path, exc_info=True)
             messagebox.showerror("保存失败", str(e))
             return
         self.edit_session.rebase()
         self.edit_session.clear()
         self._baseline_raw = self._load_raw_scenario(path)
         self._sync_undo_redo_state()
+        logger.info("保存成功：%s", path)
         self.status_bar.set_message(f"已保存 → {path}")
 
     def _on_undo(self):
         if self._modal_open or self.edit_session is None:
             return
+        logger.debug("触发 undo")
         self.edit_session.undo()
         self.side_panel.refresh_all()
         self._sync_undo_redo_state()
@@ -609,6 +652,7 @@ class MainWindow:
     def _on_redo(self):
         if self._modal_open or self.edit_session is None:
             return
+        logger.debug("触发 redo")
         self.edit_session.redo()
         self.side_panel.refresh_all()
         self._sync_undo_redo_state()
@@ -626,9 +670,11 @@ class MainWindow:
         )
         if not path:
             return
+        logger.info("选择剧本：%s", path)
         from pathlib import Path
         self._load_scenario(Path(path))
 
     # ==========================================================
     def run(self):
+        logger.info("进入 mainloop")
         self.root.mainloop()

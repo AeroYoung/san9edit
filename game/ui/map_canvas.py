@@ -12,6 +12,7 @@
     最小化、最大化还是启动中就绪，地图最终都会显示在正确位置。
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk
 
@@ -21,6 +22,8 @@ from game.map.geo_data import GeoData
 from game.map.viewport import Viewport
 from game.map.renderer import MapRenderer
 from game.config.constants import DEFAULT_MAP_PATH, DEFAULT_ROADS_PATH   # 补上第二个
+
+logger = logging.getLogger(__name__)
 
 _MIN_VALID_SIZE = 10      # 小于该尺寸认为布局还没完成
 
@@ -70,13 +73,15 @@ class MapCanvas(ttk.Frame):
             self._zoom_callback(self.viewport.scale)
 
     def load_geojson(self, path):
+        logger.debug("MapCanvas 加载地图：%s", path)
         data = GeoData.from_file(path)
         # 加载水域（河流、湖泊），文件不存在则跳过
         if C.DEFAULT_WATER_PATH.is_file():
             try:
                 data.load_water(str(C.DEFAULT_WATER_PATH))
             except Exception:
-                pass     # 与路网一致：加载失败不影响主地图
+                # 与路网一致：加载失败不影响主地图
+                logger.warning("水域加载失败，跳过", exc_info=True)
 
         # 路网随主地图一起加载；失败不影响主地图渲染
         roads_path = DEFAULT_ROADS_PATH
@@ -84,7 +89,7 @@ class MapCanvas(ttk.Frame):
             try:
                 data.load_roads(roads_path)
             except Exception:
-                pass
+                logger.warning("路网加载失败，跳过", exc_info=True)
         
         self.data = data
         self.renderer.set_data(data)
@@ -115,6 +120,7 @@ class MapCanvas(ttk.Frame):
         """
         if not self.data:
             return
+        logger.debug("定位到据点：%s", node_id)
         bbox = self._node_bbox(node_id)
         self._sync_canvas_size()
 
@@ -123,6 +129,7 @@ class MapCanvas(ttk.Frame):
             if max_scale is not None:
                 self.viewport.scale = min(self.viewport.scale, max_scale)
         elif fallback_lonlat is not None:
+            logger.debug("据点无 boundary，退回中心点：%s", node_id)
             self.viewport.cx, self.viewport.cy = fallback_lonlat
             if max_scale is not None:
                 self.viewport.scale = min(self.viewport.scale, max_scale)
@@ -143,6 +150,7 @@ class MapCanvas(ttk.Frame):
         """用户主动复位：重新 fit 到全图，不受 _need_fit 影响。"""
         if not self.data or not self.data.bbox:
             return
+        logger.debug("复位视图")
         self._sync_canvas_size()
         if self.viewport.width >= _MIN_VALID_SIZE and \
            self.viewport.height >= _MIN_VALID_SIZE:
@@ -167,6 +175,8 @@ class MapCanvas(ttk.Frame):
         mx, my = anchor if anchor else (self.viewport.width / 2,
                                         self.viewport.height / 2)
         self.viewport.zoom(factor, (mx, my))
+        logger.debug("缩放 factor=%s  新 scale=%.2f", factor,
+                     self.viewport.scale)
         self._notify_zoom()
         self.renderer.zoom(factor, mx, my)
         self._schedule_label_refresh()
@@ -185,6 +195,8 @@ class MapCanvas(ttk.Frame):
             return
         if not self.data or not self.data.bbox:
             return
+        logger.debug("画布尺寸生效：%dx%d",
+                     self.viewport.width, self.viewport.height)
         self.viewport.fit_to_bbox(self.data.bbox)
         self._need_fit = False
         self._notify_zoom()
@@ -252,6 +264,7 @@ class MapCanvas(ttk.Frame):
         else:
             self._selected_node_id = node_id    # 点空白 / 海 / 山 → None
         self.renderer.set_selected(self._selected_node_id)
+        logger.debug("左键点选 node_id=%s", node_id)
 
     def _on_right_click(self, event):
         if not self.data:
@@ -260,6 +273,7 @@ class MapCanvas(ttk.Frame):
         info = self.data.find_location_detail(lon, lat)
         # 优先用被点选的县，否则用右键位置的县
         node_id = self._selected_node_id or info.get("node_id")
+        logger.debug("右键 node_id=%s", node_id)
         if self._right_click_callback:
             self._right_click_callback(node_id, event)
 

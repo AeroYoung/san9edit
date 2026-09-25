@@ -22,12 +22,15 @@
 """
 
 import json
+import logging
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
 from game.config import constants as C
 from game.config import style as _style
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -128,12 +131,15 @@ class SettingsManager:
 
     # ---------- 加载 / 保存 ----------
     def load(self):
+        logger.debug("加载设置：%s", self.path)
         self.current = deepcopy(self.defaults)
         if not self.path.is_file():
+            logger.debug("settings.json 不存在，使用默认值")
             return
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
         except Exception:
+            logger.warning("settings.json 解析失败，使用默认值", exc_info=True)
             return
         overrides = data.get("overrides") or {}
         for path_str, value in overrides.items():
@@ -146,6 +152,7 @@ class SettingsManager:
                 self._set_into(self.current, path_str, coerced)
             except KeyError:
                 continue
+        logger.debug("设置加载完成：覆盖项 %d 条", len(overrides))
 
     def save(self):
         data = {
@@ -157,6 +164,8 @@ class SettingsManager:
             json.dumps(data, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        logger.info("保存设置 → %s  覆盖项 %d 条",
+                    self.path, len(data["overrides"]))
 
     # ---------- 读写 ----------
     def get(self, path_str):
@@ -176,10 +185,12 @@ class SettingsManager:
                 continue
 
     def reset_all(self):
+        logger.info("重置全部设置")
         self.current = deepcopy(self.defaults)
 
     def reset_paths(self, paths):
         """把指定的若干路径恢复为默认值（用于“恢复本组默认”）。"""
+        logger.info("重置设置：%s", paths)
         for p in paths:
             try:
                 d = self._get_from(self.defaults, p)
@@ -189,6 +200,7 @@ class SettingsManager:
 
     # ---------- 生效 / 通知 ----------
     def apply(self):
+        logger.debug("应用设置到 style 模块")
         _apply_inplace(getattr(_style, "THEME", {}),
                        self.current["THEME"])
         _apply_inplace(getattr(_style, "FONT_SIZES", {}),
@@ -207,7 +219,7 @@ class SettingsManager:
         try:
             _style.FONT_CANDIDATES = tuple(self.current["FONT_CANDIDATES"])
         except Exception:
-            pass
+            logger.warning("FONT_CANDIDATES 写回失败", exc_info=True)
 
     def register_listener(self, fn):
         self._listeners.append(fn)
@@ -217,7 +229,7 @@ class SettingsManager:
             try:
                 fn(changed_paths)
             except Exception:
-                pass
+                logger.warning("设置 listener 异常：%s", fn, exc_info=True)
 
     # ---------- 差异 ----------
     def changed_paths(self):

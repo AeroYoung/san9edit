@@ -10,6 +10,7 @@
 """
 
 import json
+import logging
 
 from game.config.constants import DEFAULT_CHARACTERS_PATH
 from game.core.faction import Faction
@@ -17,16 +18,21 @@ from game.core.character import Character
 from game.core.node import Node
 from game.core.world import World
 
+logger = logging.getLogger(__name__)
+
 
 class ScenarioLoader:
     @classmethod
     def load(cls, path, geo_data):
+        logger.info("加载剧本：%s", path)
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         return cls.from_dict(raw, geo_data)
 
     @classmethod
     def from_dict(cls, raw, geo_data):
+        logger.debug("剧本 id=%s name=%s version=%s",
+                     raw.get("id"), raw.get("name"), raw.get("version"))
         world = World()
 
         world.version = int(raw.get("version", 1))
@@ -56,6 +62,7 @@ class ScenarioLoader:
 
         world.bind_factions()   # ★ 注入 nodes 引用（供 Faction.gold/food property）
 
+        logger.info("剧本加载完成：%s", world.summary())
         return world
 
     # ============================================================
@@ -71,6 +78,7 @@ class ScenarioLoader:
     @classmethod
     def _load_base_characters(cls, world, id_range=None):
         if not DEFAULT_CHARACTERS_PATH.is_file():
+            logger.warning("人物基础数据不存在：%s", DEFAULT_CHARACTERS_PATH)
             return
         with open(DEFAULT_CHARACTERS_PATH, "r", encoding="utf-8") as f:
             raw = json.load(f)
@@ -88,6 +96,8 @@ class ScenarioLoader:
             if not (lo <= n <= hi):
                 continue
             world.characters[cid] = Character.from_dict(cid, cdata)
+        logger.debug("基础人物加载：%d 人（range=%s）",
+                     len(world.characters), id_range)
 
     # ============================================================
     # 人物：第二层 剧本覆盖
@@ -97,10 +107,12 @@ class ScenarioLoader:
         for cid, od in overrides.items():
             ch = world.characters.get(cid)
             if ch is None:
-                print(f"[Scenario] 警告：剧本人物 {cid} 在基础数据中不存在，已忽略")
+                logger.warning("剧本人物 %s 不在基础数据中，已忽略", cid)
                 continue
             ch.apply_override(od)
-            
+        logger.debug("剧本覆盖：%d 条", len(overrides))
+
+
     # ============================================================
     # 人物：第三层 按年份筛选（满 16 岁 + 已出生 + 未死）
     # ============================================================
@@ -108,6 +120,7 @@ class ScenarioLoader:
     def _filter_by_year(world, year):
         if not year:
             return
+        before = len(world.characters)
         survivors = {}
         for cid, ch in world.characters.items():
             if ch.birth_year:
@@ -120,6 +133,7 @@ class ScenarioLoader:
                     continue
             survivors[cid] = ch
         world.characters = survivors
+        logger.debug("按年份筛选：%d → %d", before, len(world.characters))
 
     # ============================================================
     # 以下三个方法保持不变（原样照抄）
@@ -161,6 +175,7 @@ class ScenarioLoader:
                 level=props.get("level", 5),
                 is_capital=props.get("is_capital", False),
             )
+        logger.debug("从地图构建据点：%d", len(world.nodes))
 
     @staticmethod
     def _apply_node_overrides(world, overrides):
@@ -184,3 +199,4 @@ class ScenarioLoader:
                 node.level = int(ov["level"])
             if "is_capital" in ov:
                 node.is_capital = bool(ov["is_capital"])
+        logger.debug("据点覆盖：%d 条", len(overrides))

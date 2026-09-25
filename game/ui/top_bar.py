@@ -7,10 +7,13 @@
 菜单动作通过 on_action(action) 上报，与具体业务解耦。
 """
 
+import logging
 import tkinter as tk
 
 from game.config.style import THEME, FONT_SIZES
 from game.ui.window_utils import center_on_parent
+
+logger = logging.getLogger(__name__)
 
 _REFRESH_INTERVAL_MS = 200
 
@@ -147,6 +150,7 @@ class TopBar(tk.Frame):
             lambda e: self.end_turn_btn.configure(bg="#2ECC71"))
         self.end_turn_btn.bind("<Leave>",
             lambda e: self.end_turn_btn.configure(bg="#27AE60"))
+        logger.debug("顶部菜单构建完成")
 
     def _make_menu_button(self, parent, text, build_fn):
         mb = tk.Menubutton(
@@ -172,6 +176,7 @@ class TopBar(tk.Frame):
 
     # ---------- 上报动作 ----------
     def _emit(self, action):
+        logger.debug("菜单动作：%s", action)
         self.on_action(action)
 
     # ---------- 各下拉菜单定义 ----------
@@ -275,11 +280,14 @@ class TopBar(tk.Frame):
         self._edit_enabled = bool(enabled)
         for menu, index in self._edit_entries:
             menu.entryconfig(index, state="normal" if enabled else "disabled")
+        logger.debug("编辑类菜单项 → enabled=%s  共 %d 项",
+                     enabled, len(self._edit_entries))
 
     def set_game_mode(self, enabled):
         """enabled=False 时禁用「进行」按钮。"""
         self.end_turn_btn.configure(
             state="normal" if enabled else "disabled")
+        logger.debug("进行按钮 → enabled=%s", enabled)
 
     # ==========================================================
     # 数据刷新

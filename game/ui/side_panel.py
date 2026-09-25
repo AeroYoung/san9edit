@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """右侧 Tab 集合容器。"""
 
+import logging
 from tkinter import ttk
 
 from .panels.faction_panel import FactionPanel
 from .panels.node_panel import NodePanel
 from .panels.character_panel import CharacterPanel
 from .panels.troop_panel import TroopPanel
+
+logger = logging.getLogger(__name__)
 
 
 class SidePanel(ttk.Frame):
@@ -44,6 +47,7 @@ class SidePanel(ttk.Frame):
             self.notebook, self.game_state)
         for key in self.TAB_KEYS:
             self.notebook.add(self.panels[key], text=labels[key])
+        logger.debug("注册面板：%s", list(self.panels.keys()))
 
     def panel(self, key):
         return self.panels.get(key)
@@ -57,6 +61,7 @@ class SidePanel(ttk.Frame):
         return self.panels.get(key)
 
     def refresh_all(self):
+        logger.debug("刷新全部面板")
         for tab_id in self.notebook.tabs():
             widget = self.notebook.nametowidget(tab_id)
             if hasattr(widget, "refresh"):
@@ -64,6 +69,7 @@ class SidePanel(ttk.Frame):
 
     def reload_panel_columns(self):
         """设置保存后刷新所有面板的列。panels 是 {key: panel} 字典。"""
+        logger.debug("重载面板列")
         panels = getattr(self, "panels", None) or {}
         for p in panels.values():
             hook = getattr(p, "reload_columns", None)
@@ -71,10 +77,12 @@ class SidePanel(ttk.Frame):
                 try:
                     hook()
                 except Exception:
-                    pass
+                    logger.warning("面板列重载失败：%s",
+                                   type(p).__name__, exc_info=True)
 
     def set_edit_session(self, session, on_edit=None, open_dialog=None):
         """后置注入编辑会话。MainWindow 建好 session 后调用。"""
+        logger.debug("注入 EditSession")
         self._edit_callback = on_edit
         self._open_dialog_callback = open_dialog
         for p in self.panels.values():
@@ -82,6 +90,7 @@ class SidePanel(ttk.Frame):
 
     def on_panel_edit(self):
         """面板编辑执行后：刷新所有面板 + 转发给 MainWindow。"""
+        logger.debug("面板编辑回调")
         self.refresh_all()
         cb = getattr(self, "_edit_callback", None)
         if callable(cb):

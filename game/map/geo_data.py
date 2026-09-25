@@ -21,9 +21,12 @@
 """
 
 import json
+import logging
 import math
 
 from game.core.utils import walk_coords, point_in_polygon
+
+logger = logging.getLogger(__name__)
 
 
 class GeoData:
@@ -48,6 +51,7 @@ class GeoData:
     # ---------- 构造 ----------
     @classmethod
     def from_file(cls, path):
+        logger.info("加载地图：%s", path)
         with open(path, "r", encoding="utf-8") as f:
             raw = json.load(f)
         states = raw.get("states") or []
@@ -56,6 +60,9 @@ class GeoData:
         data._assign_lod(data.shapes_city_boundary)   # ★ 新增
         data._compute_bbox()
         data._build_index()
+        logger.info("地图加载完成：州=%d 郡=%d 县=%d 县界=%d",
+                    len(data.labels_state), len(data.labels_county),
+                    len(data.labels_city), len(data.shapes_city_boundary))
         return data
 
     def load_water(self, path):
@@ -88,6 +95,9 @@ class GeoData:
 
         self._assign_lod(self.shapes_water_line)
         self._assign_lod(self.shapes_water_polygon)
+        logger.debug("水域加载：河=%d 湖=%d",
+                     len(self.shapes_water_line),
+                     len(self.shapes_water_polygon))
 
     def load_roads(self, path):
         """加载路网 LineString，写入 self.roads。
@@ -118,6 +128,7 @@ class GeoData:
             roads.append((coords, difficulty, self._coords_bbox(coords)))
 
         self.roads = roads
+        logger.debug("路网加载：%d 条", len(self.roads))
 
 
     # ---------- 分类 ----------
