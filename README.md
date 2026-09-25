@@ -1515,9 +1515,28 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 #### 待办（本轮明确记录）
 
 - 设置窗口「日志」入口未做（本轮只做后端）
-- `edit_dialog.py` / `node_edit.py` / `node_panel.py` / `faction_panel.py` / `list/panel.py` / `renderer.py` 等未覆盖，留待下轮
 - `tools/` 下脚本保持 `print`，不接入 logging
 - 日志级别 / 保留数量未做配置化（`_MAX_LOG_FILES = 30` 硬编码）
+
+#### 补充覆盖（§16 清单收尾）
+
+第一轮后补齐了 §16 列出的其余模块：
+
+| 文件 | 日志点 |
+|---|---|
+| `dialogs/edit_dialog.py` | 构建弹窗 / 确定 / 取消 / 校验失败 / **字段变更明细（旧值→新值）** |
+| `dialogs/node_edit.py` | 编辑据点 / **郡治互斥** / 用户放弃互斥 |
+| `panels/list/panel.py` | 刷新行数 / 排序 / 反向定位（含失败）/ 重载列 |
+| `panels/node_panel.py` | 据点情报（`print` → `logger.debug`）/ 编辑入口 |
+| `panels/faction_panel.py` | 编辑势力 / 势力不存在告警 |
+| `panels/character_panel.py` | 人物情报 / 复制编号（含失败告警） |
+| `ui/settings_window.py` | 保存 N 项 / 恢复默认（含失败告警） |
+| `ui/character_info_window.py` | 打开窗口 / 头像路径 / **头像加载失败** / Pillow 缺失 |
+| `core/game_state.py` | 同步 World / 推进回合 |
+| `map/renderer.py` | 绑定 World（势力数 / 据点数） |
+
+**刻意不加**（高频或纯数据，加日志只会刷屏）：
+`viewport.py`（投影/缩放）/ `core/node.py` / `faction.py` / `character.py`（构造 1000+ 次）/ `game/core/utils.py` / `list/context_menu.py` / `settings_schema.py`（纯数据）/ `panels/troop_panel.py`（空壳）/ `renderer.draw_full` 与 `set_hover`（文档 §15.3 明确禁止）。
 
 ---
 

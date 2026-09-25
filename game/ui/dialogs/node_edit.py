@@ -6,6 +6,10 @@
 调用方负责后续刷新（面板 / 地图）。
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def edit_node(parent, world, node, session, open_dialog):
     """打开据点编辑弹窗并执行编辑。
@@ -21,6 +25,7 @@ def edit_node(parent, world, node, session, open_dialog):
     """
     if session is None or world is None or node is None:
         return False
+    logger.debug("编辑据点：%s %s", node.id, node.name)
 
     from tkinter import messagebox
 
@@ -46,6 +51,8 @@ def edit_node(parent, world, node, session, open_dialog):
                 continue
             if not other.is_capital:
                 continue
+            logger.info("郡治互斥：%s(%s) → 非郡治，本县 %s 设为郡治",
+                        other.name, other.id, node.name)
             ans = messagebox.askyesno(
                 "郡治冲突",
                 f"{other.name} 已是本郡郡治。\n"
@@ -53,6 +60,7 @@ def edit_node(parent, world, node, session, open_dialog):
                 parent=parent,
             )
             if not ans:
+                logger.info("用户放弃郡治互斥，整体取消编辑")
                 return False
             cmds.append(NodeEditCommand(
                 other.id, {"is_capital": True}, {"is_capital": False}))

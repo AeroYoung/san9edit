@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """据点面板（纯配置）。"""
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.context_menu import MenuItem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -113,5 +116,5 @@ class NodePanel(GenericListPanel):
 
     def _intel(self, kind, rows):
         names = "、".join(r.name for r in rows[:5])
-        more = f" 等 {len(rows)} 个" if len(rows) > 5 else ""
-        print(f"[据点情报] kind={kind} nodes={names}{more}")
+        logger.debug("据点情报：kind=%s nodes=%s（共 %d）",
+                     kind, names, len(rows))

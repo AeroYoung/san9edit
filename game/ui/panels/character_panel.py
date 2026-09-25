@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """人物面板（纯配置，玩家势力置顶）。"""
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.context_menu import MenuItem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -141,11 +144,13 @@ class CharacterPanel(GenericListPanel):
             return
         top = self.winfo_toplevel()
         font_family = getattr(top, "font_family", "TkDefaultFont")
+        logger.debug("人物情报：%s %s", ch.id, ch.name)
         CharacterInfoWindow(self, ch, font_family=font_family)
 
     def _copy_id(self, cid):
         try:
             self.clipboard_clear()
             self.clipboard_append(cid)
+            logger.debug("复制人物编号：%s", cid)
         except Exception:
-            pass
+            logger.warning("复制编号失败：%s", cid, exc_info=True)

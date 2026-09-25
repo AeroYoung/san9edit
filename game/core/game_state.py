@@ -6,6 +6,10 @@
 信息栏改为显示玩家势力的实时数据。
 """
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class GameState:
     def __init__(self):
@@ -29,6 +33,7 @@ class GameState:
             self.year = world.year
             self.month = world.month
             self.xun = world.xun
+        logger.info("同步 World 到 GameState：%s", self.date_text())
 
     # ---------- 日期 ----------
     def date_text(self):
@@ -47,6 +52,7 @@ class GameState:
             if self.month > 12:
                 self.month = 1
                 self.year += 1
+        logger.info("推进回合 → %s", self.date_text())
 
     # ---------- 资源（写回玩家势力） ----------
     def change_gold(self, delta):

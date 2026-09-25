@@ -8,17 +8,21 @@
 不再读取 Character.portrait 字段。
 """
 
+import logging
 import tkinter as tk
 
 from game.config import constants as C
 from game.config.style import THEME, FONT_SIZES
 from game.ui.window_utils import center_on_parent
 
+logger = logging.getLogger(__name__)
+
 try:
     from PIL import Image, ImageTk
     _PIL_OK = True
 except ImportError:
     _PIL_OK = False
+    logger.warning("未安装 Pillow，人物情报窗口无法显示头像")
 
 
 PORTRAIT_DIR = C.ASSETS_DIR / "portrait"
@@ -35,6 +39,7 @@ class CharacterInfoWindow(tk.Toplevel):
         self.font_family = font_family
         self._photo = None    # ★ 保引用，防 GC
 
+        logger.debug("打开人物情报窗口：%s", character.id)
         self.title(f"{character.display_name()} — 人物情报")
         self.transient(master)
         self.configure(bg=THEME["panel_bg"])
@@ -93,6 +98,7 @@ class CharacterInfoWindow(tk.Toplevel):
 
     def _load_portrait(self):
         path = self._find_portrait_path()
+        logger.debug("人物情报头像：%s → %s", self.character.id, path)
         if path is None:
             self._portrait_label.configure(
                 text="（无头像）", fg="#999999",
@@ -113,6 +119,7 @@ class CharacterInfoWindow(tk.Toplevel):
             self._photo = ImageTk.PhotoImage(img)
             self._portrait_label.configure(image=self._photo, text="")
         except Exception as e:
+            logger.warning("头像加载失败：%s", path, exc_info=True)
             self._portrait_label.configure(
                 text=f"（加载失败）\n{e}", fg="#B03A2E",
                 font=(self.font_family, FONT_SIZES["panel_body"]),

@@ -5,6 +5,7 @@
 色块用 NAME_COLUMN.image 列渲染扩展点。
 """
 
+import logging
 import tkinter as tk
 from dataclasses import dataclass
 
@@ -12,6 +13,8 @@ from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.model import Group
 from .list.context_menu import MenuItem
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -174,7 +177,9 @@ class FactionPanel(GenericListPanel):
             return
         f = world.factions.get(row.id)
         if f is None:
+            logger.warning("势力不存在：%s", row.id)
             return
+        logger.debug("编辑势力：%s %s", f.id, f.name)
 
         from game.ui.dialogs.edit_dialog import EditDialog
         from game.ui.dialogs.faction_fields import FACTION_FIELDS

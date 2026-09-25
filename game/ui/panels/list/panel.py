@@ -10,6 +10,7 @@
     fetch_rows() / context_menu_items() / row_key() / locate_on_map()
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk
 
@@ -20,6 +21,8 @@ from .search_bar import SearchBar
 from .sorting import sort_rows
 from .grouping import build_tree
 from .context_menu import MenuItem, MenuContext, build_menu
+
+logger = logging.getLogger(__name__)
 
 
 class GenericListPanel(ttk.Frame):
@@ -159,6 +162,7 @@ class GenericListPanel(ttk.Frame):
         else:
             self._sort_key = key
             self._sort_desc = False
+        logger.debug("排序：%s %s", key, "降序" if self._sort_desc else "升序")
         self.refresh()
 
     def _column_index(self):
@@ -191,6 +195,7 @@ class GenericListPanel(ttk.Frame):
         self._before_refresh()
 
         rows = self._apply_search(self.fetch_rows())
+        logger.debug("刷新 %s：%d 行", type(self).__name__, len(rows))
         groups = self._build_groups(rows)
         if groups is None:
             if self._sort_key:
@@ -276,7 +281,9 @@ class GenericListPanel(ttk.Frame):
         """反向定位（地图 → 列表）：滚动到 key 对应行，展开祖先，选中。"""
         item = self._row_items.get(key)
         if item is None:
+            logger.debug("反向定位失败：%s 无对应行", key)
             return
+        logger.debug("反向定位：%s", key)
         self._syncing = True
         try:
             self._expand_ancestors(item)
@@ -370,6 +377,7 @@ class GenericListPanel(ttk.Frame):
 
     def reload_columns(self):
         """设置保存后由 MainWindow 调用：重读配置，重建表格。"""
+        logger.debug("重载列：%s", type(self).__name__)
         self._visible_columns, self._visible_name = self._resolve_columns()
         # 若排序键已被隐藏，则清除排序状态
         if self._sort_key:

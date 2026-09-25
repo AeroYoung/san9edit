@@ -6,6 +6,7 @@
 - 关闭时若未保存则弹确认。
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk, colorchooser, messagebox
 
@@ -14,6 +15,8 @@ from game.config.style import THEME, FONT_SIZES
 from game.config import settings_schema as schema
 from game.ui.window_utils import center_on_parent
 from game.ui.widgets.collapsible import CollapsibleSection
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsWindow(tk.Toplevel):
@@ -685,13 +688,14 @@ class SettingsWindow(tk.Toplevel):
         if not messagebox.askyesno("恢复默认",
                 "把所有设置项恢复为默认值？(尚未保存)"):
             return
+        logger.info("设置窗口：恢复全部默认值")
         self.draft.clear()
         self.settings.reset_all()
         for p, row in self._rows.items():
             try:
                 row["setter"](self.settings.get_default(p))
             except Exception:
-                pass
+                logger.warning("恢复默认值失败：%s", p, exc_info=True)
 
         # ★ 面板列 state 一并重置
         for key in list(self._panel_states.keys()):
@@ -745,10 +749,12 @@ class SettingsWindow(tk.Toplevel):
             if g and g.get("restart"):
                 need_restart.add(g["title"])
 
+        logger.info("设置窗口：保存 %d 项改动", len(self.draft))
         self.settings.set_many(self.draft)
         try:
             self.settings.save()
         except Exception as e:
+            logger.error("设置保存失败", exc_info=True)
             messagebox.showerror("保存失败", str(e), parent=self)
             return
         self.settings.apply()

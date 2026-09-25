@@ -5,15 +5,19 @@
 校验走 Field 的 min/max，readonly 走 display_fn。
 """
 
+import logging
 import tkinter as tk
 from tkinter import ttk, colorchooser
 
 from game.ui.window_utils import center_on_parent
 
+logger = logging.getLogger(__name__)
+
 
 class EditDialog(tk.Toplevel):
     def __init__(self, master, fields, entity, world=None, title="编辑"):
         super().__init__(master)
+        logger.debug("构建编辑弹窗：%s（%d 字段）", title, len(fields))
         self.title(title)
         self.resizable(False, False)
         # 相对主窗口（root）居中 + transient，而非相对右侧面板
@@ -207,6 +211,10 @@ class EditDialog(tk.Toplevel):
             if old != v:
                 changed_new[k] = v
                 changed_old[k] = old
+        if changed_new:
+            logger.debug("字段变更：%s",
+                         {k: (self._old_values.get(k), v)
+                          for k, v in changed_new.items()})
         return changed_new, changed_old
 
     # ============================================================
@@ -214,10 +222,13 @@ class EditDialog(tk.Toplevel):
     # ============================================================
     def _on_ok(self):
         if not self._validate():
+            logger.warning("弹窗校验失败，拒绝提交")
             return
         self.ok = True
         self.destroy()
+        logger.debug("弹窗确定")
 
     def _cancel(self):
         self.ok = False
         self.destroy()
+        logger.debug("弹窗取消")

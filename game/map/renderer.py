@@ -6,12 +6,17 @@
     → render_state_labels → render_county_labels → render_city_labels
 """
 
+import logging
+
 from game.config.style import (
     MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY, MAP_INTERACTION,
 )
 
 from game.core.utils import lighten_color, darken_color
 from game.core.territory import compute_county_stats  # ★ 新
+
+logger = logging.getLogger(__name__)
+
 
 class MapRenderer:
     LABEL_TAG = "label"     # 文字标签的 tag，用于整体删除/重绘
@@ -61,6 +66,9 @@ class MapRenderer:
         - 不负责重绘；调用方（MainWindow）按需 redraw
         """
         self._world = world
+        logger.debug("渲染器绑定 World：势力 %d / 据点 %d",
+                     len(getattr(world, "factions", {}) or {}),
+                     len(getattr(world, "nodes", {}) or {}))
         self._county_stats = compute_county_stats(world)
 
 
