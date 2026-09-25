@@ -146,6 +146,8 @@
 - ✅ **面板列配置**：4 面板列顺序 / 显隐可由设置窗口「面板列」tab 调整
 - ✅ **剧本编辑模式**：`APP_MODE` 编译期切换 + 文件/编辑菜单 + 据点/势力编辑 + 通用 undo/redo + 增量保存（第十七轮）
 - ✅ **`Faction.gold / food` 派生值化**：名下据点求和，不再落盘
+- ✅ **地图右键「编辑据点」** + **编辑入口统一标识**（`edit=True` / `set_edit_enabled`，一键按模式禁用）
+- ✅ **全流程日志系统**：每次启动一个文件 + session id + sys/tk 异常钩子，零第三方依赖（第十八轮）
 - ⚠️ 回合与资源为骨架
 - ❌ 内政/军事/外交/存档均为空实现
 - ❌ 主官 / 人物数 / 情报三项右键均为占位
@@ -264,6 +266,8 @@ san9edit/
 | 反向定位 | `scroll_to_row()` 展开祖先 + 滚动 + 选中 | `row_key()` |
 | 列配置 | `_resolve_columns()` 读 `PANEL_COLUMNS` + 过滤重排 | `PANEL_KEY` |
 | 列热重载 | `reload_columns()` 重建 Treeview + refresh | （无需） |
+| **编辑会话** | `edit_session` 类属性 + `_open_dialog()` / `_notify_edit()` | `context_menu_items()` 里的 `_edit()` |
+| **编辑入口置灰** | `build_menu(edit_enabled=edit_session is not None)` 统一处理 `edit=True` 项 | `MenuItem(..., edit=True)` |
 
 ---
 
@@ -275,8 +279,34 @@ san9edit/
 
 ### 3.2 势力（Faction）
 
-`id` = 君主人物 id。字段：`id` / `name` / `color` / `prestige` / `gold` / `food` / `stance`。
+`id` = 君主人物 id。**可落盘字段**：`id` / `name` / `color` / `prestige` / `stance`。
 `stance_label()` → `"敌对"` / `"盟友"` / `"中立"`。
+
+**★ `gold` / `food` 是派生值（第十七轮起）**：
+
+```python
+@property
+def gold(self):
+    """名下据点金钱求和。无主据点不计。"""
+    if self._nodes_ref is None:
+        return 0
+    return sum(n.gold for n in self._nodes_ref.values() if n.owner == self.id)
+```
+
+- `_nodes_ref` 是 **`world.nodes` 的引用**（不是快照），由 `World.bind_factions()` 注入
+- **无 setter** —— `faction.gold = x` 会报错（`GameState.change_gold` 已标记 `TODO(phase3)`）
+- `from_dict` **不再读** `gold/food`；`to_dict` **不再写**（旧剧本里的遗留字段被静默忽略）
+- 好处：改据点 `owner` 后，势力金/粮**自动**反映（为 phase2 的 owner 编辑铺路）
+
+### 3.2.1 序列化对称性（第十七轮）
+
+| 类 | `to_dict` 写什么 |
+|---|---|
+| `Node` | **从零写全 7 字段**：`owner / troops / gold / food / type / level / is_capital` |
+| `Faction` | `name / color / prestige / stance`（**不写** `gold/food`） |
+| `Character` | 全 34 字段（含 `portrait / faction / node / location / role`） |
+
+理由见 §8.3 第 152 条：加新的可编辑静态字段时，**写 / 读 / 显示三处必须同步**。
 
 ### 3.3 人物（Character）
 
@@ -319,6 +349,14 @@ san9edit/
 **静态**：`id` / `name` / `coords` / `type` / `level` / `is_capital` / `boundary`。
 **动态**：`owner` / `troops` / `gold` / `food`。
 **属性**：`state_id` → `id[:2]`，`county_id` → `id[:4]`，`is_owned()`。
+
+**★ `to_dict()`（第十七轮新增）**：从零写全 7 字段，供 `ScenarioWriter.serialize` 用。
+
+**★ 静态字段可被剧本覆盖（第十七轮）**：`_apply_node_overrides` 除 `owner/troops/gold/food` 外，
+现在也读 `type / level / is_capital` —— 否则编辑保存后重新加载会回原样（§9.17 症状表）。
+
+**★ 渲染必须查 World 而非 GeoData**：`renderer._effective_level(props)` 优先取 `world.node(id).level`，
+退回 `GeoData.shapes_point` 的 `level`。否则改 `level` 后地图县点大小 / 形状不更新。
 
 ### 3.5 游戏世界（World）
 
@@ -840,15 +878,73 @@ FORCE = False            # 目标已存在时是否覆盖
 
 ---
 
+### 5.29 ★ `game/config/logging_setup.py`（第十八轮新增）
+
+```python
+setup_logging() -> Path          # 初始化，返回本次会话的 log 文件路径
+install_sys_excepthook()         # 未捕获异常 → CRITICAL + traceback
+install_tk_excepthook(root)      # tkinter 回调异常 → ERROR + traceback
+get_session_id() -> str          # 8 位十六进制
+get_log_file_path() -> Path|None
+_cleanup_old_logs(log_dir)       # 只保留最近 _MAX_LOG_FILES 个
+class _SessionFilter             # 给每条 record 注入 record.session
+```
+
+**关键点**：
+
+- **只挂 `FileHandler`**：不挂 `StreamHandler`，控制台完全静默
+- **`_SessionFilter` 挂 handler**：`handler.addFilter(...)`，不是 `logger.addFilter(...)`
+- **`install_tk_excepthook` 覆盖 `Tk.report_callback_exception`**：`sys.excepthook` 接不到 tk 回调异常
+- **安装顺序**：`setup_logging()` → `install_sys_excepthook()` → `MainWindow()`；tk hook 在 `Tk()` 之后立即
+- **`KeyboardInterrupt` 交回原生**：`sys.__excepthook__`，不吞 Ctrl+C
+
+### 5.30 第十七 / 十八轮改动一览（§5.1–5.24 的增量）
+
+| 模块 | 增量 |
+|---|---|
+| `core/faction.py` | `gold/food` → property（`_nodes_ref`）+ `from_dict` / `to_dict` |
+| `core/node.py` | `to_dict()`（写全 7 字段） |
+| `core/world.py` | `bind_factions` / `add_faction`(phase2) / `character_id_range` |
+| `core/scenario.py` | `_build_faction` 简化；`from_dict` 末尾 `bind_factions`；`_apply_node_overrides` 补静态字段 |
+| `core/edit_session.py` | ★ 新增：Command / CompositeCommand / EditSession |
+| `core/edit_commands.py` | ★ 新增：NodeEditCommand / FactionEditCommand |
+| `core/scenario_writer.py` | ★ 新增：serialize / diff / save |
+| `ui/dialogs/` | ★ 新增：field_spec / edit_dialog / node_fields / faction_fields / node_edit |
+| `ui/panels/list/context_menu.py` | `MenuItem.edit` 标识 + `build_menu(edit_enabled=)` |
+| `ui/panels/list/panel.py` | `edit_session` 类属性 + `_open_dialog` / `_notify_edit` |
+| `ui/top_bar.py` | 文件/编辑菜单 + `_add_edit_command` / `set_edit_enabled` / `set_game_mode` |
+| `ui/main_window.py` | 菜单动作 / 快捷键 / 编辑会话 / 未保存拦截 / 保存 / 另存为 / 地图右键编辑 |
+| `ui/side_panel.py` | `set_edit_session` / `on_panel_edit` / `open_edit_dialog` |
+| `map/renderer.py` | `_effective_level`（县点 level 优先取 World） |
+| `config/logging_setup.py` | ★ 新增（§5.29） |
+
+---
+
 ## 6. 程序完整运行流程
 
-### 6.1 启动阶段
+### 6.1 启动阶段（第十八轮更新）
 
-（同上轮）
+```
+main.main()
+ ├─ setup_logging()                 userdata/logs/app_YYYYMMDD_HHMMSS.log（清旧 + 建新）
+ ├─ install_sys_excepthook()        未捕获异常 → CRITICAL
+ ├─ logger.info("应用启动…")
+ └─ MainWindow()
+     ├─ install_tk_excepthook(root) ★ 紧跟 Tk() 之后
+     ├─ SettingsManager → apply()   就地写回 style
+     ├─ _build_layout()             TopBar + MapCanvas + SidePanel + StatusBar
+     │   └─ set_game_mode / set_edit_enabled  按 APP_MODE 切按钮
+     ├─ _bind_shortcuts()
+     └─ after(120, _auto_load_default)
+         ├─ load_geojson(DEFAULT_MAP_PATH, silent=True)
+         └─ _load_default_scenario() → _load_scenario(path)
+```
+
+**顺序约束**：`setup_logging()` 必须在 `MainWindow()` 之前，否则构造期间的日志丢失（§8.3 第 154 条）。
 
 ### 6.2 地图 + 剧本加载流程
 
-（同上轮）
+（同上轮；`_load_scenario` 末尾新增：编辑模式建 `EditSession` + baseline 快照 + `side_panel.set_edit_session`）
 
 ### 6.3 剧本生成流程（离线）
 
@@ -885,43 +981,63 @@ FORCE = False            # 目标已存在时是否覆盖
 | 地图右键（空白） | `_on_map_right_click(node_id=None)` → `_build_empty_context_menu` |
 | 反向定位 | 右键「定位到列表→据点」→ `_locate_to_list` → `side_panel.select_panel` → `NodePanel.scroll_to_row` |
 | 设置 → 面板列 | 设置窗口 panels tab → Listbox 上移/下移/显示隐藏 → 「保存」→ `settings.save/apply` → `on_applied` → `_on_settings_applied` → `side_panel.reload_panel_columns` → 各 panel `reload_columns` |
+| **据点右键 → 编辑** | `NodePanel._edit` → `dialogs.node_edit.edit_node` → `EditDialog` → `dlg.get_changed()` → 郡治互斥（可选）→ `edit_session.execute(cmd)` → `_notify_edit` |
+| **地图右键 → 编辑据点** | `_edit_node_from_map(node_id)` → **同一个 `edit_node`** → `session.execute` → `side_panel.refresh_all()` + `on_edit_executed()` |
+| ↳ 编辑后刷新 | `SidePanel.on_panel_edit()` → `refresh_all()`（4 面板）→ `_edit_callback` → `MainWindow.on_edit_executed()` → `_sync_undo_redo_state()` + `_redraw_map()` |
+| **Ctrl+Z / Ctrl+Shift+Z** | `_on_undo/_on_redo`（`_modal_open` 时直接 return）→ `edit_session.undo/redo` → `refresh_all` + `_sync_undo_redo_state` + `_redraw_map` |
+| **Ctrl+S / Ctrl+Shift+S** | `_on_save_scenario`（无改动 → 状态栏提示，不写文件）→ `_save_to_path` → `ScenarioWriter.save(world, path, raw, baseline)` → `rebase` + `clear` |
+| **关窗 / 选择剧本拦截** | `_confirm_discard()` → `edit_session.is_dirty()` → `askyesnocancel` → 非 `True` 则中止 |
+| **编辑入口置灰** | `TopBar.set_edit_enabled(editable)` 批量控菜单项；右键 `MenuItem(edit=True)` → `build_menu(edit_enabled=edit_session is not None)` |
 
 ### 6.5 模块协作关系
 
 ```
-main.py
-└─ ui.main_window ──┬─ config.settings_manager ─ config.style
-                    │                            └ config.settings_schema
-                    │                                 └ get_panel_columns_meta()
-                    ├─ core.game_state
-                    ├─ core.scenario ─── core.world ─── core.faction
-                    │                    ├─ core.character
-                    │                    └─ core.node
-                    │                    └─ count_nodes_by_owner / count_characters_by_faction
-                    ├─ ui.top_bar
-                    ├─ ui.status_bar
-                    ├─ ui.map_canvas ─── map.viewport
-                    │                   map.renderer ─── map.geo_data
-                    │                                  └ core.territory（保留）
-                    │   hover 回调 → MainWindow._on_location_change
-                    │   右键回调 → MainWindow._on_map_right_click → 双向定位
-                    ├─ ui.map_controller
-                    ├─ ui.settings_window ──── config.settings_schema
-                    │                       └─ ui.widgets.collapsible
-                    ├─ ui.character_info_window ──── Pillow（Image / ImageTk）
-                    │                            └─ ui.window_utils.center_on_parent
-                    └─ ui.side_panel ──── panels.faction_panel ──┐
-                                       ├─ panels.node_panel ─────┤
-                                       ├─ panels.character_panel ┤── panels.list（通用框架）
-                                       │   └─ ui.character_info_window
-                                       └─ panels.troop_panel ────┘
-                                       └─ reload_panel_columns()
+main.py ── config.logging_setup（setup_logging / sys hook）
+   │
+   └─ ui.main_window ──┬─ config.settings_manager ─ config.style
+                       │                            └ config.settings_schema
+                       │                                 └ get_panel_columns_meta()
+                       ├─ core.game_state
+                       ├─ core.scenario ─── core.world ─── core.faction
+                       │                    ├─ core.character
+                       │                    └─ core.node
+                       │                    └─ count_nodes_by_owner / count_characters_by_faction
+                       ├─ core.edit_session ─── core.edit_commands
+                       ├─ core.scenario_writer（serialize / diff / save）
+                       ├─ ui.top_bar
+                       ├─ ui.status_bar
+                       ├─ ui.map_canvas ─── map.viewport
+                       │                   map.renderer ─── map.geo_data
+                       │                                  └ core.territory（保留）
+                       │   hover 回调 → MainWindow._on_location_change
+                       │   右键回调 → MainWindow._on_map_right_click
+                       │                └─ _edit_node_from_map → dialogs.node_edit
+                       ├─ ui.map_controller
+                       ├─ ui.settings_window ──── config.settings_schema
+                       │                       └─ ui.widgets.collapsible
+                       ├─ ui.character_info_window ──── Pillow（Image / ImageTk）
+                       │                            └─ ui.window_utils.center_on_parent
+                       └─ ui.side_panel ──── panels.faction_panel ──┐
+                                          ├─ panels.node_panel ─────┤
+                                          │   └─ dialogs.node_edit ─┤─ dialogs.edit_dialog
+                                          │                         │  └─ dialogs.field_spec
+                                          │                         │     + node_fields / faction_fields
+                                          ├─ panels.character_panel ┤── panels.list（通用框架）
+                                          │   └─ ui.character_info_window
+                                          └─ panels.troop_panel ────┘
+                                          └─ reload_panel_columns()
                        config.constants
+                       config.logging_setup ──── userdata/logs/*.log
 tools.build_characters    ──── assets/characters.json
 tools.build_scenario_190  ──── scenarios/default.json
 tools.check_portraits     ──── 报告（只读）
 tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 ```
+
+**编辑链路（第十七轮）**：面板/地图右键 → `dialogs.node_edit.edit_node` → `EditDialog`（数据驱动）→ `Command` → **`EditSession.execute`** → 面板刷新 + 地图重绘。
+**UI 层不得直接改 World**，一切经 Command（§10.1 硬约束）。
+
+**日志（第十八轮）**：所有模块 `logger = logging.getLogger(__name__)`，根 logger 只挂一个 `FileHandler`（`userdata/logs/`）。
 
 ---
 
@@ -929,7 +1045,19 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 
 ### 7.1 `constants.py`
 
-（同上轮）
+（路径常量同上轮）**第十七 / 十八轮追加**：
+
+```python
+# 应用模式（第十七轮）
+MODE_EDIT = "edit"     # 剧本编辑模式
+MODE_GAME = "game"     # 游戏模式（本轮不实现）
+APP_MODE  = MODE_EDIT  # 全局开关：编译期切换
+
+# 日志（第十八轮）
+LOG_DIR = PROJECT_ROOT / "userdata" / "logs"
+```
+
+**`APP_MODE` 只被 `MainWindow.__init__` 读一次**（`self.editable`），其余模块读 `edit_session is not None`（§8.3 第 151 条 / D9）。
 
 ### 7.2 设置窗口可改
 
@@ -973,6 +1101,18 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 | **头像缩放上限** | `200 × 200` | `CharacterInfoWindow.MAX_W/MAX_H` |
 | **头像重采样** | `Image.LANCZOS` | 高质量缩略 |
 | **`rename_portraits.py` 默认** | `APPLY=False / REMOVE_ORIGINAL=False / FORCE=False` | 三开关全保守 |
+| **`APP_MODE` 默认** | `MODE_EDIT`（= `"edit"`） | 第十七轮：编译期切换（§1.1） |
+| **`EditSession.max_depth`** | `5` | undo 栈深度，超出裁剪最旧命令 |
+| **`character_id_range`** | 第十七轮起 `world.character_id_range` | 由 `ScenarioLoader` 从 raw 读入（供 serialize 回写） |
+| **`ScenarioWriter` 元字段** | version/id/name/desc/start/player_faction/character_id_range | 不参与 diff |
+| **日志目录** | `userdata/logs/` | 第十八轮：`constants.LOG_DIR` |
+| **日志文件名** | `app_YYYYMMDD_HHMMSS.log` | 秒级唯一，每次启动一个 |
+| **`_MAX_LOG_FILES`** | `30` | 超出删最旧（`_cleanup_old_logs`） |
+| **日志级别** | 文件 `DEBUG`；**无控制台 handler** | 只挂 `FileHandler`，终端静默 |
+| **日志格式** | `时间.毫秒 [级别] [session] 模块: 消息` | `%(asctime)s.%(msecs)03d ...` |
+| **session id** | 8 位十六进制 | `uuid.uuid4().hex[:8]` |
+| **日志保留时间格式** | `%Y-%m-%d %H:%M:%S` | `Formatter(datefmt=...)` |
+| **`install_tk_excepthook` 时机** | `Tk()` 之后立即 | 越早越好，构造期回调异常才抓得到 |
 
 ---
 
@@ -1016,6 +1156,12 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 | **`Character.portrait` 字段清理** | **保留但不再消费（§9.16）** |
 | **头像缺图提示** | **只显示"（无头像）"，无占位图** |
 | **人物情报窗口多实例控制** | **无——重复右键会弹多个窗口** |
+| 据点 `owner` 编辑 + 级联 | 推迟到 phase2（§0.2 方案 C 范围） |
+| 势力新建 / 删除 / 消亡 | 推迟到 phase2（`World.add_faction` 等为 `NotImplementedError`） |
+| 人物编辑 | 未做（弹窗骨架已就绪，未接 `CHARACTER_FIELDS`） |
+| `GameState.change_gold/food` | 未适配派生值（编辑模式不跑回合，标记 `TODO(phase3)`） |
+| **设置窗口「日志」入口** | **本轮只做后端，无 UI（§9.18）** |
+| 日志级别 / 保留数量配置化 | 不支持（`_MAX_LOG_FILES = 30` 硬编码） |
 
 ### 8.2 数据层缺失
 
@@ -1164,6 +1310,9 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 20. **人物编辑**（复用 §10.6 弹窗骨架，新增 `CharacterEditCommand` + `CHARACTER_FIELDS`）
 21. **`GameState.change_gold/food` 适配派生值**（phase3：`Faction.gold` 已无 setter）
 22. **编辑弹窗多实例控制 / 滚动**（同一实体只开一个窗口；字段 > 10 时加滚动）
+23. **设置窗口「日志」tab**（查看当前日志路径 / 打开目录 / 切换级别）
+24. **日志配置化**（`_MAX_LOG_FILES` / 级别 / 是否输出控制台，从 `userdata/settings.json` 读）
+25. **`edit_dialog` 字段值实时校验反馈**（当前只有提交时校验，红字提示在按钮栏）
 
 ---
 
