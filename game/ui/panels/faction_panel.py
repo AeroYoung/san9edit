@@ -181,22 +181,11 @@ class FactionPanel(GenericListPanel):
             return
         logger.debug("编辑势力：%s %s", f.id, f.name)
 
-        from game.ui.dialogs.edit_dialog import EditDialog
-        from game.ui.dialogs.faction_fields import FACTION_FIELDS
-        from game.core.edit_commands import FactionEditCommand
+        # 与地图右键「编辑势力」共用同一套流程
+        from game.ui.dialogs.faction_edit import edit_faction
+        if edit_faction(self, world, f, self.edit_session, self._open_dialog):
+            self._notify_edit()
 
-        dlg = self._open_dialog(lambda: EditDialog(
-            self, FACTION_FIELDS, f, world=world, title="编辑势力"))
-        if dlg is None or not dlg.ok:
-            return
-
-        new_values, old_values = dlg.get_changed()
-        if not new_values:
-            return
-
-        self.edit_session.execute(
-            FactionEditCommand(row.id, old_values, new_values))
-        self._notify_edit()
 
     def build_groups(self, rows):
         world = getattr(self.game_state, "world", None)

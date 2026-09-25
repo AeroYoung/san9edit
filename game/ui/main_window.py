@@ -367,10 +367,31 @@ class MainWindow:
             menu.grab_release()
 
     def _build_node_context_menu(self, menu, node_id):
+        world = getattr(self, "_world", None)
+        node = world.nodes.get(node_id) if world is not None else None
+
+        faction = None
+        if node is not None and node.owner and world is not None:
+            faction = world.factions.get(node.owner)
+            if faction is None:
+                logger.warning("据点 %s 的 owner=%s 无对应势力",
+                               node_id, node.owner)
+
         # ★ 编辑类入口：状态由 APP_MODE 单点决定（D9）
+        edit_state = "normal" if self.editable else "disabled"
+
         menu.add_command(label="编辑据点",
                          command=lambda: self._edit_node_from_map(node_id),
-                         state="normal" if self.editable else "disabled")
+                         state=edit_state)
+
+        # 有势力 → 显示「编辑势力：XXX」；无势力 / 脏 owner → 不显示
+        if faction is not None:
+            menu.add_command(
+                label=f"编辑势力：{faction.name}",
+                command=lambda fid=faction.id: self._edit_faction_from_map(fid),
+                state=edit_state,
+            )
+
         menu.add_separator()
         menu.add_command(label="据点情报",
                          command=lambda: self._map_intel("node", node_id))
@@ -386,6 +407,7 @@ class MainWindow:
         locate.add_command(label="势力", state="disabled")
         locate.add_command(label="部队", state="disabled")
         menu.add_cascade(label="定位到列表", menu=locate)
+
 
     def _build_empty_context_menu(self, menu):
         menu.add_command(label="复位视图", command=self.map_canvas.reset_view)
@@ -406,6 +428,22 @@ class MainWindow:
         from game.ui.dialogs.node_edit import edit_node
         if edit_node(self.root, world, node,
                      self.edit_session, self.open_edit_dialog):
+            self.side_panel.refresh_all()
+            self.on_edit_executed()
+
+    def _edit_faction_from_map(self, faction_id):
+        """★ 地图右键 →「编辑势力」：与面板右键共用 edit_faction。"""
+        logger.info("地图右键编辑势力：%s", faction_id)
+        world = getattr(self, "_world", None)
+        if world is None or self.edit_session is None:
+            return
+        f = world.factions.get(faction_id)
+        if f is None:
+            logger.warning("势力不存在：%s", faction_id)
+            return
+        from game.ui.dialogs.faction_edit import edit_faction
+        if edit_faction(self.root, world, f,
+                        self.edit_session, self.open_edit_dialog):
             self.side_panel.refresh_all()
             self.on_edit_executed()
 
@@ -560,6 +598,21 @@ class MainWindow:
         except Exception:
             logger.warning("地图重绘失败", exc_info=True)
 
+    def _refresh_title(self):
+        """窗口标题：APP_TITLE [- 剧本文件名] [*]。
+
+        未加载剧本 → 只显示 APP_TITLE；
+        已加载 → 追加剧本文件名；
+        有未保存改动 → 追加 " *"。
+        """
+        title = C.APP_TITLE
+        world = getattr(self, "_world", None)
+        if world is not None and self._scenario_path:
+            title = f"{title} - {os.path.basename(self._scenario_path)}"
+        if self.edit_session is not None and self.edit_session.is_dirty():
+            title += " *"
+        self.root.title(title)
+
     def _sync_undo_redo_state(self):
         if self.edit_session is None:
             self.top_bar.set_edit_state(False, False)
@@ -568,6 +621,8 @@ class MainWindow:
                 self.edit_session.can_undo(),
                 self.edit_session.can_redo(),
             )
+        self._refresh_title()
+
 
     def _load_raw_scenario(self, path):
         import json

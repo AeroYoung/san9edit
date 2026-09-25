@@ -32,3 +32,4 @@ APP_MODE = MODE_EDIT   # 全局开关：编译期切换
 # 日志
 # ============================================================
 LOG_DIR = PROJECT_ROOT / "userdata" / "logs"
+LOG_ENABLED = True   # False = 一键关闭全部日志（不建目录、不写文件、不装异常钩子）

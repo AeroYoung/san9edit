@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from game.config.constants import LOG_DIR
+from game.config.constants import LOG_DIR, LOG_ENABLED
 
 # 保留最近多少个 log 文件
 _MAX_LOG_FILES = 30
@@ -49,6 +49,12 @@ def get_log_file_path() -> Path | None:
 def setup_logging() -> Path:
     """初始化日志系统。返回本次会话的 log 文件路径。"""
     global _LOG_FILE_PATH
+
+    if not LOG_ENABLED:
+        # 编译期一键关闭：禁用所有日志调用，不建目录、不清理旧文件、不挂 handler。
+        logging.disable(logging.CRITICAL)
+        _LOG_FILE_PATH = None
+        return None
 
     root = logging.getLogger()
     # 重复初始化保护：清空已有 handler
@@ -102,7 +108,8 @@ def _cleanup_old_logs(log_dir: Path):
 
 def install_sys_excepthook():
     """安装 sys.excepthook：任何未捕获异常写入日志。"""
-
+    if not LOG_ENABLED:
+        return   # 不接管，交回 Python 默认 stderr
     def _hook(exc_type, exc_value, exc_tb):
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_tb)
@@ -121,6 +128,8 @@ def install_tk_excepthook(root):
     这是 tkinter 项目最容易漏日志的地方：回调里抛异常默认只打到 stderr，
     窗口继续运行但行为异常。这里统一写入日志。
     """
+    if not LOG_ENABLED:
+        return   # 不接管，交回 Tk 默认 stderr
     def _report(exc_type, exc_value, exc_tb):
         logging.getLogger("tk.callback").error(
             "tkinter 回调异常", exc_info=(exc_type, exc_value, exc_tb)

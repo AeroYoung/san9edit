@@ -145,7 +145,7 @@ class CharacterPanel(GenericListPanel):
         top = self.winfo_toplevel()
         font_family = getattr(top, "font_family", "TkDefaultFont")
         logger.debug("人物情报：%s %s", ch.id, ch.name)
-        CharacterInfoWindow(self, ch, font_family=font_family)
+        CharacterInfoWindow(self, ch, world=world, font_family=font_family)
 
     def _copy_id(self, cid):
         try:
