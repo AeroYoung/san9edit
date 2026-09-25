@@ -36,6 +36,8 @@
 | **命令** | `Command` / `CompositeCommand` | ★ 改 World 的唯一入口，UI 不直接赋值（§10.1） |
 | **增量保存** | `ScenarioWriter.save` | ★ `raw 原样 + diff 增量`，未改动不写（§7） |
 | **字段描述** | `Field` | ★ 弹窗数据驱动核心，6 种 kind（§10.6） |
+| **编辑类标识** | `MenuItem.edit` / `TopBar._edit_entries` | ★ 标记编辑入口，按 `APP_MODE` 一键全禁（§9.17 需求 8） |
+| **据点编辑共用流程** | `dialogs/node_edit.py::edit_node` | ★ 面板右键与地图右键共用（含郡治互斥） |
 
 **「县 = 据点」的核心约定：**
 
@@ -1106,6 +1108,17 @@ tools.rename_portraits    ──── assets/portrait/*.{jpg,png,...}
 - 正确：`<Control-Shift-S>` / `<Control-Shift-Z>`
 - 错误：`<Control-Shift-s>`（小写不触发）
 
+**151. ★ 新增编辑入口必须登记，不得各自写模式判断**：
+- **右键菜单**：`MenuItem(..., edit=True)` → 由 `build_menu(edit_enabled=)` 统一置灰，判定 = `edit_session is not None`
+- **顶部菜单**：用 `TopBar._add_edit_command()` 加项 → 自动登记进 `_edit_entries`，`set_edit_enabled()` 一键全禁
+- **地图右键**（tk.Menu 直建，不走 build_menu）：`state = "normal" if self.editable else "disabled"`
+- **不要**在每个新入口里复制 `if APP_MODE == MODE_EDIT`（D9：模式判断只在 `MainWindow`）
+
+**152. ★ 列表/渲染显示「可编辑实体」时必须查 World，不能只读 GeoData**：
+- `Node.type/level/is_capital` 来自 `map.geojson`（`GeoData.shapes_point`），但**编辑只改 World 的 Node**
+- 渲染端（`renderer._effective_level`）与加载端（`scenario._apply_node_overrides`）**都要以 World 为准**
+- 加新的可编辑静态字段时，**三处必须同步**：`Node.to_dict`（写）/ `_apply_node_overrides`（读）/ 渲染或面板（显示）
+
 ### 8.4 建议的下一步
 
 1. **实现"出征 / 调动"**：改 `Character.location`，不动 `node`
@@ -1324,26 +1337,32 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 5. **通用 undo / redo 框架**：Command / CompositeCommand / EditSession（`max_depth=5`）
 6. **增量保存**：`raw 原样 + diff 增量`，未改动字段不出现
 7. **`Faction.gold / food` 派生值化**：名下据点求和，不落盘
+8. **编辑类按钮统一标识**（追加）：代码中标记编辑入口，切 `APP_MODE` 时一键全禁
+9. **地图右键「编辑据点」**（追加）：与面板右键共用同一套编辑流程（含郡治互斥）
 
 #### 改动
 
-**新增（11 个）**：
+**新增（13 个）**：
 - `game/core/edit_session.py` —— Command / CompositeCommand / EditSession
 - `game/core/edit_commands.py` —— NodeEditCommand / FactionEditCommand
 - `game/core/scenario_writer.py` —— serialize / diff / save（增量）
 - `game/ui/dialogs/` —— field_spec（Field NamedTuple）/ edit_dialog / node_fields / faction_fields
+- `game/ui/dialogs/node_edit.py` —— ★ 据点编辑共用流程（面板右键 / 地图右键）
 - `tests/` —— test_composite_command / test_scenario_writer
 
-**修改（13 个）**：
+**修改（15 个）**：
 - `constants.py`（MODE_EDIT / MODE_GAME / APP_MODE）
 - `faction.py`（gold/food → property + `_nodes_ref` + from_dict/to_dict）
 - `node.py`（to_dict）/ `world.py`（bind_factions + character_id_range + 3 个 phase2 占位）
-- `scenario.py`（_build_faction 简化 + from_dict 末尾 bind）/ `game_state.py`（TODO(phase3) 注释）
-- `top_bar.py`（文件/编辑菜单 + set_edit_state / set_game_mode）
-- `main_window.py`（菜单动作 / 快捷键 / 编辑会话 / 未保存拦截 / 保存 / 另存为）
+- `scenario.py`（_build_faction 简化 + from_dict 末尾 bind + `_apply_node_overrides` 补静态字段）
+- `game_state.py`（TODO(phase3) 注释）
+- `renderer.py`（`_effective_level`：县点 level 优先取 World 的 Node）
+- `top_bar.py`（文件/编辑菜单 + `_add_edit_command` 登记 + `set_edit_enabled` / `set_edit_state` / `set_game_mode`）
+- `main_window.py`（菜单动作 / 快捷键 / 编辑会话 / 未保存拦截 / 保存 / 另存为 / 地图右键编辑 / `_redraw_map`）
 - `side_panel.py`（set_edit_session / on_panel_edit / open_edit_dialog）
-- `list/panel.py`（edit_session 类属性 + _open_dialog / _notify_edit）
-- `node_panel.py` / `faction_panel.py`（右键「编辑」+ _edit）
+- `list/panel.py`（edit_session 类属性 + _open_dialog / _notify_edit + build_menu 传 edit_enabled）
+- `list/context_menu.py`（★ `MenuItem.edit` 标识 + `build_menu(edit_enabled=)`）
+- `node_panel.py` / `faction_panel.py`（右键「编辑」+ `edit=True` + _edit 复用 node_edit）
 - `build_scenario_190.py` + `scenarios/default.json`（去 factions 的 gold/food）
 
 #### 设计决策
@@ -1355,6 +1374,12 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 - **增量保存（D4）**：`output = deepcopy(raw) + diff(current, baseline_snap)`，未改动字段不出现
 - **`EditSession.max_depth = 5`**：undo 栈深度限制，超出裁剪最旧命令
 - **模式判断只在 MainWindow（D9）**：`self.editable`；其余模块读 `edit_session is not None`
+- **★ 编辑入口统一标识（需求 8）**：两处，共用「`APP_MODE` 单点决定」原则
+  - **右键菜单**：`MenuItem.edit = True`，`build_menu(..., edit_enabled=)` 统一置灰（面板侧判定 = `edit_session is not None`）
+  - **顶部菜单**：`TopBar._add_edit_command()` 登记到 `_edit_entries`，`set_edit_enabled()` 一键全禁
+  - **地图右键**：构建时 `state = "normal" if self.editable else "disabled"`
+  - 新增任何编辑入口 → **只需登记**，不必各自写模式判断
+- **★ 据点编辑流程抽到 `dialogs/node_edit.py`（需求 9）**：面板右键与地图右键共用，郡治互斥只写一份
 
 #### 症状与根因
 
@@ -1379,16 +1404,28 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 
 ---
 
-**本轮核心变动集中在 §0（新增 5 术语：编辑会话 / Command / 增量保存 / Field / APP_MODE）**、**§2（dialogs + edit_session / edit_commands / scenario_writer + tests）**、**§3.2（Faction 派生值）/ §3.4（Node.to_dict）/ §3.6（bind_factions）**、**§5（新增 edit_session / edit_commands / scenario_writer / dialogs 四组模块）**、**§7.3（编辑相关常量）**、**§8.3 第 147–150 条（编辑框架永久约束）**、**§8.4 第 18–22 条**、**§9.17**。
+#### 手工验证清单
 
+自动化只覆盖核心逻辑，以下交互需实际点一遍（`python main.py` 启动）：
 
-自动化只能覆盖到核心逻辑，以下交互需要实际点一遍（python main.py 启动）：
+| 操作 | 预期 |
+|---|---|
+| 据点面板右键 →「编辑」 | 弹窗**居中相对主窗口**，含「确定 / 取消」按钮 |
+| ↳ 改 `type / level / 郡治 / 兵力 / 金 / 粮` → 确定 | 面板数据立即变化 |
+| ↳ 勾「郡治」且同郡已有郡治 | 弹「二选一」；选「是」→ 旧郡治改非 + 本县郡治（**1 个 undo 单元**）；选「否」→ 整体放弃 |
+| ↳ 改 `level` 后 | **地图县点的大小 / 形状随之变化** |
+| ↳ `Ctrl+Z` | 完全回滚（含郡治联动） |
+| **地图右键（县上）→「编辑据点」** | 弹出同一个编辑弹窗，改动同样生效、同样入 undo 栈 |
+| 势力面板右键 →「编辑」 | 弹窗 7 字段；`金 / 粮` 只读显示**派生值**（名下据点求和） |
+| ↳ 改势力名 → 确定 | 全局面板刷新，势力名同步 |
+| 改任一据点 `金` | 势力面板对应势力的 `金` 实时变化（求和） |
+| `Ctrl+S` 无改动 | 状态栏提示「无改动，未保存」，不写文件 |
+| `Ctrl+S` 有改动 | 覆盖当前剧本文件；撤销/重做菜单项置灰 |
+| `Ctrl+Shift+S` | 弹文件对话框；保存后上下文切到新文件，再 `Ctrl+S` 写新文件 |
+| 有改动时关窗口 / 选择剧本 | 弹「放弃改动 / 取消」，取消则中止 |
+| 保存后重新打开 | `type / level / is_capital` 等改动**保留** |
+| 切换 `APP_MODE = MODE_GAME` | 菜单栏「选择剧本 / 保存 / 另存为 / 撤销 / 重做」、面板与地图右键的「编辑」**全部置灰**；「进行」按钮恢复可用 |
 
-据点右键「编辑」→ 改 type/level/郡治/兵力/金/粮，勾郡治时同郡冲突弹「二选一」
-势力右键「编辑」→ 改名后全局面板刷新、金/粮 只读显示派生值
-Ctrl+S 保存 / Ctrl+Shift+S 另存为 / Ctrl+Z/Ctrl+Shift+Z 撤销重做
-有改动时关窗口弹「放弃改动 / 取消」
+---
 
-更新的需求：
-1. 这些编辑类的按钮应该在代码中加一个标识，将来我切换APP_MODE的时候能快速禁用这些按钮
-2.地图上右键菜单应该加入据点编辑
+**本轮核心变动集中在 §0（新增 7 术语：编辑会话 / Command / 增量保存 / Field / APP_MODE / 编辑类标识 / 据点编辑共用流程）**、**§2（dialogs + edit_session / edit_commands / scenario_writer / node_edit + tests）**、**§3.2（Faction 派生值）/ §3.4（Node.to_dict）/ §3.6（bind_factions）**、**§5（新增 edit_session / edit_commands / scenario_writer / dialogs 四组模块）**、**§7.3（编辑相关常量）**、**§8.3 第 147–152 条（编辑框架永久约束）**、**§8.4 第 18–22 条**、**§9.17**。

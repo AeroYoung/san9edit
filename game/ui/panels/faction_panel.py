@@ -158,12 +158,12 @@ class FactionPanel(GenericListPanel):
 
     def context_menu_items(self, ctx):
         row = ctx.right_click_row
-        can_edit = (self.edit_session is not None
-                    and len(ctx.selected_rows) == 1)
+        single = len(ctx.selected_rows) == 1
         return [
             MenuItem(row.name, enabled=False),
             MenuItem.sep(),
-            MenuItem("编辑", lambda: self._edit(row), enabled=can_edit),
+            # edit=True 标识：非编辑模式由 build_menu 统一置灰
+            MenuItem("编辑", lambda: self._edit(row), enabled=single, edit=True),
         ]
 
     def _edit(self, row):

@@ -27,6 +27,9 @@ class TopBar(tk.Frame):
         self.items = {}       # key -> (label, value_var)
         self._popups = {}     # key -> Toplevel
         self._menus = []      # 持有菜单引用，防止被 GC
+        # ★ 编辑类菜单项登记表：[(menu, index)]，按 APP_MODE 一键全禁/全启
+        self._edit_entries = []
+        self._edit_enabled = True
 
         self._build_left_info()
         self._build_right_menus()
@@ -172,23 +175,29 @@ class TopBar(tk.Frame):
         self.on_action(action)
 
     # ---------- 各下拉菜单定义 ----------
+    def _add_edit_command(self, menu, **kw):
+        """★ 登记一个「编辑类」菜单项：非编辑模式下可一键全禁。"""
+        menu.add_command(**kw)
+        self._edit_entries.append((menu, menu.index("end")))
+
     def _build_file_menu(self, m):
-        m.add_command(label="选择剧本",
-                      command=lambda: self._emit("select_scenario"))
+        self._add_edit_command(m, label="选择剧本",
+                               command=lambda: self._emit("select_scenario"))
         m.add_separator()
-        m.add_command(label="保存", accelerator="Ctrl+S",
-                      command=lambda: self._emit("save_scenario"))
-        m.add_command(label="另存为", accelerator="Ctrl+Shift+S",
-                      command=lambda: self._emit("save_scenario_as"))
+        self._add_edit_command(m, label="保存", accelerator="Ctrl+S",
+                               command=lambda: self._emit("save_scenario"))
+        self._add_edit_command(m, label="另存为", accelerator="Ctrl+Shift+S",
+                               command=lambda: self._emit("save_scenario_as"))
         m.add_separator()
         m.add_command(label="退出", command=lambda: self._emit("quit"))
 
     def _build_edit_menu(self, m):
         self._edit_menu = m
-        m.add_command(label="撤销", accelerator="Ctrl+Z",
-                      command=lambda: self._emit("undo"), state="disabled")
-        m.add_command(label="重做", accelerator="Ctrl+Shift+Z",
-                      command=lambda: self._emit("redo"), state="disabled")
+        # 撤销/重做也是编辑类项：统一登记，state 由 set_edit_state 动态控
+        self._add_edit_command(m, label="撤销", accelerator="Ctrl+Z",
+                               command=lambda: self._emit("undo"))
+        self._add_edit_command(m, label="重做", accelerator="Ctrl+Shift+Z",
+                               command=lambda: self._emit("redo"))
 
     def _build_game_menu(self, m):
         m.add_command(label="新游戏", command=lambda: self._emit("new_game"))
@@ -253,8 +262,19 @@ class TopBar(tk.Frame):
         menu = getattr(self, "_edit_menu", None)
         if menu is None:
             return
-        menu.entryconfig(0, state="normal" if can_undo else "disabled")
-        menu.entryconfig(1, state="normal" if can_redo else "disabled")
+        e = self._edit_enabled
+        menu.entryconfig(0, state="normal" if (can_undo and e) else "disabled")
+        menu.entryconfig(1, state="normal" if (can_redo and e) else "disabled")
+
+    def set_edit_enabled(self, enabled):
+        """★ 按 APP_MODE 统一启用/禁用所有登记过的编辑类菜单项。
+
+        由 MainWindow._build_layout 调用一次；将来切到游戏模式时，
+        只要 APP_MODE 变成 MODE_GAME，这里就会把所有编辑入口一并置灰。
+        """
+        self._edit_enabled = bool(enabled)
+        for menu, index in self._edit_entries:
+            menu.entryconfig(index, state="normal" if enabled else "disabled")
 
     def set_game_mode(self, enabled):
         """enabled=False 时禁用「进行」按钮。"""

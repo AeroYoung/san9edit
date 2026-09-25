@@ -122,8 +122,9 @@ class MainWindow:
         # 缩放变化回调：地图缩放时更新状态栏
         self.map_canvas.set_zoom_callback(self._on_zoom_change)
 
-        # 编辑模式下禁用「进行」按钮
+        # 按 APP_MODE 统一切换编辑入口 / 回合按钮
         self.top_bar.set_game_mode(not self.editable)
+        self.top_bar.set_edit_enabled(self.editable)
 
     def _bind_shortcuts(self):
         r = self.root
@@ -343,6 +344,11 @@ class MainWindow:
             menu.grab_release()
 
     def _build_node_context_menu(self, menu, node_id):
+        # ★ 编辑类入口：状态由 APP_MODE 单点决定（D9）
+        menu.add_command(label="编辑据点",
+                         command=lambda: self._edit_node_from_map(node_id),
+                         state="normal" if self.editable else "disabled")
+        menu.add_separator()
         menu.add_command(label="据点情报",
                          command=lambda: self._map_intel("node", node_id))
         menu.add_command(label="人物情报",
@@ -363,6 +369,18 @@ class MainWindow:
         menu.add_command(label="放大", command=lambda: self.map_canvas.zoom(1.25))
         menu.add_command(label="缩小",
                          command=lambda: self.map_canvas.zoom(1 / 1.25))
+
+    def _edit_node_from_map(self, node_id):
+        """★ 地图右键 →「编辑据点」：与面板右键共用同一套编辑流程。"""
+        world = getattr(self, "_world", None)
+        if world is None or self.edit_session is None:
+            return
+        node = world.nodes.get(node_id)
+        from game.ui.dialogs.node_edit import edit_node
+        if edit_node(self.root, world, node,
+                     self.edit_session, self.open_edit_dialog):
+            self.side_panel.refresh_all()
+            self.on_edit_executed()
 
     def _map_intel(self, kind, node_id):
         print(f"[地图情报] kind={kind} node={node_id}")

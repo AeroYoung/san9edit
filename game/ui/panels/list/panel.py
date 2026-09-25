@@ -260,7 +260,9 @@ class GenericListPanel(ttk.Frame):
         return "break"
 
     def _show_context_menu(self, event, items):
-        menu = build_menu(self, items)
+        # 非编辑模式（无 session）→ 带 edit 标识的项统一置灰
+        menu = build_menu(self, items,
+                          edit_enabled=self.edit_session is not None)
         self._menus.append(menu)
         try:
             menu.tk_popup(event.x_root, event.y_root)

@@ -13,6 +13,7 @@ class MenuItem:
     enabled: bool = True
     submenu: Optional[List["MenuItem"]] = None
     separator: bool = False
+    edit: bool = False       # ★ 编辑类入口标识：非编辑模式下由 build_menu 统一禁用
 
     @classmethod
     def sep(cls):
@@ -30,20 +31,30 @@ class MenuContext:
     selected_rows: List[Any] = field(default_factory=list)
 
 
-def build_menu(parent, items):
-    """把 MenuItem 列表递归构建成 tk.Menu。"""
+def build_menu(parent, items, edit_enabled=True):
+    """把 MenuItem 列表递归构建成 tk.Menu。
+
+    edit_enabled=False 时，所有带 edit 标识的项统一置灰（非编辑模式）。
+    """
     menu = tk.Menu(parent, tearoff=0)
     for it in items:
         if it.separator:
             menu.add_separator()
         elif it.submenu:
-            sub = build_menu(menu, it.submenu)
+            sub = build_menu(menu, it.submenu, edit_enabled)
             menu.add_cascade(label=it.label, menu=sub,
-                             state=_state(it.enabled))
+                             state=_state(_enabled(it, edit_enabled)))
         else:
             menu.add_command(label=it.label, command=it.command,
-                             state=_state(it.enabled))
+                             state=_state(_enabled(it, edit_enabled)))
     return menu
+
+
+def _enabled(item, edit_enabled):
+    """编辑类项在非编辑模式下统一禁用。"""
+    if item.edit and not edit_enabled:
+        return False
+    return item.enabled
 
 
 def _state(enabled):
