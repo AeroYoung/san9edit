@@ -4390,7 +4390,8 @@
       "owner": "0521",
       "troops": 8000,
       "gold": 1000,
-      "food": 20000
+      "food": 20000,
+      "is_capital": true
     },
     "130601": {
       "owner": "0521",
@@ -4430,9 +4431,11 @@
     },
     "130309": {
       "owner": "0521",
-      "troops": 2000,
+      "troops": 200,
       "gold": 200,
-      "food": 3000
+      "food": 300,
+      "level": 10,
+      "is_capital": false
     },
     "130312": {
       "owner": "0521",

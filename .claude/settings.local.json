@@ -32,7 +32,25 @@
       "Bash(git show *)",
       "Bash(rm old_default.json)",
       "Bash(git checkout *)",
-      "Bash(git commit -q -m '阶段5：收尾（去 factions gold/food + 重生成剧本 + README §9.17） *)"
+      "Bash(git commit -q -m '阶段5：收尾（去 factions gold/food + 重生成剧本 + README §9.17） *)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" python diag_gui.py)",
+      "Bash(git commit -q -m '修复编辑弹窗：居中相对主窗口 + 修复按钮构建 pady 元组报错 *)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" python /tmp/repro.py)",
+      "Bash(python -)",
+      "Bash(sed -i 's/vp = Viewport\\(800, 600\\)/vp = Viewport\\(\\); vp.set_canvas_size\\(800, 600\\)/' /tmp/verify_render.py)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" python /tmp/verify_render.py)",
+      "Bash(sed -i 's/ ✓//g' /tmp/verify_features.py)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" python /tmp/verify_features.py)",
+      "Bash(PYTHONPATH=\"c:/Users/杨尧/Desktop/san9edit\" PYTHONIOENCODING=utf-8 python /tmp/verify_features.py)",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(git commit -q -m '编辑入口统一标识 + 地图右键编辑据点 *)",
+      "Bash(git commit -q -m '第十八轮：全流程日志系统 *)",
+      "Bash(git commit -q -m '日志系统补充覆盖：弹窗 / 面板框架 / 设置窗口 / 人物情报 / 渲染器 *)",
+      "Bash(sed -n '/^### 3.2 势力/,/^### 3.3/p' README.md)",
+      "Bash(sed -n '/^### 3.4 县/,/^### 3.5/p' README.md)",
+      "Bash(grep -n \"字段：\\\\`id\\\\` / \\\\`name\\\\` / \\\\`color\\\\` / \\\\`prestige\\\\` / \\\\`gold\\\\`\" README.md)",
+      "Bash(git commit -q -m 'README 更新至第十八轮：补齐 §3/§5/§6/§7/§8 的增量 *)"
     ]
   }
 }
