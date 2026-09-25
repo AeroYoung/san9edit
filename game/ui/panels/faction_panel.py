@@ -25,6 +25,7 @@ class FactionRow:
     prestige: int
     gold: int
     food: int
+    troops: int 
     stance: int
     ruler_name: str
     node_count: int = 0      # ★ 新增
@@ -39,9 +40,11 @@ class FactionRow:
         ruler = world.characters.get(f.ruler_id)
         return cls(
             id=f.id, name=f.name, color=f.color,
-            prestige=f.prestige, gold=f.gold, food=f.food, stance=f.stance,
+            prestige=f.prestige, gold=f.gold, food=f.food,
+            troops=f.troops,                # ★ 新增
+            stance=f.stance,
             ruler_name=ruler.name if ruler is not None else "—",
-            node_count=node_count, char_count=char_count,          # ★
+            node_count=node_count, char_count=char_count,
         )
 
 
@@ -50,6 +53,7 @@ COLUMNS = (
     Column("prestige", "威望", 60, "e", lambda r: f"{r.prestige:,}", sort_numeric=True),
     Column("gold",     "金",   60, "e", lambda r: f"{r.gold:,}",     sort_numeric=True),
     Column("food",     "粮",   70, "e", lambda r: f"{r.food:,}",     sort_numeric=True),
+    Column("troops",   "兵力", 70, "e", lambda r: f"{r.troops:,}",   sort_numeric=True),  # ★ 新增
     Column("nodes",    "据点", 55, "e", lambda r: str(r.node_count), sort_numeric=True),  # ★
     Column("chars",    "人物", 55, "e", lambda r: str(r.char_count), sort_numeric=True),  # ★
     Column("stance",   "关系", 50, "center", lambda r: r.stance_text),

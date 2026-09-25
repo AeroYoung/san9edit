@@ -9,7 +9,7 @@ stance：该势力相对【玩家】的关系值，范围 -100 ~ 100。
     其余  → 中立
 玩家自身的 stance 无意义（永远归在"玩家"组）。
 
-gold / food 为派生值（§6.1）：名下据点求和，不落盘、不可赋值。
+gold / food / troops 为派生值（§6.1）：名下据点求和，不落盘、不可赋值。
 """
 
 
@@ -42,6 +42,22 @@ class Faction:
             return 0
         return sum(n.food for n in self._nodes_ref.values()
                    if n.owner == self.id)
+
+    @property
+    def troops(self):
+        """名下据点兵力求和 + 所属部队兵力求和。
+
+        部队项本轮恒为 0（Troop 模型未建，见 §8.4 / TODO(phase2)）。
+        """
+        total = 0
+        if self._nodes_ref is not None:
+            total += sum(n.troops for n in self._nodes_ref.values()
+                         if n.owner == self.id)
+        # TODO(phase2): Troop 模型落地后，在此追加 self._troops_ref 求和：
+        #     if self._troops_ref is not None:
+        #         total += sum(t.troops for t in self._troops_ref.values()
+        #                      if t.faction_id == self.id)
+        return total
 
     @classmethod
     def from_dict(cls, fid, d):

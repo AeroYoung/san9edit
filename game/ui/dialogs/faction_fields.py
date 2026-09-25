@@ -12,4 +12,5 @@ FACTION_FIELDS = (
     Field("stance",   "关系",  "int", min=-100, max=100),
     Field("gold",     "金钱",  "readonly"),
     Field("food",     "军粮",  "readonly"),
+    Field("troops",   "兵力",  "readonly"),   # ★ 派生值（名下据点求和）
 )

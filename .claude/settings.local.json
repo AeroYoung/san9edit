@@ -50,7 +50,11 @@
       "Bash(sed -n '/^### 3.2 势力/,/^### 3.3/p' README.md)",
       "Bash(sed -n '/^### 3.4 县/,/^### 3.5/p' README.md)",
       "Bash(grep -n \"字段：\\\\`id\\\\` / \\\\`name\\\\` / \\\\`color\\\\` / \\\\`prestige\\\\` / \\\\`gold\\\\`\" README.md)",
-      "Bash(git commit -q -m 'README 更新至第十八轮：补齐 §3/§5/§6/§7/§8 的增量 *)"
+      "Bash(git commit -q -m 'README 更新至第十八轮：补齐 §3/§5/§6/§7/§8 的增量 *)",
+      "Bash(grep -nE \"^#{2,4} \\(5\\\\.|3\\\\.|8\\\\.|10\\\\.|11\\\\.\\)\")",
+      "Bash(grep -nE \"^#{1,4} \")",
+      "Bash(grep -nE \"^#{2,3} \" README.md)",
+      "Bash(awk -F'第 | 条' '$2>51')"
     ]
   }
 }
