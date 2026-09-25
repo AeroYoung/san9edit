@@ -1364,6 +1364,9 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 | `pf.gold = ...` 报错 | property 无 setter（GameState.change_gold/food，标记 TODO(phase3)） |
 | Ctrl+Shift+S / Ctrl+Shift+Z 不触发 | Tk keysym 必须大写 `S` / `Z`（`<Control-Shift-S>`） |
 | 面板找不到 MainWindow | MainWindow 不是 widget，经 SidePanel 回调转发（`_open_dialog_callback` / `_edit_callback`） |
+| 编辑弹窗无「确定」按钮 / 不居中 / 郡治不弹二选一 | ★ 三者同源：`_build_buttons` 把 `pady=(0, 12)` 元组误传给 `tk.Frame()` **构造函数**，Tcl 抛 `bad screen distance` → 按钮未建成、后续居中代码未执行 |
+| 改 `type/level/is_capital` 保存后重新加载回原样 | `_apply_node_overrides` 只读 `owner/troops/gold/food`，**漏读三个静态字段**（写入端正常，读取端缺失） |
+| 改 `level` 地图县点无变化 | `render_points` / `render_point` 只读 `GeoData.shapes_point` 的 `level`，**从不查 World 的 Node**；且编辑后未触发地图重绘 |
 
 #### 待办（本轮明确记录）
 
@@ -1377,3 +1380,15 @@ GenericListPanel._resolve_columns() 读 style.PANEL_COLUMNS → 重建 Treeview
 ---
 
 **本轮核心变动集中在 §0（新增 5 术语：编辑会话 / Command / 增量保存 / Field / APP_MODE）**、**§2（dialogs + edit_session / edit_commands / scenario_writer + tests）**、**§3.2（Faction 派生值）/ §3.4（Node.to_dict）/ §3.6（bind_factions）**、**§5（新增 edit_session / edit_commands / scenario_writer / dialogs 四组模块）**、**§7.3（编辑相关常量）**、**§8.3 第 147–150 条（编辑框架永久约束）**、**§8.4 第 18–22 条**、**§9.17**。
+
+
+自动化只能覆盖到核心逻辑，以下交互需要实际点一遍（python main.py 启动）：
+
+据点右键「编辑」→ 改 type/level/郡治/兵力/金/粮，勾郡治时同郡冲突弹「二选一」
+势力右键「编辑」→ 改名后全局面板刷新、金/粮 只读显示派生值
+Ctrl+S 保存 / Ctrl+Shift+S 另存为 / Ctrl+Z/Ctrl+Shift+Z 撤销重做
+有改动时关窗口弹「放弃改动 / 取消」
+
+更新的需求：
+1. 这些编辑类的按钮应该在代码中加一个标识，将来我切换APP_MODE的时候能快速禁用这些按钮
+2.地图上右键菜单应该加入据点编辑

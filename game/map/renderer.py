@@ -358,6 +358,23 @@ class MapRenderer:
             except Exception:
                 pass
 
+    def _effective_level(self, props):
+        """县点渲染 level：优先取 World 的 Node（编辑后实时反映），
+        退回 GeoData 的 properties。"""
+        nid = props.get("id") if isinstance(props, dict) else None
+        if nid and self._world:
+            node = self._world.node(nid)
+            if node is not None:
+                try:
+                    return max(1, min(10, int(node.level)))
+                except (TypeError, ValueError):
+                    pass
+        try:
+            level = int(props.get("level", 5))
+        except (TypeError, ValueError):
+            level = 5
+        return max(1, min(10, level))
+
     def render_points(self):
         if not LAYER_VISIBILITY.get("point", True):
                 return
@@ -374,11 +391,7 @@ class MapRenderer:
                 if not (minx <= lon <= maxx and miny <= lat <= maxy):
                     continue
                 props = feat.get("properties", {}) if isinstance(feat, dict) else {}
-                try:
-                    level = int(props.get("level", 5))
-                except (TypeError, ValueError):
-                    level = 5
-                level = max(1, min(10, level))
+                level = self._effective_level(props)
                 if scale < CITY_LEVEL_MIN_SCALE.get(level, 0):
                     continue
                 self.render_point(lon, lat, feat, style)
@@ -393,11 +406,7 @@ class MapRenderer:
         elif isinstance(feat, (list, tuple)) and len(feat) >= 3 and isinstance(feat[2], dict):
             props = feat[2]
 
-        try:
-            level = int(props.get("level", 5))
-        except (TypeError, ValueError):
-            level = 5
-        level = max(1, min(10, level))
+        level = self._effective_level(props)
 
         x, y = self.viewport.project(lon, lat)
         r = self._point_radius(level, style)

@@ -168,6 +168,7 @@ class ScenarioLoader:
             node = world.nodes.get(nid)
             if node is None:
                 continue
+            # 动态字段
             if "owner" in ov:
                 node.owner = ov["owner"]
             if "troops" in ov:
@@ -176,3 +177,10 @@ class ScenarioLoader:
                 node.gold = int(ov["gold"])
             if "food" in ov:
                 node.food = int(ov["food"])
+            # 静态字段（剧本可覆盖，编辑保存后回写）
+            if "type" in ov:
+                node.type = ov["type"]
+            if "level" in ov:
+                node.level = int(ov["level"])
+            if "is_capital" in ov:
+                node.is_capital = bool(ov["is_capital"])

@@ -496,6 +496,17 @@ class MainWindow:
     def on_edit_executed(self):
         """面板编辑执行后由 SidePanel 转发。"""
         self._sync_undo_redo_state()
+        self._redraw_map()
+
+    def _redraw_map(self):
+        """编辑后重绘地图（据点 level / 势力颜色等可能已变）。"""
+        canvas = getattr(self, "map_canvas", None)
+        if canvas is None:
+            return
+        try:
+            canvas.redraw()
+        except Exception:
+            pass
 
     def _sync_undo_redo_state(self):
         if self.edit_session is None:
@@ -575,6 +586,7 @@ class MainWindow:
         self.edit_session.undo()
         self.side_panel.refresh_all()
         self._sync_undo_redo_state()
+        self._redraw_map()
 
     def _on_redo(self):
         if self._modal_open or self.edit_session is None:
@@ -582,6 +594,7 @@ class MainWindow:
         self.edit_session.redo()
         self.side_panel.refresh_all()
         self._sync_undo_redo_state()
+        self._redraw_map()
 
     def _on_select_scenario(self):
         if self._modal_open:
