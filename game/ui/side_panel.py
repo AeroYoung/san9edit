@@ -60,12 +60,16 @@ class SidePanel(ttk.Frame):
         self.notebook.select(idx)
         return self.panels.get(key)
 
-    def refresh_all(self):
-        logger.debug("刷新全部面板")
+    def refresh_all(self, keep_view=False):
+        """刷新全部面板。keep_view=True → 请求就地刷新。
+
+        只有声明了 KEEP_VIEW_ON_EDIT 的面板会采用（其余面板照旧整表重建）。
+        """
+        logger.debug("刷新全部面板（keep_view=%s）", keep_view)
         for tab_id in self.notebook.tabs():
             widget = self.notebook.nametowidget(tab_id)
             if hasattr(widget, "refresh"):
-                widget.refresh()
+                widget.refresh(keep_view=keep_view)
 
     def reload_panel_columns(self):
         """设置保存后刷新所有面板的列。panels 是 {key: panel} 字典。"""
@@ -88,10 +92,10 @@ class SidePanel(ttk.Frame):
         for p in self.panels.values():
             p.edit_session = session
 
-    def on_panel_edit(self):
+    def on_panel_edit(self, keep_view=False):
         """面板编辑执行后：刷新所有面板 + 转发给 MainWindow。"""
-        logger.debug("面板编辑回调")
-        self.refresh_all()
+        logger.debug("面板编辑回调（keep_view=%s）", keep_view)
+        self.refresh_all(keep_view=keep_view)
         cb = getattr(self, "_edit_callback", None)
         if callable(cb):
             cb()

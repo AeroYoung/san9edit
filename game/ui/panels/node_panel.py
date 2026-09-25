@@ -25,14 +25,14 @@ class NodeRow:
     owner_name: str
     is_capital: bool = False
     governor_name: str = "—"     # 预留
-    person_count: int = 0        # 预留
+    person_count: int = 0        # ★ 所属人物数（未登场不计），由 fetch_rows 聚合传入
 
     @property
     def display_type(self):
         return "郡治" if self.is_capital else self.type
 
     @classmethod
-    def from_node(cls, node, world):
+    def from_node(cls, node, world, person_count=0):
         owner_name = "—"
         if node.owner:
             f = world.faction(node.owner) if world else None
@@ -49,6 +49,7 @@ class NodeRow:
             owner_id=node.owner,
             owner_name=owner_name,
             is_capital=node.is_capital,
+            person_count=person_count,
         )
 
 
@@ -83,7 +84,12 @@ class NodePanel(GenericListPanel):
         world = getattr(self.game_state, "world", None)
         if world is None:
             return []
-        return [NodeRow.from_node(n, world) for n in world.nodes.values()]
+        char_counts = world.count_characters_by_node()      # 循环外算一次
+        return [
+            NodeRow.from_node(n, world,
+                              person_count=char_counts.get(n.id, 0))
+            for n in world.nodes.values()
+        ]
 
     def row_key(self, row):
         return row.node_id

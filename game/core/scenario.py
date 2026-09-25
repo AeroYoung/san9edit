@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-"""剧本加载：基础数据 + 剧本覆盖 + 按年份筛选 + GeoData 合并。
+"""剧本加载：基础数据 + 剧本覆盖 + 应用登场状态 + GeoData 合并。
 
 三层人物加载：
     1. assets/characters.json  → 全量静态数据（五维 / 关系 / 生卒…）
-    2. scenarios/*.json        → 剧本覆盖（faction / node / role / …）
-    3. 按年份筛选              → 只保留该年满 16 岁且已出生未死的人
+    2. scenarios/*.json        → 剧本覆盖（appeared / faction / node / role / …）
+    3. 应用登场状态            → 只读 appeared，不再按年份筛人
+
+World.characters 收全量人物（含未登场 / 穿越人物）——未登场人物也要能被编辑器
+查看与编辑，「设为登场」才有着落。登场与否看 Character.appeared，不看生卒年。
 
 约定：势力 id = 君主的人物 id。
 """
@@ -54,7 +57,7 @@ class ScenarioLoader:
         # ---- ★ 三层人物加载 ----
         cls._load_base_characters(world, raw.get("character_id_range"))
         cls._apply_character_overrides(world, raw.get("characters") or {})
-        cls._filter_by_year(world, world.year)
+        cls._apply_appeared(world)
 
         cls._build_nodes_from_geo(world, geo_data)
         cls._build_region_names(world, geo_data)
@@ -114,26 +117,24 @@ class ScenarioLoader:
 
 
     # ============================================================
-    # 人物：第三层 按年份筛选（满 16 岁 + 已出生 + 未死）
+    # 人物：第三层 应用登场状态（只读 appeared，不筛人）
     # ============================================================
     @staticmethod
-    def _filter_by_year(world, year):
-        if not year:
-            return
-        before = len(world.characters)
-        survivors = {}
-        for cid, ch in world.characters.items():
-            if ch.birth_year:
-                if year - ch.birth_year < 16:
-                    continue
-                if ch.death_year and year > ch.death_year:
-                    continue
-            else:
-                if ch.appear_year and ch.appear_year > year:
-                    continue
-            survivors[cid] = ch
-        world.characters = survivors
-        logger.debug("按年份筛选：%d → %d", before, len(world.characters))
+    def _apply_appeared(world):
+        """应用登场状态：只读 appeared，**不删人**。
+
+        未登场人物同样留在 World.characters（编辑器要能看到并改他们）。
+        appeared 由剧本给出（生成期一次算死）；老剧本无该字段 → 默认 True。
+        """
+        appeared = 0
+        for ch in world.characters.values():
+            if not isinstance(ch.appeared, bool):
+                # 脏数据（如 "true" / 0）归一化，不静默丢弃
+                ch.appeared = bool(ch.appeared)
+            if ch.appeared:
+                appeared += 1
+        logger.debug("应用登场状态：已登场 %d / 共 %d",
+                     appeared, len(world.characters))
 
     # ============================================================
     # 以下三个方法保持不变（原样照抄）

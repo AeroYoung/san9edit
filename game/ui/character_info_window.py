@@ -80,7 +80,11 @@ class CharacterInfoWindow(tk.Toplevel):
         self._top = master.winfo_toplevel()
 
         logger.debug("打开人物情报窗口：%s", character.id)
-        self.title(f"{character.display_name()} — 人物情报")
+        # 未登场人物的标题追加状态；其余显示（雷达图 / 关系区）不受 appeared 影响
+        title = f"{character.display_name()} — 人物情报"
+        if not getattr(character, "appeared", True):
+            title += "（未登场）"
+        self.title(title)
         self.transient(master)
         self.configure(bg=THEME["panel_bg"])
         self.resizable(False, True)

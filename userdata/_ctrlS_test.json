@@ -332,7 +332,7 @@
       "role": null
     },
     "0002": {
-      "appeared": true,
+      "appeared": false,
       "faction": "0724",
       "node": "080401",
       "location": "080401",

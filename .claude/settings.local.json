@@ -54,7 +54,26 @@
       "Bash(grep -nE \"^#{2,4} \\(5\\\\.|3\\\\.|8\\\\.|10\\\\.|11\\\\.\\)\")",
       "Bash(grep -nE \"^#{1,4} \")",
       "Bash(grep -nE \"^#{2,3} \" README.md)",
-      "Bash(awk -F'第 | 条' '$2>51')"
+      "Bash(awk -F'第 | 条' '$2>51')",
+      "Bash(grep -n \"^#\\\\{1,4\\\\} \" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 python tools/build_scenario_190.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/ -v)",
+      "Bash(grep -n \"### 5.13\\\\|edit_commands.py | NodeEditCommand\\\\|character_id_range 默认\\\\|190 剧本势力 / 人物覆盖\\\\|ScenarioWriter 元字段\\\\|人物登场字段\\\\|人物 \\\\`appeared\\\\` 字段\\\\|被 _filter_by_year 筛掉\\\\|人物登场字段（首要）\\\\|Character.to_dict 全 30 字段\\\\|test_scenario_writer.py | serialize\" README.md)",
+      "Bash(sed -n '/### 6.3 剧本生成流程/,/### 6.4/p' README.md)",
+      "Bash(sed -n '/### 4.6 势力地盘表达/,/### 4.7/p' README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 60 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 90 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/ -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 180 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 240 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 120 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_list_reconcile.py::test_reconcile_keeps_items_and_registry -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/ -v -rs)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_list_reconcile.py::test_reconcile_falls_back_when_tree_empty -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_list_reconcile.py -q -rs)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/ -q -rs)",
+      "Bash(cp scenarios/default.json userdata/_focusS_test.json)"
     ]
   }
 }

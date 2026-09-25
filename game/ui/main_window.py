@@ -138,16 +138,18 @@ class MainWindow:
 
     def _bind_shortcuts(self):
         r = self.root
-        r.bind("<plus>",  lambda e: self.map_canvas.zoom(1.25))
-        r.bind("<equal>", lambda e: self.map_canvas.zoom(1.25))
-        r.bind("<minus>", lambda e: self.map_canvas.zoom(1 / 1.25))
-        r.bind("<0>",     lambda e: self.map_canvas.reset_view())
-        r.bind("<Control-o>", lambda e: self.open_geojson())
+        r.bind_all("<plus>",  lambda e: self.map_canvas.zoom(1.25))
+        r.bind_all("<equal>", lambda e: self.map_canvas.zoom(1.25))
+        r.bind_all("<minus>", lambda e: self.map_canvas.zoom(1 / 1.25))
+        r.bind_all("<0>",     lambda e: self.map_canvas.reset_view())
+        r.bind_all("<Control-o>", lambda e: self.open_geojson())
         # 剧本编辑快捷键（弹窗打开时由 _modal_open 屏蔽）
-        r.bind("<Control-s>", lambda e: self._on_save_scenario())
-        r.bind("<Control-Shift-S>", lambda e: self._on_save_as())
-        r.bind("<Control-z>", lambda e: self._on_undo())
-        r.bind("<Control-Shift-Z>", lambda e: self._on_redo())
+        # ★ 用 bind_all 而不是 bind：只绑在 root 上时，一旦键盘焦点落在别的 Toplevel
+        #   （或菜单关闭后焦点被清空），按键就不会派发到 root，快捷键表现为「没反应」。
+        r.bind_all("<Control-s>", lambda e: self._on_save_scenario())
+        r.bind_all("<Control-Shift-S>", lambda e: self._on_save_as())
+        r.bind_all("<Control-z>", lambda e: self._on_undo())
+        r.bind_all("<Control-Shift-Z>", lambda e: self._on_redo())
         logger.debug("快捷键绑定完成")
 
     # ==========================================================
@@ -361,10 +363,16 @@ class MainWindow:
             self._build_node_context_menu(menu, node_id)
         else:
             self._build_empty_context_menu(menu)
+        focus = self.root.focus_get()
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+            # ★ 同列表右键：菜单关闭后焦点会丢，快捷键随之失效 —— 收回来
+            if focus is not None and focus.winfo_exists():
+                focus.focus_set()
+            else:
+                self.map_canvas.canvas.focus_set()
 
     def _build_node_context_menu(self, menu, node_id):
         world = getattr(self, "_world", None)
@@ -646,6 +654,9 @@ class MainWindow:
 
     def _on_save_scenario(self):
         if self._modal_open:
+            # 弹窗持着键盘，快捷键会被吞 —— 明确反馈，不要静默返回
+            logger.info("保存被跳过：弹窗打开中")
+            self.status_bar.set_message("弹窗打开中，先关闭弹窗再保存")
             return
         if self.edit_session is None:
             logger.warning("保存失败：未加载剧本")
@@ -697,10 +708,13 @@ class MainWindow:
 
     def _on_undo(self):
         if self._modal_open or self.edit_session is None:
+            logger.debug("undo 被跳过：modal_open=%s 有会话=%s",
+                         self._modal_open, self.edit_session is not None)
             return
         logger.debug("触发 undo")
         self.edit_session.undo()
-        self.side_panel.refresh_all()
+        # keep_view：就地刷新，撤销后保住滚动位置 / 选中项 / 展开状态
+        self.side_panel.refresh_all(keep_view=True)
         self._sync_undo_redo_state()
         self._redraw_map()
 
@@ -709,7 +723,7 @@ class MainWindow:
             return
         logger.debug("触发 redo")
         self.edit_session.redo()
-        self.side_panel.refresh_all()
+        self.side_panel.refresh_all(keep_view=True)
         self._sync_undo_redo_state()
         self._redraw_map()
 

@@ -1,186 +1,194 @@
 #!/usr/bin/env python3
-"""把本次需求所需的代码 + JSON 截取拼成单个文本文件（供对话粘贴）。
-
-用法：
-    python pack_for_review.py            # 输出单个 打包_人物登场字段.md
-    python pack_for_review.py --split    # 按 ~80KB 分卷成 打包_人物登场字段_01.txt ...
-"""
+# pack_for_review.py
+# 放在项目根目录（与 main.py 同级），直接：python pack_for_review.py
 
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-BASE = "打包_人物登场字段"
+OUT_BASENAME = "review_pack"
+MAX_BYTES = 300 * 1024
+TARGET_BYTES = 90 * 1024
 
 CODE_FILES = [
     "game/core/character.py",
-    "game/core/scenario.py",
-    "game/core/scenario_writer.py",
     "game/core/world.py",
-    "game/core/edit_commands.py",
     "game/core/edit_session.py",
+    "game/core/edit_commands.py",
     "game/ui/panels/character_panel.py",
     "game/ui/panels/list/panel.py",
     "game/ui/panels/list/columns.py",
-    "game/ui/panels/list/context_menu.py",
+    "game/ui/panels/list/model.py",
+    "game/ui/panels/list/sorting.py",
     "game/ui/panels/list/grouping.py",
-    "game/ui/dialogs/node_edit.py",
-    "game/ui/dialogs/edit_dialog.py",
-    "game/ui/dialogs/field_spec.py",
-    "game/ui/dialogs/node_fields.py",
-    "game/ui/character_info_window.py",
+    "game/ui/panels/list/group_bar.py",
+    "game/ui/panels/list/context_menu.py",
+    "game/ui/panels/list/search_bar.py",
+    "game/ui/side_panel.py",
+    "game/ui/main_window.py",
+    "game/ui/panels/faction_panel.py",
+    "game/config/style.py",
     "game/config/constants.py",
-    "tools/build_scenario_190.py",
+    "tests/test_character_appeared.py",
+    "tests/test_composite_command.py",
 ]
 
-
-# ---------- JSON 截取 ----------
-def _take(d, n, tail=False):
-    if not isinstance(d, dict):
-        return {}
-    items = list(d.items())
-    return dict(items[-n:] if tail else items[:n])
+FENCE = "```"
 
 
-def slice_characters_json(path: Path):
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    chars = raw.get("characters", {})
-    name_index = raw.get("_name_index", {}) or {}
-    return {
-        "_截取说明": "前 3 + 末 3；_ambiguous_names/_missing_refs 原样；_name_index 给 size + 前 3 样例",
-        "version": raw.get("version"),
-        "source": raw.get("source"),
-        "count": raw.get("count"),
-        "characters_head": _take(chars, 3),
-        "characters_tail": _take(chars, 3, tail=True),
-        "_ambiguous_names": raw.get("_ambiguous_names"),
-        "_missing_refs": raw.get("_missing_refs"),
-        "_name_index_size": len(name_index),
-        "_name_index_sample": _take(name_index, 3),
+def fence(lang: str, body: str) -> str:
+    return f"{FENCE}{lang}\n{body.rstrip()}\n{FENCE}\n"
+
+
+def read_text(rel: str) -> str | None:
+    p = ROOT / rel
+    if not p.is_file():
+        return None
+    try:
+        return p.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return p.read_text(encoding="utf-8", errors="replace")
+
+
+def load_json(rel: str):
+    p = ROOT / rel
+    if not p.is_file():
+        return None
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def sample_dict(d: dict, n_first: int = 3, n_last: int = 2, extra_keys=()) -> dict:
+    keys = list(d.keys())
+    picked = []
+    for k in keys[:n_first]:
+        picked.append(k)
+    for k in keys[-n_last:]:
+        if k not in picked:
+            picked.append(k)
+    for k in extra_keys:
+        if k in d and k not in picked:
+            picked.append(k)
+    return {k: d[k] for k in picked}
+
+
+def slice_characters_json() -> str | None:
+    data = load_json("assets/characters.json")
+    if data is None:
+        return None
+    chars = data.get("characters", {})
+    name_index = data.get("_name_index", {})
+    out = {
+        "version": data.get("version"),
+        "source": data.get("source"),
+        "count": data.get("count"),
+        "_ambiguous_names": data.get("_ambiguous_names"),
+        "_missing_refs": data.get("_missing_refs"),
+        "_name_index_sample": dict(list(name_index.items())[:10]),
+        "characters_sample": sample_dict(chars, n_first=3, n_last=2),
     }
+    return json.dumps(out, ensure_ascii=False, indent=2)
 
 
-def slice_default_json(path: Path):
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    meta = {k: v for k, v in raw.items()
-            if k not in ("factions", "characters", "nodes")}
-    return {
-        "_截取说明": "顶层元字段全量；factions 前 1；characters 前 3；nodes 前 2",
+def slice_scenario_json() -> str | None:
+    data = load_json("scenarios/default.json")
+    if data is None:
+        return None
+    meta = {k: v for k, v in data.items() if k not in ("factions", "characters", "nodes")}
+    factions = data.get("factions", {})
+    chars = data.get("characters", {})
+    nodes = data.get("nodes", {})
+    extra_ids = ["0001", "0003", "0521", "0522", "0101"]
+    out = {
         "meta": meta,
-        "factions_sample": _take(raw.get("factions", {}), 1),
-        "characters_head": _take(raw.get("characters", {}), 3),
-        "nodes_head": _take(raw.get("nodes", {}), 2),
-        "_counts": {
-            "factions": len(raw.get("factions", {})),
-            "characters": len(raw.get("characters", {})),
-            "nodes": len(raw.get("nodes", {})),
-        },
+        "factions_sample": sample_dict(factions, n_first=5, n_last=0),
+        "characters_sample": sample_dict(chars, n_first=10, n_last=5, extra_keys=extra_ids),
+        "nodes_sample": sample_dict(nodes, n_first=3, n_last=0),
     }
+    return json.dumps(out, ensure_ascii=False, indent=2)
 
 
-# ---------- 组装 ----------
-def collect() -> tuple[str, list[str]]:
-    parts: list[str] = []
-    missing: list[str] = []
+def build_sections() -> list[tuple[str, str]]:
+    sections: list[tuple[str, str]] = []
 
-    parts.append(f"# {BASE}\n")
-    parts.append("本文件由 pack_for_review.py 生成，包含本次需求所需的代码与 JSON 截取。\n")
-
-    parts.append("\n## 一、代码文件\n")
     for rel in CODE_FILES:
-        p = ROOT / rel
-        if not p.is_file():
-            missing.append(rel)
-            parts.append(f"\n### [缺] {rel}\n")
-            continue
-        code = p.read_text(encoding="utf-8", errors="replace")
-        parts.append(f"\n### {rel}\n")
-        parts.append(f"```python\n{code}\n```\n")
-
-    parts.append("\n## 二、JSON 截取\n")
-
-    cj = ROOT / "assets" / "characters.json"
-    parts.append("\n### assets/characters.json（截取）\n")
-    if cj.is_file():
-        parts.append("```json\n" + json.dumps(
-            slice_characters_json(cj), ensure_ascii=False, indent=2) + "\n```\n")
-    else:
-        missing.append("assets/characters.json")
-        parts.append("[缺]\n")
-
-    dj = ROOT / "scenarios" / "default.json"
-    parts.append("\n### scenarios/default.json（截取）\n")
-    if dj.is_file():
-        parts.append("```json\n" + json.dumps(
-            slice_default_json(dj), ensure_ascii=False, indent=2) + "\n```\n")
-    else:
-        missing.append("scenarios/default.json")
-        parts.append("[缺]\n")
-
-    return "".join(parts), missing
-
-
-def write_single(text: str) -> Path:
-    out = ROOT / f"{BASE}.md"
-    out.write_text(text, encoding="utf-8")
-    return out
-
-
-def write_split(text: str, chunk_kb: int = 80) -> list[Path]:
-    limit = chunk_kb * 1024
-    # 按 "### " 分节切，尽量不切断单个文件
-    sections = text.split("\n### ")
-    head = sections[0]
-    sections = ["### " + s for s in sections[1:]]
-
-    chunks: list[str] = []
-    cur = head
-    for sec in sections:
-        if len(cur.encode("utf-8")) + len(sec.encode("utf-8")) > limit and cur:
-            chunks.append(cur)
-            cur = sec
+        text = read_text(rel)
+        title = f"### {rel}\n"
+        if text is None:
+            sections.append((title, "[缺] " + rel + "\n"))
         else:
-            cur += "\n" + sec
-    if cur:
-        chunks.append(cur)
+            sections.append((title, fence("python", text)))
 
-    outs: list[Path] = []
-    for i, ch in enumerate(chunks, 1):
-        p = ROOT / f"{BASE}_{i:02d}.txt"
-        p.write_text(ch, encoding="utf-8")
-        outs.append(p)
-    return outs
+    for rel, slicer, lang in [
+        ("assets/characters.json", slice_characters_json, "json"),
+        ("scenarios/default.json", slice_scenario_json, "json"),
+    ]:
+        title = f"### {rel}（截取）\n"
+        body = slicer()
+        if body is None:
+            sections.append((title, "[缺] " + rel + "\n"))
+        else:
+            sections.append((title, fence(lang, body)))
+
+    return sections
+
+
+def section_size(sec: tuple[str, str]) -> int:
+    return len(sec[0].encode("utf-8")) + len(sec[1].encode("utf-8"))
+
+
+def write_outputs(sections: list[tuple[str, str]]) -> list[Path]:
+    total = sum(section_size(s) for s in sections)
+    written: list[Path] = []
+
+    if total <= MAX_BYTES:
+        out = ROOT / f"{OUT_BASENAME}.md"
+        with out.open("w", encoding="utf-8") as f:
+            f.write("# review pack\n\n")
+            for title, body in sections:
+                f.write(title)
+                f.write(body)
+                f.write("\n")
+        written.append(out)
+        return written
+
+    volumes: list[list[tuple[str, str]]] = []
+    cur: list[tuple[str, str]] = []
+    cur_size = 0
+    for sec in sections:
+        sz = section_size(sec)
+        if cur and cur_size + sz > TARGET_BYTES:
+            volumes.append(cur)
+            cur = []
+            cur_size = 0
+        cur.append(sec)
+        cur_size += sz
+    if cur:
+        volumes.append(cur)
+
+    for i, vol in enumerate(volumes, 1):
+        out = ROOT / f"{OUT_BASENAME}_{i:02d}.txt"
+        with out.open("w", encoding="utf-8") as f:
+            f.write(f"# review pack {i:02d}\n\n")
+            for title, body in vol:
+                f.write(title)
+                f.write(body)
+                f.write("\n")
+        written.append(out)
+
+    return written
 
 
 def main() -> None:
-    text, missing = collect()
-    size_kb = len(text.encode("utf-8")) / 1024
-
-    print(f"项目根：{ROOT}")
-    print(f"总内容：{size_kb:.1f} KB")
-    if missing:
-        print(f"⚠️  缺失 {len(missing)} 个文件（正文中标为 [缺]）：")
-        for m in missing:
-            print(f"     {m}")
-    print()
-
-    if "--split" in sys.argv or size_kb > 300:
-        if "--split" not in sys.argv:
-            print("（超过 300KB，自动分卷）")
-        outs = write_split(text)
-        print(f"✅ 已分卷 {len(outs)} 个文件：")
-        for p in outs:
-            print(f"   {p.name}  ({p.stat().st_size/1024:.1f} KB)")
-        print("\n把这几个 txt 按顺序逐个粘贴/上传即可。")
-    else:
-        out = write_single(text)
-        print(f"✅ 已生成单文件：{out}")
-        print(f"   {out.stat().st_size/1024:.1f} KB")
-        print("\n直接上传这个 .md 给我，或把内容粘贴过来。")
-        print("如果粘贴超长被截断，改跑：python pack_for_review.py --split")
+    sections = build_sections()
+    written = write_outputs(sections)
+    print("=" * 60)
+    for p in written:
+        size = p.stat().st_size
+        print(f"{p}  ({size / 1024:.1f} KB)")
+    print("=" * 60)
+    print("请把以上文件内容贴回对话。")
 
 
 if __name__ == "__main__":

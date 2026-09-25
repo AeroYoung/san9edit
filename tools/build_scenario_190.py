@@ -13,6 +13,9 @@
     - CORE 手写每势力核心
     - 自动扩展：义兄弟 / 父母配偶 / liked 双向投票
     - affinity 兜底：剩余合格人物按相性最近分配（保证不在野）
+    - ★ 全量人物写进剧本（1049 人，含穿越人物），每条带 appeared；
+      未登场人物 faction / node / location / role 一律 null，
+      由编辑器「设为登场」后自行补归属
 """
 
 import json
@@ -462,6 +465,27 @@ def pick_cities(info, county_to_cities, city_info):
     return picked
 
 
+def compute_appeared(cid, ch, fid, year):
+    """登场判定（生成期一次算死，写进剧本）。判定顺序即优先级：
+
+        穿越人物（id >= 1001）     → False
+        已被分配到势力              → True
+        birth_year 缺失             → False
+        year - birth_year >= 16     → True
+        其余                        → False
+
+    ★ death_year 不参与判定（历史人物长寿化 / 穿越设定）。
+    """
+    if int(cid) >= 1001:
+        return False
+    if fid:
+        return True
+    birth = ch.get("birth_year") or 0
+    if not birth:
+        return False
+    return year - birth >= 16
+
+
 def eligible(ch, year):
     if ch is None:
         return False
@@ -549,13 +573,14 @@ def expand_all(core_by_faction, all_chars, year):
 # ============================================================
 def main():
     raw = json.loads((ASSETS / "characters.json").read_text(encoding="utf-8"))
-    chars = raw["characters"]
-    chars = {cid: c for cid, c in chars.items() if int(cid) <= 1000}
+    all_chars = raw["characters"]                             # 全量 1049（含穿越人物）
+    hist_chars = {cid: c for cid, c in all_chars.items()
+                  if int(cid) <= 1000}                        # 只给历史人物分配势力
     county_to_cities = build_county_index()
     city_info = build_city_level_index()
 
     # 1. 分配人物
-    assigned, leftover = expand_all(CORE, chars, YEAR)
+    assigned, leftover = expand_all(CORE, hist_chars, YEAR)
 
     # 2. 据点
     nodes = {}
@@ -570,19 +595,23 @@ def main():
                 nodes[cid] = {"owner": fid, "troops": 2000,
                               "gold": 200, "food": 3000}
 
-    # 3. 人物覆盖
-    characters = {}
+    # 3. 人物覆盖：全量写，每人 5 字段（appeared / faction / node / location / role）
+    owner = {}                       # cid -> fid（已分配到势力的）
     for fid in FACTIONS:
-        if fid not in assigned:
-            continue
-        capital = FACTIONS[fid]["capital"]
-        for cid in assigned[fid]:
-            characters[cid] = {
-                "faction":  fid,
-                "node":     capital,
-                "location": capital,
-                "role":     "君主" if cid == fid else "一般",
-            }
+        for cid in assigned.get(fid, ()):
+            owner[cid] = fid
+
+    characters = {}
+    for cid in sorted(all_chars, key=int):
+        fid = owner.get(cid)
+        capital = FACTIONS[fid]["capital"] if fid else None
+        characters[cid] = {
+            "appeared": compute_appeared(cid, all_chars[cid], fid, YEAR),
+            "faction":  fid,
+            "node":     capital,
+            "location": capital,
+            "role":     ("君主" if cid == fid else "一般") if fid else None,
+        }
 
     # 4. 组装
     out = {
@@ -592,7 +621,7 @@ def main():
         "desc": "190年正月，关东诸侯起兵讨董；曹操据陈留，袁绍据渤海，刘关张在平原。",
         "start": {"year": 190, "month": 1, "xun": 1},
         "player_faction": "0521",
-        "character_id_range": [1, 1000],   # ★ 新增：只加载编号 1-1000 的人
+        # ★ 不写 character_id_range：全量人物由 appeared 区分登场与否
         "factions": {
             fid: {
                 "name": i["name"],
@@ -611,8 +640,9 @@ def main():
     out_path.write_text(json.dumps(out, ensure_ascii=False, indent=2),
                         encoding="utf-8")
 
-    total = sum(len(v) for v in assigned.values())
-    print(f"[完成] 势力 {len(FACTIONS)} 家 / 人物 {total} 人 / 据点 {len(nodes)} 处")
+    appeared_n = sum(1 for c in characters.values() if c["appeared"])
+    print(f"[完成] 势力 {len(FACTIONS)} 家 / 人物 {len(characters)} 人 / "
+          f"登场 {appeared_n} 人 / 据点 {len(nodes)} 处")
     print(f"       affinity 兜底分配 {leftover} 人")
     print(f"       输出 → {out_path}")
 

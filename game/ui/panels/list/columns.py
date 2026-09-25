@@ -18,3 +18,5 @@ class Column:
     value: Callable[[Any], Any]
     sort_numeric: bool = False
     image: Optional[Callable[[Any], Any]] = None   # row -> PhotoImage | None
+    # 排序键（缺省 = 用显示值）。显示值不便排序时用（如「登场」显示 ✓/✗ 但按 bool 排）
+    sort_key: Optional[Callable[[Any], Any]] = None

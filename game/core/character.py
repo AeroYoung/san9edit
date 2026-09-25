@@ -8,7 +8,7 @@ id 为四位数字字符串（"0001"–"1049"），全局唯一。
         基础信息 / 五维 / 生卒年 / 相性 / 关系（id 引用）/
         个性 / 阵型 / 战法
     动态 剧本 scenarios/*.json 覆盖：
-        势力 / 所属 / 所在 / 身份
+        登场 / 势力 / 所属 / 所在 / 身份
 
 所属 vs 所在（★ 核心概念，勿混）：
     所属（node）     编制上隶属哪个据点，6 位据点 id。
@@ -72,6 +72,7 @@ class Character:
         formations=None,          # 阵型：字符串列表，如 ["鱼鳞", "锋矢"]
         tactics=None,             # 战法：字符串列表，如 ["突击", "牵制"]
         # ---------- 剧本动态字段 ----------
+        appeared=True,            # 登场：在本剧本中是否已登场（False = 未登场）
         faction=None,             # 势力 id（= 君主人物 id），None = 在野
         node=None,                # 所属：编制上隶属的据点 id（六位），None = 无所属
         location=None,            # 所在：人物当前所在地的据点 id（六位）
@@ -117,6 +118,7 @@ class Character:
         self.tactics = _safe_list(tactics)                   # 战法列表
 
         # ---------------- 剧本动态字段 ----------------
+        self.appeared = bool(appeared)       # 登场：False = 未登场
         self.faction = faction               # 势力 id
         self.node = node                     # 所属（据点 id）
         self.location = location             # 所在（据点 id）
@@ -134,7 +136,11 @@ class Character:
         return self.faction is None
 
     def is_appeared(self, year):
-        """该年份是否已登场。"""
+        """该年份是否已登场（按 appear_year 推算）。
+
+        与剧本动态字段 appeared 并存：appeared 是剧本生成期一次算死的
+        登场状态，本方法只做「appear_year <= year」的纯推算，不读 appeared。
+        """
         return self.appear_year <= year
 
     def is_alive(self, year):
@@ -184,6 +190,7 @@ class Character:
             traits=d.get("traits"),                           # 个性列表
             formations=d.get("formations"),                   # 阵型列表
             tactics=d.get("tactics"),                         # 战法列表
+            appeared=d.get("appeared", True),                 # 登场（老剧本无此字段 → True）
             faction=d.get("faction"),                         # 势力 id
             node=d.get("node"),                               # 所属
             location=d.get("location"),                       # 所在
@@ -218,6 +225,7 @@ class Character:
             "traits": list(self.traits),                      # 个性列表
             "formations": list(self.formations),              # 阵型列表
             "tactics": list(self.tactics),                    # 战法列表
+            "appeared": self.appeared,                        # 登场
             "faction": self.faction,                          # 势力 id
             "node": self.node,                                # 所属
             "location": self.location,                        # 所在

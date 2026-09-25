@@ -51,15 +51,34 @@ class World:
         return [n for n in self.nodes.values() if n.owner == faction_id]
 
     def characters_of(self, faction_id):
-        return [c for c in self.characters.values() if c.faction == faction_id]
+        """该势力的人物。★ 未登场人物不算（appeared=False）。"""
+        return [c for c in self.characters.values()
+                if c.faction == faction_id and c.appeared]
+
+    def characters_at(self, node_id):
+        """该据点的人物（按**所属** node 归属，不是所在 location）。
+
+        ★ 未登场人物不算。
+        """
+        return [c for c in self.characters.values()
+                if c.node == node_id and c.appeared]
 
     def count_nodes_by_owner(self):
         """每个势力拥有的据点数。返回 dict[fid, int]，无主据点不计。"""
         return Counter(n.owner for n in self.nodes.values() if n.owner)
 
     def count_characters_by_faction(self):
-        """每个势力的人物数。返回 dict[fid, int]，无势力人物不计。"""
-        return Counter(c.faction for c in self.characters.values() if c.faction)
+        """每个势力的人物数。返回 dict[fid, int]，无势力 / 未登场人物不计。"""
+        return Counter(c.faction for c in self.characters.values()
+                       if c.faction and c.appeared)
+
+    def count_characters_by_node(self):
+        """每个据点的人物数。返回 dict[node_id, int]，无所属 / 未登场人物不计。
+
+        口径 = Character.node（所属），与 characters_at 一致。
+        """
+        return Counter(c.node for c in self.characters.values()
+                       if c.node and c.appeared)
 
     def node(self, nid):
         return self.nodes.get(nid)
