@@ -346,7 +346,7 @@
       "role": "一般"
     },
     "0004": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
@@ -381,35 +381,35 @@
       "role": "一般"
     },
     "0009": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
       "role": null
     },
     "0010": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
       "role": null
     },
     "0011": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
       "role": null
     },
     "0012": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
       "role": null
     },
     "0013": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
@@ -423,7 +423,7 @@
       "role": "一般"
     },
     "0015": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,
@@ -437,7 +437,7 @@
       "role": "一般"
     },
     "0017": {
-      "appeared": true,
+      "appeared": false,
       "faction": null,
       "node": null,
       "location": null,

@@ -1213,6 +1213,7 @@ class CharacterInfoWindow(tk.Toplevel):
 | faction_fields.py | FACTION_FIELDS，8 项 |
 | node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥） |
 | faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool` |
+| move_to_node.py | `move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`（详见 §5.23） |
 
 详见 §9.4 / §9.5 / §9.6。
 
@@ -1245,7 +1246,10 @@ class CharacterInfoWindow(tk.Toplevel):
 - COLUMNS：势力 60 / 所在 76 / 身份 48 / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
 - GROUP_DIMS：faction(势力，默认) / node(所在) / role(身份) / sex(性别) / **appear(登场 → 已登场 / 未登场)**。默认分组维持 ("faction",)，不强制先按登场分。
 - `priority_name()`：返回玩家势力名，用于分组置顶（只对最外层生效）。
-- 右键：人物情报 / 复制编号 / **设为登场·设为未登场** / 定位到据点 / 全部展开折叠。
+- 右键：人物情报 / 复制编号 / **设为登场·设为未登场** / **移动到据点** / 定位到据点 / 全部展开折叠。
+  - 「移动到据点」→ `_move_to_node(selected_rows)` → `dialogs/move_to_node.py::move_characters`（弹窗模态，走 `_open_dialog`）。弹窗内是据点面板的**裁剪副本**（`NodePickList`：`SELECT_MODE="browse"` 强制单选、`GROUP_DIMS={}` 无分组条、`context_menu_items` 返回空 = 无右键、`_on_select_all` 返回 "break" = 禁用 Ctrl+A），列配置与据点面板共享（`PANEL_KEY="node"`）。
+  - 单人规则见 `plan_moves()`：君主只能去自己的据点（否则阻断 + 提示）；非君主 → 目标有主则 faction 跟随 owner、无主则下野；`node` / `location` 一起改；`role` 不动；未登场人物 + 目标有主会询问是否同时设为登场。
+  - 命令复用 `CharacterEditCommand`（多人包 `CompositeCommand("移动到据点")`），`old/new` 只含真正变化的字段；已在目标 / 被阻断者不进命令。
   - 开关标签按右键那行的 appeared 现状态决定：已登场 →「设为未登场」，未登场 →「设为登场」。
   - 纯开关：只翻 appeared，**不碰** faction / node / location / role（设为登场后仍「在野」；设为未登场保留归属，可逆）。
   - `edit=True` 标识 → 非编辑模式下由 build_menu 统一置灰（不在入口里写模式判断）。
@@ -1464,6 +1468,7 @@ tools/build_scenario_190.py
 | 据点分组切换 | GroupBar._toggle → on_change → NodePanel.refresh |
 | 人物列头点击 | _on_heading_click → refresh |
 | 人物右键 → 定位到据点 | MenuItem「定位到据点」 → GenericListPanel.locate_on_map |
+| 人物右键 → 移动到据点 | MenuItem「移动到据点」(edit=True) → CharacterPanel._move_to_node(selected_rows) → dialogs.move_to_node.move_characters → MoveToNodeDialog（_open_dialog 模态）→ plan_moves → build_commands → session.execute → _notify_edit(keep_view=True) |
 | 人物右键 → 人物情报 | CharacterPanel._open_info_window(row) → world.character(row.id) → CharacterInfoWindow(self, ch, world=world, ...) |
 | ★ 情报窗加载头像 | _find_portrait_path() 拼 {id}-{name}.{ext} → Image.open → convert("RGB") → thumbnail → ImageTk.PhotoImage → self._photo 保引用 |
 | ★ 情报窗画雷达图 | _build_radar() → Canvas 硬编码坐标画 5 层五边形 + 轴线 + 数据多边形，无 winfo_width 查询 |
@@ -1810,6 +1815,10 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 48. ★ LOG_ENABLED 是编译期开关：默认 True（保持原行为）。False 时：不建 userdata/logs/、不清理旧日志、不挂 FileHandler、`logging.disable(logging.CRITICAL)`、`_LOG_FILE_PATH = None`；也不接管 sys.excepthook / Tk.report_callback_exception，交回原生 stderr（不静默吞异常）。只改 constants.py 一处，其余模块不感知；**不要**散落 `if LOG_ENABLED` 判断——只在 logging_setup.py 三处入口判断。风格与 APP_MODE 一致：编译期，运行时不可切。
 49. ★ 未保存提示只有一个刷新入口：`MainWindow._refresh_title` 是唯一读 `edit_session.is_dirty()` 渲染标题的地方；所有 dirty 状态变化点都经 `_sync_undo_redo_state → _refresh_title`。覆盖路径：_load_scenario / on_edit_executed / _on_undo / _on_redo / _save_to_path。**不要**在任何其他方法里直接改 `root.title()`。星号格式固定 " *"（空格 + 星号），不做 i18n。每次调用 is_dirty() 会做一次 serialize + diff，成本可接受（只在用户动作时触发）。
 
+**人物移动**
+
+50. ★ 「移动到据点」是**编制变更**：`Character.node`（所属）与 `location`（所在）一起改为目标据点，`faction` 跟随目标据点 owner（无主 → None = 下野）。**任务系统 / 部队系统落地后必须重新评估这条**：那时「出征 / 调动」应当是只改 `location`、不动 `node` 的另一种操作，与本入口的编制变更区分开。改这段逻辑前先读 §8.4。君主只能停留在本势力据点（`faction == id`），到无主 / 他势力据点一律阻断 —— 势力 id 与 `faction` 脱钩会让 `is_ruler()` 失真。
+
 ### 8.4 建议的下一步
 
 - ★ **Troop 数据模型（phase2 前置）**：
@@ -1818,7 +1827,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
   - Faction.troops property 展开部队求和（TODO 注释已就位）
   - 剧本 characters 段扩 troop 段；scenario_writer serialize / diff
 - ★ **部队面板落地**：TroopPanel 目前只 fetch_rows 返回 []；与人物面板同构接入
-- 实现「出征 / 调动」：改 Character.location，不动 node
+- 实现「出征 / 调动」：改 Character.location，不动 node（与「移动到据点」的编制变更区分开 —— 当时需要重新评估「人物移动时是否改所在」，见 §8.3 第 50 条）
 - 人物情报窗口单例化（同一人物只开一个窗口，重复右键聚焦已开窗口）
 - 人物情报窗口生平数据源（拼装式编年？静态文本？）
 - 人物情报窗口雷达图 hover / 数值 tooltip / 点击轴突出
@@ -2033,8 +2042,10 @@ class CharacterEditCommand(Command):
 - 约定：`old_values / new_values` 均为 `{field: value}` dict，**只含真正变化的字段**（由 EditDialog.get_changed 保证）。
 - do 遍历 new_values `setattr`，undo 遍历 old_values `setattr`；构造时 `dict()` 拷贝一份。
 - 命令类**没有** get_changed 方法。
-- CharacterEditCommand 当前唯一用法：人物面板「设为登场 / 未登场」开关
-  （`session.execute(CharacterEditCommand(cid, {"appeared": old}, {"appeared": not old}))`）；
+- CharacterEditCommand 的两个用法：
+  - 人物面板「设为登场 / 未登场」开关 —— `{"appeared": bool}`；
+  - 「移动到据点」—— `{"node": …, "location": …, "faction": …}`（只含真正变化的字段，
+    多人包 `CompositeCommand("移动到据点")`，见 dialogs/move_to_node.py::move_characters）。
   将来的完整人物编辑（CHARACTER_FIELDS）沿用同一个命令。
 - TODO(phase2)：owner 级联、FactionCreate / Delete。
 

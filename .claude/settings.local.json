@@ -73,7 +73,10 @@
       "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_list_reconcile.py::test_reconcile_falls_back_when_tree_empty -q)",
       "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_list_reconcile.py -q -rs)",
       "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/ -q -rs)",
-      "Bash(cp scenarios/default.json userdata/_focusS_test.json)"
+      "Bash(cp scenarios/default.json userdata/_focusS_test.json)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_move_to_node.py -q)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 200 python -u -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 150 python -u -c ' *)"
     ]
   }
 }

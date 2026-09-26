@@ -27,3 +27,17 @@
 ### Fixed
 - 未登场人物被算作势力 / 据点的人物（`core/world.py`）
 - 据点面板「人物」列恒为 0 的占位（`node_panel`）
+
+---
+
+## 2026-09-26 · 人物移动到据点
+
+### Added
+- 人物面板右键「移动到据点」（`character_panel`）
+- 移动弹窗：据点单选列表 + 实时信息块 + 登场询问 + 二次确认（`ui/dialogs/move_to_node.py`）
+- 列表框架 `SELECT_MODE` 类属性，弹窗内可强制单选（`panels/list/panel.py`）
+- 单元测试 `tests/test_move_to_node.py`
+
+### Changed
+- 移动会同时改 `node` / `location`，`faction` 跟随目标据点 owner（`ui/dialogs/move_to_node.py`）
+- README 同步：§5.21 / §5.23 / §6.4 / §8.3 第 50 条 / §8.4 / §10.2

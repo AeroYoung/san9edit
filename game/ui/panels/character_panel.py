@@ -176,6 +176,8 @@ class CharacterPanel(GenericListPanel):
             MenuItem("✗ 设为未登场",
                      lambda: self._set_appeared(ctx.selected_rows, False),
                      edit=True),
+            MenuItem("移动到据点",
+                     lambda: self._move_to_node(ctx.selected_rows), edit=True),
             MenuItem.sep(),
             MenuItem("定位到据点", lambda: self.locate_on_map(row)),
             MenuItem.sep(),
@@ -249,6 +251,17 @@ class CharacterPanel(GenericListPanel):
         logger.info("批量设置登场：命中 %d 人 / 跳过 %d 人 → %s",
                     len(cmds), skipped, target)
         if cmds:
+            self._notify_edit(keep_view=True)
+
+    def _move_to_node(self, rows):
+        """移动到据点：弹窗选目标据点 → 命令变更 node / location / faction。"""
+        world = getattr(self.game_state, "world", None)
+        if self.edit_session is None or world is None or not rows:
+            return
+        logger.debug("移动到据点：人数=%d", len(rows))
+        from game.ui.dialogs.move_to_node import move_characters
+        if move_characters(self, world, rows, self.edit_session,
+                           self._open_dialog):
             self._notify_edit(keep_view=True)
 
     def _copy_id(self, cid):

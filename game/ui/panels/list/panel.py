@@ -37,6 +37,7 @@ class GenericListPanel(ttk.Frame):
     CUSTOM_GROUPING: bool = False    # True = 用 build_groups() 覆盖默认维度分组
     GROUP_TITLE_COUNT: bool = True   # True → 组头显示「组名（N）」叶子行数
     KEEP_VIEW_ON_EDIT: bool = False  # True → 编辑后的 refresh(keep_view=True) 走就地更新
+    SELECT_MODE: str = "extended"    # Treeview 选择模式（"browse" = 强制单选）
     edit_session = None              # ★ 由 SidePanel.set_edit_session 注入
 
     def __init__(self, master, game_state, map_controller=None):
@@ -93,7 +94,8 @@ class GenericListPanel(ttk.Frame):
 
         cols = [c.key for c in self._visible_columns]
         self.tree = ttk.Treeview(
-            body, columns=cols, show="tree headings", selectmode="extended",
+            body, columns=cols, show="tree headings",
+            selectmode=self.SELECT_MODE,
         )
 
         if self.NAME_COLUMN is not None:
