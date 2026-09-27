@@ -210,6 +210,7 @@ class GenericListPanel(ttk.Frame):
     # 刷新
     # ==========================================================
     def refresh(self, keep_view=False):
+              
         """刷新。
 
         keep_view=True 且面板声明 KEEP_VIEW_ON_EDIT → 就地更新（不重建 Treeview，
@@ -226,6 +227,7 @@ class GenericListPanel(ttk.Frame):
                 logger.warning("就地刷新失败，退回整表重建：%s",
                                type(self).__name__, exc_info=True)
         self._rebuild()
+        
 
     def _rebuild(self):
         for item in self.tree.get_children():

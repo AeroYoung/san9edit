@@ -5,8 +5,20 @@ PROJECT_ROOT 通过 __file__ 定位，从任何目录启动都能找到 assets/�
 """
 
 from pathlib import Path
+import sys
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+import sys
+
+if getattr(sys, "frozen", False):
+    # PyInstaller 打包后：只读资源在 _internal 下，由 _MEIPASS 指向
+    PROJECT_ROOT = Path(sys._MEIPASS)
+    # 可写目录（日志等）放 exe 旁边
+    USER_DATA_DIR = Path(sys.executable).resolve().parent / "userdata"
+else:
+    # 源码运行：由文件位置反推
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+    USER_DATA_DIR = PROJECT_ROOT / "userdata"
+
 ASSETS_DIR = PROJECT_ROOT / "assets"
 DEFAULT_MAP_PATH = ASSETS_DIR / "map.geojson"
 DEFAULT_WATER_PATH = ASSETS_DIR / "water.geojson"
@@ -31,5 +43,5 @@ APP_MODE = MODE_EDIT   # 全局开关：编译期切换
 # ============================================================
 # 日志
 # ============================================================
-LOG_DIR = PROJECT_ROOT / "userdata" / "logs"
+LOG_DIR = USER_DATA_DIR / "logs"
 LOG_ENABLED = True   # False = 一键关闭全部日志（不建目录、不写文件、不装异常钩子）

@@ -71,7 +71,7 @@ class MainWindow:
 
         # 启动后加载默认地图。
         # 用 after 让窗口先完成一次布局，canvas 才有真实尺寸。
-        self.root.after(120, self._auto_load_default)
+        self.root.after(50, self._auto_load_default)
 
     # ==========================================================
     # 初始化
@@ -157,6 +157,7 @@ class MainWindow:
     # 地图加载
     # ==========================================================
     def _auto_load_default(self):
+        self.status_bar.set_message("正在加载地图与剧本…")
         path = C.DEFAULT_MAP_PATH
         logger.info("自动加载默认地图：%s", path)
         if not path.is_file():
@@ -200,8 +201,13 @@ class MainWindow:
         self._world = world
         self.game_state.sync_from_world(world)
         self.map_canvas.renderer.set_world(world)
-        self.side_panel.refresh_all()
+
+        # 地图先出（用户马上能看到）
         self.map_canvas.redraw()
+        self.root.update_idletasks()      # 立刻刷一帧，把地图显示出来
+
+        # 面板后刷：让出事件循环，用户先看到地图，再看到面板
+        self.root.after(10, self.side_panel.refresh_all)
 
         self._warn_vassal_removals(world)
 

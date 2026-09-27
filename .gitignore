@@ -84,4 +84,6 @@ desktop.ini
 # scenarios/xxx/
 
 assets/portrait/
-.VSCodeCounter
+.VSCodeCounter/
+build/
+dist/
