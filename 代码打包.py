@@ -1,168 +1,193 @@
-#!/usr/bin/env python3
-"""需求审查打包脚本：收集代码文件 + 数据片段，输出 markdown。
-
-用法：
-    python pack_for_review.py
-输出：
-    需求审查包.md                （单文档 ≤ 300KB 时）
-    需求审查包_01.txt / _02.txt  （超 300KB 时分卷，每卷 ≤ 100KB）
-"""
-from __future__ import annotations
-
+# pack_for_review.py —— 放在项目根目录，python pack_for_review.py 直接运行
 import json
-import re
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-OUT_BASE = "需求审查包"
-MAX_SINGLE = 300 * 1024     # 单文档阈值
-MAX_CHUNK  = 95 * 1024      # 分卷时每卷目标
+OUT_BASE = ROOT / "review_pack"
+MAX_SINGLE = 300 * 1024
+VOL_TARGET = 90 * 1024
 
-# ── 本次要看的代码文件 ────────────────────────────────────────────
 CODE_FILES = [
+    # game/core
     "game/core/world.py",
+    "game/core/faction.py",
     "game/core/character.py",
     "game/core/node.py",
     "game/core/scenario.py",
-    "game/core/faction.py",
-    "game/core/official_title.py",   # 可能不存在 → 标 [缺]
+    "game/core/official_title.py",
+    "game/core/edit_session.py",
+    "game/core/edit_commands.py",
+    "game/core/scenario_writer.py",
+    # game/ui
+    "game/ui/main_window.py",
+    "game/ui/top_bar.py",
+    "game/ui/side_panel.py",
+    "game/ui/character_info_window.py",
+    "game/ui/node_info_window.py",
+    "game/ui/dialogs/field_spec.py",
+    "game/ui/dialogs/edit_dialog.py",
+    "game/ui/dialogs/node_fields.py",
+    "game/ui/dialogs/faction_fields.py",
+    "game/ui/dialogs/node_edit.py",
+    "game/ui/dialogs/faction_edit.py",
+    "game/ui/dialogs/move_to_node.py",
+    # game/ui/panels
+    "game/ui/panels/list/panel.py",
+    "game/ui/panels/list/columns.py",
+    "game/ui/panels/list/context_menu.py",
+    "game/ui/panels/list/model.py",
     "game/ui/panels/node_panel.py",
     "game/ui/panels/character_panel.py",
-    "game/ui/character_info_window.py",
-    "tools/build_scenario_190.py",
+    "game/ui/panels/faction_panel.py",
+    # game/config
+    "game/config/constants.py",
+    "game/config/style.py",
+    "game/config/settings_schema.py",
+    "game/config/settings_manager.py",
 ]
 
-# ── 需要截取的 JSON 文件：路径 → 每段保留前 N 条 ────────────────────
-JSON_SLICES = {
-    "scenarios/default.json": 3,
-}
 
-# style.py 只截取这两个段
-STYLE_KEYS = ("THEME", "PANEL_COLUMNS")
-
-
-# ────────────────────────────────────────────────────────────────
-def read_text(path: Path) -> str:
+def load_text(rel):
+    p = ROOT / rel
+    if not p.exists():
+        return None
     try:
-        return path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return path.read_text(encoding="utf-8", errors="replace")
+        return p.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"[读取失败] {e}"
 
 
-def slice_style_py(path: Path) -> list[tuple[str, str]]:
-    """从 style.py 里抽出 THEME / PANEL_COLUMNS 顶层赋值段。"""
-    text = read_text(path)
-    out: list[tuple[str, str]] = []
-    for key in STYLE_KEYS:
-        m = re.search(rf"^{key}\s*=\s*\{{", text, re.MULTILINE)
-        if not m:
-            continue
-        start = m.start()
-        end_m = re.search(r"^\}\s*$", text[m.end():], re.MULTILINE)
-        end = m.end() + end_m.end() if end_m else len(text)
-        out.append((f"{path.as_posix()}::{key}", text[start:end]))
-    return out
-
-
-def slice_scenario(data, n: int):
-    """顶层元字段 + factions / characters / nodes 各保留前 n 条。"""
-    if not isinstance(data, dict):
-        return data
+def slice_characters_json():
+    p = ROOT / "assets" / "characters.json"
+    if not p.exists():
+        return "[缺] assets/characters.json"
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return f"[解析失败] {e}"
     out = {}
-    for k, v in data.items():
-        if k in ("factions", "characters", "nodes") and isinstance(v, dict):
-            out[k] = dict(list(v.items())[:n])
-        else:
-            out[k] = v
-    return out
+    for k in ("version", "source", "count"):
+        if k in d:
+            out[k] = d[k]
+    if "_name_index" in d:
+        out["_name_index_sample"] = dict(list(d["_name_index"].items())[:3])
+    if "_ambiguous_names" in d:
+        out["_ambiguous_names"] = d["_ambiguous_names"]
+    if "_missing_refs" in d:
+        out["_missing_refs"] = d["_missing_refs"]
+    chars = d.get("characters", {})
+    out["characters_sample"] = dict(list(chars.items())[:3])
+    return json.dumps(out, ensure_ascii=False, indent=2)
 
 
-def wrap_block(name: str, content: str, lang: str) -> str:
-    return f"### {name}\n```{lang}\n{content}\n```\n\n"
+def slice_scenario_json():
+    p = ROOT / "scenarios" / "default.json"
+    if not p.exists():
+        return "[缺] scenarios/default.json"
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return f"[解析失败] {e}"
+    out = {}
+    for k in ("version", "id", "name", "desc", "start",
+              "player_faction", "character_id_range"):
+        if k in d:
+            out[k] = d[k]
+    for sec, n in (("factions", 3), ("characters", 3), ("nodes", 3), ("officials", 5)):
+        s = d.get(sec, {})
+        out[sec + "_sample"] = dict(list(s.items())[:n]) if isinstance(s, dict) else s
+    return json.dumps(out, ensure_ascii=False, indent=2)
 
 
-def split_blocks(blocks, max_chunk):
-    chunks, cur, cur_size = [], [], 0
-    for b in blocks:
-        n, c, lang = b
-        s = len(wrap_block(n, c, lang).encode("utf-8"))
-        if cur and cur_size + s > max_chunk:
-            chunks.append(cur)
-            cur, cur_size = [], 0
-        cur.append(b)
-        cur_size += s
-    if cur:
-        chunks.append(cur)
-    return chunks
+def slice_map_geojson():
+    p = ROOT / "assets" / "map.geojson"
+    if not p.exists():
+        return "[缺] assets/map.geojson"
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except Exception as e:
+        return f"[解析失败] {e}"
+    states = d.get("states", [])
+    if not states:
+        return json.dumps(d, ensure_ascii=False, indent=2)[:2000]
+    s0 = states[0]
+    meta = {k: s0.get(k) for k in s0 if k not in ("counties", "boundary")}
+    counties = s0.get("counties", [])[:2]
+    c_out = []
+    for c in counties:
+        cm = {k: c.get(k) for k in c if k not in ("cities", "boundary", "name_coords")}
+        cities = c.get("cities", [])[:1]
+        cm["cities_sample"] = cities
+        c_out.append(cm)
+    meta["counties_sample"] = c_out
+    out = {"states_count": len(states), "state_sample": meta}
+    return json.dumps(out, ensure_ascii=False, indent=2)
 
 
-# ────────────────────────────────────────────────────────────────
-def collect_blocks() -> list[tuple[str, str, str]]:
-    blocks: list[tuple[str, str, str]] = []
+def main():
+    blocks = []
+    missing = []
 
-    # 1) 代码文件
     for rel in CODE_FILES:
-        p = ROOT / rel
-        if p.exists():
-            blocks.append((rel, read_text(p), "python"))
+        txt = load_text(rel)
+        if txt is None:
+            missing.append(rel)
+            blocks.append(f"### {rel}\n\n[缺] {rel}\n")
+            continue
+        ext = os.path.splitext(rel)[1].lstrip(".") or "text"
+        if ext == "py":
+            fence = "python"
         else:
-            blocks.append((rel, "[缺]", "text"))
+            fence = ext
+        blocks.append(f"### {rel}\n\n```{fence}\n{txt}\n```\n")
 
-    # 2) style.py 截取
-    style_path = ROOT / "game/config/style.py"
-    if style_path.exists():
-        for name, frag in slice_style_py(style_path):
-            blocks.append((name, frag, "python"))
-    else:
-        blocks.append(("game/config/style.py", "[缺]", "text"))
+    blocks.append("### assets/characters.json（截取）\n\n```json\n"
+                  + slice_characters_json() + "\n```\n")
+    blocks.append("### scenarios/default.json（截取）\n\n```json\n"
+                  + slice_scenario_json() + "\n```\n")
+    blocks.append("### assets/map.geojson（截取）\n\n```json\n"
+                  + slice_map_geojson() + "\n```\n")
 
-    # 3) JSON 截取
-    for rel, n in JSON_SLICES.items():
-        p = ROOT / rel
-        if not p.exists():
-            blocks.append((rel, "[缺]", "text"))
-            continue
-        try:
-            data = json.loads(read_text(p))
-        except Exception as e:
-            blocks.append((rel, f"[JSON 解析失败] {e}", "text"))
-            continue
-        frag = json.dumps(slice_scenario(data, n),
-                          ensure_ascii=False, indent=2)
-        blocks.append((f"{rel}（截取：元字段 + 3 段各前 {n} 条）",
-                       frag, "json"))
+    full = "\n".join(blocks)
+    total = len(full.encode("utf-8"))
 
-    return blocks
-
-
-def main() -> int:
-    blocks = collect_blocks()
-    full = "".join(wrap_block(n, c, lang) for n, c, lang in blocks)
-    size = len(full.encode("utf-8"))
-
-    print(f"[i] 收集到 {len(blocks)} 个代码/数据块，共 {size:,} 字节")
-
-    outs: list[Path] = []
-    if size <= MAX_SINGLE:
-        out = ROOT / f"{OUT_BASE}.md"
+    OUT_BASE.mkdir(exist_ok=True)
+    if total <= MAX_SINGLE:
+        out = OUT_BASE / "review_pack.txt"
         out.write_text(full, encoding="utf-8")
-        outs.append(out)
+        outs = [out]
     else:
-        chunks = split_blocks(blocks, MAX_CHUNK)
-        for i, ch in enumerate(chunks, 1):
-            out = ROOT / f"{OUT_BASE}_{i:02d}.txt"
-            out.write_text(
-                "".join(wrap_block(n, c, lang) for n, c, lang in ch),
-                encoding="utf-8",
-            )
+        outs = []
+        cur = []
+        cur_size = 0
+        idx = 1
+        for b in blocks:
+            sz = len(b.encode("utf-8"))
+            if cur and cur_size + sz > VOL_TARGET:
+                out = OUT_BASE / f"review_pack_{idx:02d}.txt"
+                out.write_text("\n".join(cur), encoding="utf-8")
+                outs.append(out)
+                cur = []
+                cur_size = 0
+                idx += 1
+            cur.append(b)
+            cur_size += sz
+        if cur:
+            out = OUT_BASE / f"review_pack_{idx:02d}.txt"
+            out.write_text("\n".join(cur), encoding="utf-8")
             outs.append(out)
 
-    print("\n[i] 输出：")
+    print("输出：")
     for o in outs:
-        print(f"    {o.name}  ({o.stat().st_size:,} 字节)")
-    print("\n[i] 请把上面这些文件的内容，依次粘贴回对话。")
-    return 0
+        print(f"  {o}  ({o.stat().st_size / 1024:.1f} KB)")
+    if missing:
+        print("缺失文件：")
+        for m in missing:
+            print(f"  [缺] {m}")
+    print("请把 review_pack 目录下的文件贴回对话。")
+    print(f"共 {len(outs)} 个文件。")
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()

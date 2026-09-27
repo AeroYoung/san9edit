@@ -244,11 +244,14 @@ class MapRenderer:
     # 几何图层
     # ==========================================================
     def render_polygons(self):
-        min_lon, min_lat, max_lon, max_lat = self._visible_bounds()
+        """州面：**全量绘制**，不做视口裁剪。
+
+        ★ 静态图层只在 draw_full 里重画，而滚轮缩放走的是 canvas.scale 整体变换
+        （O(1)，不重画）。若这里按当前视口裁剪，缩小时新暴露的区域就没有几何，
+        表现为「一块块没上色」，要等 180ms 后的 settle 全量重绘才补上。
+        州面只有十几项，全量画的成本可以忽略。
+        """
         for feat in self.data.shapes_polygon:
-            b = feat["bbox"]
-            if b[2] < min_lon or b[0] > max_lon or b[3] < min_lat or b[1] > max_lat:
-                continue
             try:
                 self.render_polygon(feat)
             except Exception:
@@ -257,9 +260,10 @@ class MapRenderer:
     def render_territory(self):
         """县面按所属势力上色。
 
-        染色是主信息（不是细节），不吃 LOD——
-        否则缩小时大量有主县会被跳过，玩家误以为无主。
-        只做视口粗筛（屏幕外的不画），保证铺满可视区域。
+        染色是主信息（不是细节），不吃 LOD，也**不做视口裁剪**：
+        静态层只在 draw_full 里重画，滚轮缩放走 canvas.scale 整体变换，
+        一旦按视口裁剪，缩小时新暴露的区域就会「缺一块颜色」。
+        全量画 600 多个县面，与整图铺满时的开销相同。
 
         无主县不染色，州面底色透出。
         """
@@ -270,15 +274,8 @@ class MapRenderer:
         if not feats:
             return
 
-        vx0, vy0, vx1, vy1 = self._visible_bounds()
-
         for feat in feats:
-            # 1) 视口粗筛（屏幕外跳过）
-            b = feat["bbox"]
-            if b[2] < vx0 or b[0] > vx1 or b[3] < vy0 or b[1] > vy1:
-                continue
-
-            # 2) 查 owner
+            # 1) 查 owner
             props = feat.get("properties") or {}
             nid = props.get("id")
             if not nid:
@@ -291,7 +288,7 @@ class MapRenderer:
                 continue
             color = faction.color
 
-            # 3) 画多边形
+            # 2) 画多边形
             ring = feat["geometry"]["coordinates"]
             if len(ring) < 3:
                 continue
@@ -310,11 +307,8 @@ class MapRenderer:
                 pass
 
     def render_lines(self):
-        min_lon, min_lat, max_lon, max_lat = self._visible_bounds()
+        """郡界：**全量绘制**，不做视口裁剪（同 render_polygons 的理由；106 项）。"""
         for feat in self.data.shapes_line:
-            b = feat["bbox"]
-            if b[2] < min_lon or b[0] > max_lon or b[3] < min_lat or b[1] > max_lat:
-                continue
             try:
                 self.render_line(feat)
             except Exception:

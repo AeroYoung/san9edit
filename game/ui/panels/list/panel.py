@@ -105,7 +105,7 @@ class GenericListPanel(ttk.Frame):
                 command=lambda: self._on_heading_click(self.NAME_COLUMN.key),
             )
             self.tree.column("#0", width=self.NAME_COLUMN.width,
-                             anchor=self.NAME_COLUMN.anchor, stretch=False)
+                             anchor=self.NAME_COLUMN.anchor, stretch=True)
 
         for c in self._visible_columns:
             self.tree.heading(c.key, text=c.title,
@@ -193,7 +193,7 @@ class GenericListPanel(ttk.Frame):
             priority_name=self.priority_name(),
             row_priority=self.row_priority(group_keys),
             title_count=self.GROUP_TITLE_COUNT,
-            subtitle_fn=self.group_subtitle,
+            values_fn=self.group_values,
         )
 
     # ==========================================================
@@ -238,11 +238,16 @@ class GenericListPanel(ttk.Frame):
             self._insert_group_nodes("", groups)
         self._fit_name_column()
 
+    def _iter_group_values(self, group):
+        """组头行在其它列里的显示值（按可见列顺序；缺省空串）。"""
+        return [group.values.get(c.key, "") for c in self._visible_columns]
+
     def _insert_group_nodes(self, parent, groups, parent_key=()):
         for g in groups:
             gkey = parent_key + (g.title,)
             gid = self.tree.insert(parent, "end",
-                                   text=g.label(), open=g.open, tags=g.tags)
+                                   text=g.label(), open=g.open, tags=g.tags,
+                                   values=self._iter_group_values(g))
             self._item_keys[gid] = gkey
             if g.has_subgroups():
                 self._insert_group_nodes(gid, g.children, gkey)
@@ -383,7 +388,8 @@ class GenericListPanel(ttk.Frame):
     def _insert_spec(self, parent_item, spec):
         if spec["kind"] == "group":
             return self.tree.insert(parent_item, "end", text=spec["text"],
-                                    open=spec["open"], tags=spec["tags"])
+                                    open=spec["open"], tags=spec["tags"],
+                                    values=spec["values"])
         kwargs = {}
         if spec["tags"]:
             kwargs["tags"] = spec["tags"]
@@ -392,7 +398,8 @@ class GenericListPanel(ttk.Frame):
 
     def _update_spec(self, item, spec):
         if spec["kind"] == "group":
-            self.tree.item(item, text=spec["text"], tags=spec["tags"])
+            self.tree.item(item, text=spec["text"], values=spec["values"],
+                           tags=spec["tags"])
         else:
             self.tree.item(item, text=spec["text"], values=spec["values"],
                            tags=spec["tags"])
@@ -422,8 +429,8 @@ class GenericListPanel(ttk.Frame):
             gkey = parent_key + (g.title,)
             out.append({
                 "key": gkey, "kind": "group", "parent": parent_key,
-                "text": g.label(), "values": None, "tags": tuple(g.tags),
-                "row": None, "open": g.open,
+                "text": g.label(), "values": self._iter_group_values(g),
+                "tags": tuple(g.tags), "row": None, "open": g.open,
             })
             if g.has_subgroups():
                 self._collect_specs(g.children, gkey, out)
@@ -694,9 +701,12 @@ class GenericListPanel(ttk.Frame):
         """该行额外的 Treeview tag（如未登场整行着色）。子类覆盖。"""
         return ()
 
-    def group_subtitle(self, dim_key, group_name, rows):
-        """组头后缀（如据点面板的州 / 郡外官「荆州刺史-刘表」）。子类覆盖。"""
-        return ""
+    def group_values(self, dim_key, group_name, rows):
+        """组头行在其它列里显示的文本（列 key -> 文本），如据点面板的外官。
+
+        返回 {"governor": "荆州刺史-刘表"} 就落到「主官」列 —— 组头信息不挤 #0 列。
+        """
+        return {}
 
     def row_key(self, row):
         return getattr(row, "id", None) or getattr(row, "name", None)

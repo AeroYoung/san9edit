@@ -312,6 +312,16 @@ class MapCanvas(ttk.Frame):
         self._location_callback(info)                      # ★ 传 dict
 
     def _on_leave(self, event):
+        # ★ 必须取消待处理的节流动作：鼠标在 40ms 窗口内移出画布时，
+        #   _process_motion 仍会跑一次，把 tooltip 又显示出来；
+        #   此时指针已在画布外，不会再有事件来隐藏它。
+        if self._mouse_job is not None:
+            try:
+                self.after_cancel(self._mouse_job)
+            except Exception:
+                pass
+            self._mouse_job = None
+        self._pending_mouse = None
         self.renderer.set_hover(None)                      # ★ 清除 hover 高亮
         if self._location_callback:
             self._location_callback(None)                  # ★ "" → None

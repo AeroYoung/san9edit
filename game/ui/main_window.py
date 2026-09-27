@@ -318,13 +318,47 @@ class MainWindow:
         if node.owner:
             f = world.faction(node.owner)
             faction_name = f.name if f else "无主"
-        text = f"{node.name}\n势力：{faction_name}\n驻军：{node.troops:,}"
+        text = "\n".join((
+            self._official_line(world, node.id, node.name),
+            self._official_line(world, node.county_id,
+                                world.county_name(node.county_id)),
+            self._official_line(world, node.state_id,
+                                world.state_name(node.state_id)),
+            faction_name,
+        ))
 
         px = info.get("px", 0)
         py = info.get("py", 0)
         rootx = self.map_canvas.canvas.winfo_rootx()
         rooty = self.map_canvas.canvas.winfo_rooty()
         self._show_tooltip(text, rootx + px + 14, rooty + py + 14)
+
+    @classmethod
+    def _official_line(cls, world, region_id, region_name):
+        """tooltip 用的一行：「{区名}-{短职务}{姓名}」；该区无外官 → 只显示区名。"""
+        item = world.official_of(region_id)
+        if item is None:
+            return region_name
+        ch = world.character(item.get("character_id"))
+        post = cls._short_post(item.get("name", ""), region_name, region_id)
+        name = ch.name if ch is not None else ""
+        return f"{region_name}-{post}{name}"
+
+    @staticmethod
+    def _short_post(title, region_name, region_id):
+        """官名去掉区名前缀，得到裸职务。
+
+        东阿令 → 令（县级单字补「县」→ 县令）
+        东郡太守 → 太守
+        兖州刺史 → 刺史
+        河南尹 → 区名即官名，取末字「尹」
+        """
+        post = title[len(region_name):] if title.startswith(region_name) else title
+        if not post:
+            post = title[-1:]
+        if len(region_id) == 6 and len(post) == 1:
+            post = "县" + post
+        return post
 
     def _show_tooltip(self, text, x, y):
         if self._tooltip is None:
@@ -457,6 +491,15 @@ class MainWindow:
 
     def _map_intel(self, kind, node_id):
         logger.debug("地图情报：kind=%s node=%s", kind, node_id)
+        if kind != "node":
+            return
+        world = getattr(self, "_world", None)
+        node = world.node(node_id) if world is not None else None
+        if node is None:
+            return
+        from game.ui.node_info_window import NodeInfoWindow
+        NodeInfoWindow(self.root, node, world=world,
+                       font_family=self.font_family)
 
     # ==========================================================
     # 双向定位（地图 → 列表）

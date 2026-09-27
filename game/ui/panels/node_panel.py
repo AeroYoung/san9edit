@@ -69,7 +69,7 @@ COLUMNS = (
     Column("level",    "等级", 42, "center", lambda r: r.level, sort_numeric=True),
     Column("type",     "类型", 46, "center", lambda r: r.display_type),
     Column("owner",    "势力", 64, "center", lambda r: r.owner_name),
-    Column("governor", "主官", 56, "center", lambda r: r.governor_name),
+    Column("governor", "主官", 112, "center", lambda r: r.governor_name),
     Column("persons",  "人物", 42, "center", lambda r: r.person_count, sort_numeric=True),
 )
 
@@ -104,22 +104,24 @@ class NodePanel(GenericListPanel):
     def row_key(self, row):
         return row.node_id
 
-    def group_subtitle(self, dim_key, group_name, rows):
-        """州 / 郡分组标题追加外官「官名-姓名」（需求 §2 G5）。
+    def group_values(self, dim_key, group_name, rows):
+        """州 / 郡组头把外官「官名-姓名」放进「主官」列（不挤 #0 列）。
 
-        县外官不进分组标题，它们显示在「主官」列（§4）。
+        县外官不进组头，它们在数据行的「主官」列里。
         """
         if not rows:
-            return ""
+            return {}
         world = getattr(self.game_state, "world", None)
         if world is None:
-            return ""
+            return {}
         node_id = rows[0].node_id
         if dim_key == "state":
-            return world.official_label(node_id[:2])
-        if dim_key == "county":
-            return world.official_label(node_id[:4])
-        return ""
+            label = world.official_label(node_id[:2])
+        elif dim_key == "county":
+            label = world.official_label(node_id[:4])
+        else:
+            return {}
+        return {"governor": label} if label else {}
 
     def context_menu_items(self, ctx):
         row = ctx.right_click_row
@@ -130,7 +132,7 @@ class NodePanel(GenericListPanel):
             # edit=True 标识：非编辑模式由 build_menu 统一置灰
             MenuItem("编辑", lambda: self._edit(row), enabled=single, edit=True),
             MenuItem.sep(),
-            MenuItem("据点情报", lambda: self._intel("node", ctx.selected_rows)),
+            MenuItem("据点情报", lambda: self._open_info_window(row)),
             MenuItem("人物情报", lambda: self._intel("character", ctx.selected_rows)),
             MenuItem("势力情报", lambda: self._intel("faction", ctx.selected_rows)),
             MenuItem.sep(),
@@ -146,6 +148,19 @@ class NodePanel(GenericListPanel):
         from game.ui.dialogs.node_edit import edit_node
         if edit_node(self, world, node, self.edit_session, self._open_dialog):
             self._notify_edit()
+
+    def _open_info_window(self, row):
+        """据点情报窗口（只读：基本情况 / 外官 / 州郡 / 实际控制 / 宣称权冲突）。"""
+        world = getattr(self.game_state, "world", None)
+        node = world.node(row.node_id) if world else None
+        if node is None:
+            logger.warning("据点不存在：%s", row.node_id)
+            return
+        from game.ui.node_info_window import NodeInfoWindow
+        top = self.winfo_toplevel()
+        font_family = getattr(top, "font_family", "TkDefaultFont")
+        logger.debug("据点情报：%s %s", node.id, node.name)
+        NodeInfoWindow(self, node, world=world, font_family=font_family)
 
     def _intel(self, kind, rows):
         names = "、".join(r.name for r in rows[:5])

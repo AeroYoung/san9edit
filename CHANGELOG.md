@@ -69,3 +69,21 @@
 - 势力名与君主不一致的错位（如「赵韪」势力君主实为吴懿）（`tools/build_scenario_190.py`）
 - 相邻势力配色过近：改为县点邻接判定 + 用色均衡（`tools/build_scenario_190.py`）
 - 据点面板州 / 郡分组标题被 #0 列宽截断（`panels/list/panel.py`）
+
+---
+
+## 2026-09-26 · 悬停信息扩展、据点情报窗口与渲染修复
+
+### Added
+- 据点情报窗口（据点 / 外官 / 所属州郡 / 外官实际控制 / 宣称权冲突）（`ui/node_info_window.py`）
+- 列表框架 `Group.values` + `group_values()` 钩子：组头信息可落到其它列（`panels/list/`）
+
+### Changed
+- 地图悬停 tooltip 改为 4 行：县 / 郡 / 州各级外官 + 势力名（不再显示驻军）（`main_window`）
+- 州 / 郡组头的外官从 #0 标题挪进「主官」列；`#0` 恢复基宽并改为 `stretch=True`（`node_panel`、`panels/list/panel.py`）
+- 据点面板「主官」列宽 56 → 112（`node_panel`）
+- README 同步：§2 / §5.22 / §5.23 / §6.4 / §8.1 / §8.3 第 51 条
+
+### Fixed
+- 地图悬停 tooltip 在指针移出画布后不消失（节流任务未取消）（`ui/map_canvas.py`）
+- 滚轮缩放后新暴露区域缺染色（静态地理层按视口裁剪）（`map/renderer.py`）

@@ -77,7 +77,8 @@
       "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_move_to_node.py -q)",
       "Bash(PYTHONIOENCODING=utf-8 timeout 200 python -u -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 timeout 150 python -u -c ' *)",
-      "Bash(PYTHONIOENCODING=utf-8 python -)"
+      "Bash(PYTHONIOENCODING=utf-8 python -)",
+      "Bash(sed -i 's/^            # 3\\) 画多边形$/            # 2\\) 画多边形/' game/map/renderer.py)"
     ]
   }
 }

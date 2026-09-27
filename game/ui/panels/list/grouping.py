@@ -15,7 +15,7 @@ def _leaf_rows(children):
 def build_tree(rows, group_dims, group_keys,
                sort_key=None, sort_desc=False, columns_by_key=None,
                priority_name=None, row_priority=None, title_count=False,
-               subtitle_fn=None):
+               values_fn=None):
     """按 group_keys 递归分组，最内层按 sort_key 排序。
 
     group_dims    : key -> (显示名, 取值函数) 或 (显示名, 取值函数, 固定组序)
@@ -26,7 +26,7 @@ def build_tree(rows, group_dims, group_keys,
                     在用户列排序**之后**做稳定排序 → 优先键为主序、列排序为次序。
                     递归时逐层传递（最内层才真正生效）。
     title_count   : True → 每个组头带叶子行数（Group.count），显示成「组名（N）」
-    subtitle_fn   : (dim_key, 组名, 组内叶子行) -> str，组头后缀（如外官）
+    values_fn     : (dim_key, 组名, 组内叶子行) -> dict，组头行在其它列里显示的文本
     """
     if not group_keys:
         return _sort_leaf(rows, sort_key, sort_desc, columns_by_key, row_priority)
@@ -59,14 +59,14 @@ def build_tree(rows, group_dims, group_keys,
             columns_by_key=columns_by_key,
             # 不传 priority_name → 只有最外层优先
             row_priority=row_priority, title_count=title_count,
-            subtitle_fn=subtitle_fn,
+            values_fn=values_fn,
         )
         group = Group(name, children)
         if title_count:
             group.count = group.leaf_count()
-        if subtitle_fn is not None:
-            group.subtitle = subtitle_fn(group_keys[0], name,
-                                         _leaf_rows(children))
+        if values_fn is not None:
+            group.values = values_fn(group_keys[0], name,
+                                     _leaf_rows(children)) or {}
         result.append(group)
     return result
 

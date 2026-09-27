@@ -261,7 +261,8 @@ san9edit/
         │                              + reload_panel_columns()
         ├── settings_window.py         设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
         │                              +「面板列」tab + 8 个方法
-        ├── character_info_window.py   ★ 人物情报窗口（头像 + 五维雷达图 + 关系 + 生平占位）
+        ├── character_info_window.py   人物情报窗口（头像 + 五维雷达图 + 关系 + 生平占位）
+        ├── node_info_window.py        ★ 据点情报窗口（基本情况 / 外官 / 州郡 / 实际控制 / 宣称权冲突）
         ├── window_utils.py            窗口工具（最大化 / 居中）
         ├── dialogs/                   ★ 编辑弹窗（数据驱动）
         │   ├── field_spec.py          Field NamedTuple（6 种 kind）
@@ -1284,14 +1285,15 @@ class CharacterInfoWindow(tk.Toplevel):
 | 钩子 | 默认 | 作用 |
 |---|---|---|
 | `GROUP_TITLE_COUNT` | True | 组头显示「组名（N）」叶子行数 |
-| `group_subtitle(dim_key, 组名, rows)` | `""` | 组头后缀 → 渲染成「组名（N）· 后缀」（据点面板挂州 / 郡外官） |
+| `group_values(dim_key, 组名, rows)` | `{}` | 组头行在**其它列**里显示的文本（据点面板把州 / 郡外官放进「主官」列，不挤 #0） |
 | `row_priority(group_keys)` | None | 叶子行优先排序键（人物面板「君主置顶 + 登场在前」），在用户列排序之后做稳定排序 |
 | `row_tags(row)` | `()` | 行级 tag（人物面板未登场深灰），与组给的 `row_tag` 合并 |
 | `KEEP_VIEW_ON_EDIT` | False | True → 编辑后的 `refresh(keep_view=True)` 走**就地刷新** |
 
 - 三处 `self.COLUMNS` → `self._visible_columns`：_match_one / _column_index / _insert_row。
 - **就地刷新**（`_reconcile()`）：按结构 key 复用 item —— 组 = 组标题路径元组、行 = `("row", row_key)`；`_item_keys` 存 item → key。只对位置变化的项调 `tree.move`，滚动位置按「原可见区顶部第一个未变化条目」还原（用可见序号 ÷ 可见条目数 + `yview_moveto`，**Treeview 没有 `yview(item)`**），选中项与展开状态天然保留；异常时退回整表重建，避免登记表写脏后每次刷新都报错。
-- `_fit_name_column()`：组标题画在 #0 列，按最长组标题自动加宽 #0（上限 `GROUP_COLUMN_MAX = 360`），标题变短时收回名称列基宽；ttk.Treeview 没有 `-font`，量宽度用的字体按 `group` tag 规格自建（默认族 + 9pt 粗体）。
+- 组头行：`Group.label()` 只出「组名（N）」放 #0；组头的其它信息走 `Group.values`（列 key -> 文本）填到对应列 —— ttk.Treeview 的单元格**不能跨列**，所以「让标题显示全」只有两条路：加宽 #0，或把信息挪进别的列，这里选后者。
+- `#0` 列 `stretch=True`（吸收右侧剩余空间）；`_fit_name_column()` 按最长组标题兜底加宽（上限 `GROUP_COLUMN_MAX = 360`）；ttk.Treeview 没有 `-font`，量宽度用的字体按 `group` tag 规格自建（默认族 + 9pt 粗体）。
 - 刷新入口：`refresh()` = 整表重建，`refresh(keep_view=True)` = 就地刷新（仅 `KEEP_VIEW_ON_EDIT` 的面板采用）；`_notify_edit(keep_view=)` → SidePanel.on_panel_edit → refresh_all(keep_view=)。
 
 ### 5.23 game/ui/panels/{node,character,faction,troop}_panel.py
@@ -1301,8 +1303,9 @@ class CharacterInfoWindow(tk.Toplevel):
 - 行模型 NodeRow：node_id / name / type / level / coords / state_name / county_name / owner_id / owner_name / is_capital / person_count（另预留 governor_name）。display_type = 郡治 或 type。
 - `fetch_rows` 循环外调一次 `world.count_characters_by_node()`，把人数传给 `NodeRow.from_node(..., person_count=)`；聚合不缓存，每次 refresh 现算（登场开关 / undo / redo 后自动跟着变）。
 - COLUMNS：州 52 / 郡 62 / **等级** 42 / 类型 46 / 势力 64 / 主官 56 / 人物 42；NAME_COLUMN = 县（110，左对齐）。
-- 「主官」列 = 该**县**外官（`World.official_of(node.id)` 的 6 位键）姓名，无则「—」；州 / 郡外官不进此列。
-- `group_subtitle()`：按州 / 郡分组时给组头追加外官「官名-姓名」（`World.official_label(id[:2])` / `(id[:4])`）。
+- 「主官」列（宽 112）= 该**县**外官（`World.official_of(node.id)` 的 6 位键）姓名，无则「—」；州 / 郡外官不进数据行，而是进**组头**的同一列（见下）。
+- `group_values()`：按州 / 郡分组时，组头行在「主官」列显示外官「官名-姓名」（`World.official_label(id[:2])` / `(id[:4])`）。
+- 右键「据点情报」→ 打开 `ui/node_info_window.py::NodeInfoWindow`（只读 Toplevel，Esc 关闭）；地图右键的「据点情报」也走同一个窗口（`MainWindow._map_intel`）。
 - ★ 组标题画在 #0 列，长标题（如「司州（125）· 司隶校尉-董卓」）会被列宽截断 → 框架的 `_fit_name_column()`
   按最长组标题自动加宽 #0（上限 `GROUP_COLUMN_MAX = 360`）；标题变短（老剧本无外官）时自动收回名称列基宽。
   ttk.Treeview 没有 `-font` 选项，量宽度用的字体按 `group` tag 的规格自己造（默认族 + 9pt 粗体）。
@@ -1528,12 +1531,13 @@ tools/build_scenario_190.py
 | ↳ 拼装 | MapCanvas._location_callback(info) → MainWindow._on_location_change(info) |
 | ↳ 势力 | MainWindow._faction_at(node_id) → world.node(id) → node.owner → world.faction(id) → f.name |
 | ↳ 显示 | status_bar.set_location(text) → 州 · 郡 · 县 · 势力 （经度°E, 纬度°N） |
-| 鼠标离开 | _on_leave → _location_callback(None) → 状态栏清空 |
+| 鼠标离开 | _on_leave → 取消待处理的节流动作 → _location_callback(None) → 状态栏清空 + tooltip 关闭 |
 | 滚轮 / 拖拽 | viewport.zoom / pan_pixels → renderer.zoom / pan |
 | 顶部信息栏 | 200ms 轮询 game_state.get_display_items() |
 | 设置保存 | _on_settings_applied → 地图相关则 map_canvas.redraw()；PANEL_COLUMNS* 则 side_panel.reload_panel_columns() |
 | 面板列重载 | side_panel.reload_panel_columns() → 各 panel reload_columns() → _resolve_columns() 读 style.PANEL_COLUMNS → _build_tree_in() + refresh() |
-| 据点右键 → 定位 | MenuItem「定位到地图」 → GenericListPanel.locate_on_map → MapController.fit_to_node |
+| hover tooltip | 4 行：县-县令XX / 郡-太守XX / 州-刺史XX / 势力名（`MainWindow._official_line` + `_short_post`：官名去掉区名前缀取裸职务） |
+| 据点右键 → 据点情报 | MenuItem「据点情报」 → NodePanel._open_info_window → NodeInfoWindow（只读） |
 | 据点右键 → 展开/折叠 | MenuItem「全部展开/折叠」 → GenericListPanel._toggle_all |
 | 据点列头点击 | _on_heading_click → _sort_key/_sort_desc → refresh |
 | 据点分组切换 | GroupBar._toggle → on_change → NodePanel.refresh |
@@ -1772,6 +1776,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 郡面分级调色 | 字段全保留但不消费 |
 | 字体可在 UI 里改 | 只支持更换候选字体，不支持任意路径 |
 | 据点面板「主官」列 | 已接入（县外官，无则「—」） |
+| 据点面板「人物情报」「势力情报」右键 | 占位（只写日志）；「据点情报」已接入窗口 |
 | 据点面板右键三项 | 占位（据点情报 / 人物情报 / 势力情报），只写日志 |
 | 据点面板字体 / 字号可调 | 不支持 |
 | 据点面板列宽 / 分组 / 排序持久化 | 不支持 |
@@ -1890,6 +1895,10 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 **人物移动**
 
 50. ★ 「移动到据点」是**编制变更**：`Character.node`（所属）与 `location`（所在）一起改为目标据点，`faction` 跟随目标据点 owner（无主 → None = 下野）。**任务系统 / 部队系统落地后必须重新评估这条**：那时「出征 / 调动」应当是只改 `location`、不动 `node` 的另一种操作，与本入口的编制变更区分开。改这段逻辑前先读 §8.4。君主只能停留在本势力据点（`faction == id`），到无主 / 他势力据点一律阻断 —— 势力 id 与 `faction` 脱钩会让 `is_ruler()` 失真。
+
+**渲染与视口**
+
+51. ★ 静态地理图层（州面 / 势力染色 / 郡界）**不做视口裁剪**：静态层只在 `draw_full()` 里重画，而滚轮缩放走的是 `canvas.scale("all", …)` 整体变换（O(1)，不重画）。一旦按视口裁剪，缩小后新暴露的区域就没有几何，表现为「一块块没上色」，要等 180ms 后的 settle 全量重绘才补上。县点 / 水域 / 道路 / 标签这些**动态**层不受影响（每次 refresh_dynamic 都按当前视口重算），仍走 LOD + 裁剪。
 
 ### 8.4 建议的下一步
 
