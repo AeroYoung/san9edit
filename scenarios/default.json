@@ -12,303 +12,489 @@
   "factions": {
     "0024": {
       "name": "袁遗",
-      "color": "#3199AD",
+      "color": "#8431AD",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0032": {
       "name": "袁术",
       "color": "#E0E02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0035": {
       "name": "袁绍",
       "color": "#E8C500",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0047": {
       "name": "王匡",
       "color": "#87E02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 10
     },
     "0080": {
       "name": "王朗",
-      "color": "#12247A",
+      "color": "#E02D2D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0091": {
       "name": "华歆",
-      "color": "#315AAD",
+      "color": "#AD3199",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0097": {
       "name": "郭汜",
-      "color": "#35127A",
+      "color": "#AD315A",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0166": {
       "name": "韩遂",
-      "color": "#4531AD",
+      "color": "#7A3512",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0182": {
       "name": "韩馥",
       "color": "#E0872D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
+    },
+    "0199": {
+      "name": "牛辅",
+      "color": "#872DE0",
+      "prestige": 1000,
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0211": {
       "name": "许贡",
       "color": "#2DE02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0239": {
       "name": "严白虎",
-      "color": "#8431AD",
+      "color": "#7A6912",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0241": {
       "name": "吴懿",
-      "color": "#69127A",
+      "color": "#E0872D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0925",
+      "vassal_value": 10
     },
     "0260": {
       "name": "黄祖",
       "color": "#2DE0E0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0266": {
       "name": "公孙瓒",
-      "color": "#587A12",
+      "color": "#12587A",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0932",
+      "vassal_value": 10
     },
     "0268": {
       "name": "公孙度",
-      "color": "#2DE0E0",
+      "color": "#872DE0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0932",
+      "vassal_value": 10
     },
     "0270": {
       "name": "孔伷",
       "color": "#2D2DE0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0280": {
       "name": "孔融",
-      "color": "#7A1258",
+      "color": "#E0E02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0285": {
       "name": "吴巨",
-      "color": "#2D87E0",
+      "color": "#E02DE0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
+    },
+    "0301": {
+      "name": "胡轸",
+      "color": "#99AD31",
+      "prestige": 1000,
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0330": {
       "name": "笮融",
-      "color": "#AD3199",
+      "color": "#587A12",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0724",
+      "vassal_value": 10
     },
     "0332": {
       "name": "士壹",
-      "color": "#2D2DE0",
+      "color": "#E02D87",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0341": {
       "name": "士燮",
-      "color": "#7A1224",
+      "color": "#87E02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0354": {
       "name": "士武",
-      "color": "#E02D2D",
+      "color": "#2DE087",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0364": {
       "name": "周昕",
       "color": "#5AAD31",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
+    },
+    "0428": {
+      "name": "徐荣",
+      "color": "#31AD45",
+      "prestige": 1000,
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0474": {
       "name": "成宜",
-      "color": "#2DE087",
+      "color": "#31AD84",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0521": {
       "name": "曹操",
       "color": "#2928EF",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0551": {
       "name": "孙坚",
       "color": "#C83030",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
+    },
+    "0592": {
+      "name": "段煨",
+      "color": "#3199AD",
+      "prestige": 1000,
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0601": {
       "name": "张燕",
-      "color": "#E0872D",
+      "color": "#2D87E0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0182",
+      "vassal_value": 10
     },
     "0628": {
       "name": "张纯",
-      "color": "#AD315A",
+      "color": "#247A12",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0932",
+      "vassal_value": 10
     },
     "0638": {
       "name": "张济",
-      "color": "#2D87E0",
+      "color": "#35127A",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0642": {
       "name": "张羡",
-      "color": "#E0E02D",
+      "color": "#2DE02D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0647": {
       "name": "张超",
-      "color": "#872DE0",
+      "color": "#2D87E0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0724",
+      "vassal_value": 10
     },
     "0653": {
       "name": "张邈",
       "color": "#E02DE0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0661": {
       "name": "张杨",
-      "color": "#99AD31",
+      "color": "#2DE087",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0666": {
       "name": "张鲁",
-      "color": "#247A12",
+      "color": "#69127A",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0925",
+      "vassal_value": 10
     },
     "0694": {
       "name": "丁原",
-      "color": "#87E02D",
+      "color": "#2D2DE0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0710": {
       "name": "田楷",
-      "color": "#2DE02D",
+      "color": "#2DE0E0",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0724": {
       "name": "陶谦",
-      "color": "#7A3512",
+      "color": "#127A35",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0736": {
       "name": "董卓",
-      "color": "#804040",
+      "color": "#E02D2D",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0771": {
       "name": "马腾",
-      "color": "#127A35",
+      "color": "#7A1258",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0826": {
       "name": "鲍信",
       "color": "#E02D87",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0867": {
       "name": "杨秋",
-      "color": "#2DE087",
+      "color": "#AD4531",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0893": {
       "name": "李傕",
-      "color": "#127A69",
+      "color": "#4531AD",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": false,
+      "overlord_id": "0736",
+      "vassal_value": 85
     },
     "0895": {
       "name": "李堪",
-      "color": "#31AD45",
+      "color": "#127A69",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0925": {
       "name": "刘焉",
-      "color": "#872DE0",
+      "color": "#AD8431",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0932": {
       "name": "刘虞",
-      "color": "#12587A",
+      "color": "#7A1224",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0947": {
       "name": "刘岱",
       "color": "#AD4531",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0952": {
       "name": "刘备",
       "color": "#3B8B3B",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0953": {
       "name": "刘表",
-      "color": "#31AD84",
+      "color": "#315AAD",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0963": {
       "name": "刘繇",
       "color": "#AD8431",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     },
     "0969": {
       "name": "梁兴",
-      "color": "#7A6912",
+      "color": "#12247A",
       "prestige": 1000,
-      "stance": 0
+      "stance": 0,
+      "independent": true,
+      "overlord_id": null,
+      "vassal_value": 0
     }
   },
   "characters": {
@@ -826,8 +1012,8 @@
     "0074": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0075": {
@@ -987,8 +1173,8 @@
     "0097": {
       "appeared": true,
       "faction": "0097",
-      "node": "070401",
-      "location": "070401",
+      "node": "070218",
+      "location": "070218",
       "role": "君主"
     },
     "0098": {
@@ -1659,8 +1845,8 @@
     "0193": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0194": {
@@ -1700,10 +1886,10 @@
     },
     "0199": {
       "appeared": true,
-      "faction": "0736",
-      "node": "070701",
-      "location": "070701",
-      "role": "一般"
+      "faction": "0199",
+      "node": "070401",
+      "location": "070401",
+      "role": "君主"
     },
     "0200": {
       "appeared": false,
@@ -2114,8 +2300,8 @@
     "0258": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0259": {
@@ -2414,10 +2600,10 @@
     },
     "0301": {
       "appeared": true,
-      "faction": "0638",
-      "node": "070101",
-      "location": "070101",
-      "role": "一般"
+      "faction": "0301",
+      "node": "070723",
+      "location": "070723",
+      "role": "君主"
     },
     "0302": {
       "appeared": false,
@@ -3303,10 +3489,10 @@
     },
     "0428": {
       "appeared": true,
-      "faction": "0268",
-      "node": "120901",
-      "location": "120901",
-      "role": "一般"
+      "faction": "0428",
+      "node": "070732",
+      "location": "070732",
+      "role": "君主"
     },
     "0429": {
       "appeared": true,
@@ -3499,9 +3685,9 @@
     },
     "0456": {
       "appeared": true,
-      "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "faction": "0301",
+      "node": "070723",
+      "location": "070723",
       "role": "一般"
     },
     "0457": {
@@ -3605,8 +3791,8 @@
     "0471": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0472": {
@@ -3857,8 +4043,8 @@
     "0507": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0508": {
@@ -3941,8 +4127,8 @@
     "0519": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0520": {
@@ -4451,10 +4637,10 @@
     },
     "0592": {
       "appeared": true,
-      "faction": "0268",
-      "node": "120901",
-      "location": "120901",
-      "role": "一般"
+      "faction": "0592",
+      "node": "070307",
+      "location": "070307",
+      "role": "君主"
     },
     "0593": {
       "appeared": false,
@@ -4774,8 +4960,8 @@
     "0638": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "君主"
     },
     "0639": {
@@ -5810,8 +5996,8 @@
     "0786": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0787": {
@@ -6503,8 +6689,8 @@
     "0885": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0886": {
@@ -6559,8 +6745,8 @@
     "0893": {
       "appeared": true,
       "faction": "0893",
-      "node": "070201",
-      "location": "070201",
+      "node": "070432",
+      "location": "070432",
       "role": "君主"
     },
     "0894": {
@@ -6762,8 +6948,8 @@
     "0922": {
       "appeared": true,
       "faction": "0638",
-      "node": "070101",
-      "location": "070101",
+      "node": "070303",
+      "location": "070303",
       "role": "一般"
     },
     "0923": {
@@ -7747,19 +7933,7 @@
       "gold": 200,
       "food": 3000
     },
-    "070723": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070725": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070726": {
       "owner": "0736",
       "troops": 2000,
       "gold": 200,
@@ -7777,37 +7951,13 @@
       "gold": 200,
       "food": 3000
     },
-    "070729": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070730": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070731": {
       "owner": "0736",
       "troops": 2000,
       "gold": 200,
       "food": 3000
     },
-    "070732": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070734": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070735": {
       "owner": "0736",
       "troops": 2000,
       "gold": 200,
@@ -7843,25 +7993,7 @@
       "gold": 200,
       "food": 3000
     },
-    "070303": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070306": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070307": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070308": {
       "owner": "0736",
       "troops": 2000,
       "gold": 200,
@@ -7903,12 +8035,6 @@
       "gold": 200,
       "food": 3000
     },
-    "070501": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070502": {
       "owner": "0736",
       "troops": 2000,
@@ -7927,12 +8053,6 @@
       "gold": 200,
       "food": 3000
     },
-    "070506": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070507": {
       "owner": "0736",
       "troops": 2000,
@@ -7945,25 +8065,7 @@
       "gold": 200,
       "food": 3000
     },
-    "070512": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
     "070514": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070515": {
-      "owner": "0736",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070516": {
       "owner": "0736",
       "troops": 2000,
       "gold": 200,
@@ -9348,6 +9450,18 @@
       "troops": 8000,
       "gold": 1000,
       "food": 20000
+    },
+    "060104": {
+      "owner": "0952",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "060105": {
+      "owner": "0952",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
     },
     "120302": {
       "owner": "0266",
@@ -11215,121 +11329,25 @@
       "gold": 200,
       "food": 3000
     },
-    "070101": {
+    "070303": {
       "owner": "0638",
       "troops": 8000,
       "gold": 1000,
       "food": 20000
     },
-    "070102": {
+    "070308": {
       "owner": "0638",
       "troops": 2000,
       "gold": 200,
       "food": 3000
     },
-    "070104": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070105": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070106": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070107": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070108": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070109": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070110": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070111": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070112": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070113": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070114": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070115": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070117": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070120": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070121": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070124": {
-      "owner": "0638",
-      "troops": 2000,
-      "gold": 200,
-      "food": 3000
-    },
-    "070201": {
+    "070432": {
       "owner": "0893",
       "troops": 8000,
       "gold": 1000,
       "food": 20000
     },
-    "070401": {
+    "070218": {
       "owner": "0097",
       "troops": 8000,
       "gold": 1000,
@@ -11412,6 +11430,114 @@
       "troops": 2000,
       "gold": 200,
       "food": 3000
+    },
+    "070307": {
+      "owner": "0592",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070515": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070512": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070506": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070501": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070516": {
+      "owner": "0592",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070732": {
+      "owner": "0428",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070726": {
+      "owner": "0428",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070723": {
+      "owner": "0301",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070730": {
+      "owner": "0301",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070735": {
+      "owner": "0301",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070729": {
+      "owner": "0301",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070401": {
+      "owner": "0199",
+      "troops": 8000,
+      "gold": 1000,
+      "food": 20000
+    },
+    "070420": {
+      "owner": "0199",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070430": {
+      "owner": "0199",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070424": {
+      "owner": "0199",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070402": {
+      "owner": "0199",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
+    },
+    "070422": {
+      "owner": "0199",
+      "troops": 2000,
+      "gold": 200,
+      "food": 3000
     }
   },
   "officials": {
@@ -11445,10 +11571,10 @@
       "character_id": "0091",
       "rank": "郡"
     },
-    "0704": {
-      "name": "河东太守",
+    "070218": {
+      "name": "蒲坂令",
       "character_id": "0097",
-      "rank": "郡"
+      "rank": "县"
     },
     "0504": {
       "name": "金城太守",
@@ -11459,6 +11585,11 @@
       "name": "冀州牧",
       "character_id": "0182",
       "rank": "州"
+    },
+    "0704": {
+      "name": "河东太守",
+      "character_id": "0199",
+      "rank": "郡"
     },
     "10": {
       "name": "扬州刺史",
@@ -11505,6 +11636,11 @@
       "character_id": "0285",
       "rank": "州"
     },
+    "070735": {
+      "name": "梁县令",
+      "character_id": "0301",
+      "rank": "县"
+    },
     "0801": {
       "name": "下邳相",
       "character_id": "0330",
@@ -11530,6 +11666,11 @@
       "character_id": "0364",
       "rank": "郡"
     },
+    "070732": {
+      "name": "荥阳令",
+      "character_id": "0428",
+      "rank": "县"
+    },
     "0502": {
       "name": "汉阳太守",
       "character_id": "0474",
@@ -11545,6 +11686,11 @@
       "character_id": "0551",
       "rank": "郡"
     },
+    "0705": {
+      "name": "弘农太守",
+      "character_id": "0592",
+      "rank": "郡"
+    },
     "0203": {
       "name": "常山相",
       "character_id": "0601",
@@ -11555,10 +11701,10 @@
       "character_id": "0628",
       "rank": "郡"
     },
-    "0701": {
-      "name": "右扶风太守",
+    "070303": {
+      "name": "商县令",
       "character_id": "0638",
-      "rank": "郡"
+      "rank": "县"
     },
     "0402": {
       "name": "零陵太守",
@@ -11620,10 +11766,10 @@
       "character_id": "0867",
       "rank": "州"
     },
-    "0702": {
-      "name": "冯翊太守",
+    "070432": {
+      "name": "东垣令",
       "character_id": "0893",
-      "rank": "郡"
+      "rank": "县"
     },
     "11": {
       "name": "益州牧",
@@ -11640,10 +11786,10 @@
       "character_id": "0947",
       "rank": "州"
     },
-    "060101": {
-      "name": "平原令",
+    "0601": {
+      "name": "平原太守",
       "character_id": "0952",
-      "rank": "县"
+      "rank": "郡"
     },
     "04": {
       "name": "荆州刺史",

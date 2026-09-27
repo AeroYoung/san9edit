@@ -19,6 +19,7 @@ class Group:
     row_tag: Optional[str] = None          # 组内数据行的 tag（可选）
     count: Optional[int] = None            # 叶子行数（None = 组头不显示计数）
     values: dict = field(default_factory=dict)  # 组头行在其它列里显示的文本（列 key -> 文本）
+    tooltip: str = ""                     # 组头悬停提示（完整信息，如全部外官）
 
     def has_subgroups(self) -> bool:
         """children 首元素是 Group 则为嵌套组，否则为叶子行。"""

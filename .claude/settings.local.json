@@ -78,7 +78,25 @@
       "Bash(PYTHONIOENCODING=utf-8 timeout 200 python -u -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 timeout 150 python -u -c ' *)",
       "Bash(PYTHONIOENCODING=utf-8 python -)",
-      "Bash(sed -i 's/^            # 3\\) 画多边形$/            # 2\\) 画多边形/' game/map/renderer.py)"
+      "Bash(sed -i 's/^            # 3\\) 画多边形$/            # 2\\) 画多边形/' game/map/renderer.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python _patch_readme.py)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 240 python -u -c ' *)",
+      "Bash(grep -n \"COLUMNS：州 52\\\\|_fit_name_column\\(\\)\\\\` 取\\\\|stretch=True（吸收\" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"from game.ui.dialogs.node_edit import node_info_sections; print\\('import ok'\\)\")",
+      "Bash(grep -n '^$' game/ui/dialogs/node_edit.py)",
+      "Bash(grep -n 'join\\\\|\\\\\\\\n')",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests -q)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"刘备\" 备忘文档.md 需求文档.md README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 sed -n '120,128p;147,155p' 需求文档.md)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"0521\\\\|0003\\\\|0035\\\\|0952\\\\|0736\" 需求文档.md)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"626\\\\|50 家\\\\|FACTION_FIELDS，8\\\\|CUSTOM_GROUPING\" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 sed -n '319,326p;1528,1534p;1670,1676p;1860,1866p' README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"8 列\\\\|本轮\\\\|这次\\\\|最近\\\\|新增了\\\\|刚刚\" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -o \"§8\\\\.3 第 [0-9]* 条\" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 head -20 CHANGELOG.md)",
+      "Bash(PYTHONIOENCODING=utf-8 bash -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -c \"^| \" README.md)",
+      "Bash(PYTHONIOENCODING=utf-8 tail -32 CHANGELOG.md)"
     ]
   }
 }

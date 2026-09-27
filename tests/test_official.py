@@ -68,9 +68,11 @@ def test_county_title():
 def test_city_title():
     assert city_title("阳翟", "城", 4) == "阳翟令"
     assert city_title("长安", "城", 1) == "长安令"
-    # level ≥ 9 → 长：按 §3.4 规则文字「去「县」+ 长」（示例写「樊县长」，冲突见模块注释）
-    assert city_title("樊县", "城", 9) == "樊长"
-    assert city_title("邺县", "城", 2) == "邺令"
+    # 去「县」只在**前缀 ≥ 2 字**时做（与郡 / 国同一条守卫）
+    assert city_title("樊县", "城", 9) == "樊县长"      # §3.4 示例
+    assert city_title("范县", "城", 9) == "范县长"
+    assert city_title("邺县", "城", 2) == "邺县令"
+    assert city_title("平原", "城", 4) == "平原令"
     assert city_title("玉门关", "关隘", 4) == "玉门关都尉"
     assert city_title("武关", "关隘", 4) == "武关都尉"
     assert city_title("桥门", "关隘", 10) == "桥门障尉"     # level ≥ 6 → 障尉
@@ -86,7 +88,7 @@ def test_rank_and_dispatch():
     assert rank_of("070") is None
     assert make_title("04", state_name="荆州") == "荆州刺史"
     assert make_title("0407", county_name="南阳郡") == "南阳太守"
-    assert make_title("040701", city_name="宛县", level=2) == "宛令"
+    assert make_title("040701", city_name="宛县", level=2) == "宛县令"
 
 
 # ============================================================
@@ -140,13 +142,48 @@ def test_legacy_scenario_without_officials():
     assert world.officials_of_character("0521") == []
 
 
-def test_serialize_ignores_officials():
-    """officials 不进 serialize（本轮不可编辑，由 save 的 raw 深拷贝保留）。"""
+def test_serialize_and_diff_include_officials():
+    """officials 段参与 serialize / diff（外官可增删改后）。"""
     world = ScenarioLoader.from_dict(_raw({
         "13": {"name": "兖州刺史", "character_id": "0521", "rank": "州"},
     }), _MockGeo())
-    assert "officials" not in ScenarioWriter.serialize(world)
+    data = ScenarioWriter.serialize(world)
+    assert data["officials"]["13"] == {"name": "兖州刺史",
+                                       "character_id": "0521", "rank": "州"}
 
+    # 改官名 → diff 只出该字段
+    world.officials["13"]["name"] = "兖州牧"
+    delta = ScenarioWriter.diff(ScenarioWriter.serialize(world), data)
+    assert delta["officials"]["13"]["name"] == ("兖州刺史", "兖州牧")
+
+    # 新增一条 → diff 里字段的 old 为 None
+    world.officials["1303"] = {"name": "陈留太守",
+                               "character_id": "0521", "rank": "郡"}
+    delta = ScenarioWriter.diff(ScenarioWriter.serialize(world), data)
+    assert delta["officials"]["1303"]["name"] == (None, "陈留太守")
+
+
+def test_official_command_dirty_and_undo():
+    """外官增改删走 Command：dirty 联动 + undo 还原。"""
+    from game.core.edit_commands import OfficialRemoveCommand, OfficialSetCommand
     from game.core.edit_session import EditSession
-    baseline = ScenarioWriter.serialize(world)
-    assert EditSession(world, baseline).is_dirty() is False
+
+    world = ScenarioLoader.from_dict(_raw({
+        "13": {"name": "兖州刺史", "character_id": "0521", "rank": "州"},
+    }), _MockGeo())
+    session = EditSession(world, ScenarioWriter.serialize(world))
+    assert session.is_dirty() is False
+
+    session.execute(OfficialSetCommand(
+        "1303", None, {"name": "陈留太守", "character_id": "0521", "rank": "郡"}))
+    assert world.official_of("1303")["name"] == "陈留太守"
+    assert session.is_dirty() is True
+
+    session.undo()
+    assert world.official_of("1303") is None
+    assert session.is_dirty() is False
+
+    session.execute(OfficialRemoveCommand("13", world.official_of("13")))
+    assert world.official_of("13") is None
+    session.undo()
+    assert world.official_of("13")["name"] == "兖州刺史"

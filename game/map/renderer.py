@@ -12,6 +12,7 @@ from game.config.style import (
     MAP_STYLE, CITY_LEVEL_MIN_SCALE, LAYER_VISIBILITY, MAP_INTERACTION,
 )
 
+from game.core.faction_color import faction_display_color
 from game.core.utils import lighten_color, darken_color
 from game.core.territory import compute_county_stats  # ★ 新
 
@@ -286,7 +287,9 @@ class MapRenderer:
             faction = self._world.faction(node.owner)
             if faction is None:
                 continue
-            color = faction.color
+            # ★ 派生显示色（需求 §3.4）：附庸按宗主混色、董卓固定深棕；
+            #   不写回 Faction.color（落盘色仍是势力自身的默认色）
+            color = faction_display_color(faction, self._world.factions)
 
             # 2) 画多边形
             ring = feat["geometry"]["coordinates"]

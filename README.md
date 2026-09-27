@@ -49,6 +49,11 @@
 | 编辑类标识 | MenuItem.edit / TopBar._edit_entries | ★ 标记编辑入口，按 APP_MODE 一键全禁 |
 | 据点编辑共用流程 | dialogs/node_edit.py::edit_node | ★ 面板右键与地图右键共用（含郡治互斥） |
 | 势力编辑共用流程 | dialogs/faction_edit.py::edit_faction | ★ 势力面板右键与地图右键共用 |
+| 独立 / 附庸 | Faction.independent / vassal_label() | ★ 势力分类：True = 独立，False = 附庸（§3.2） |
+| 宗主 | Faction.overlord_id | ★ 附庸所从属的**独立**势力 id；独立势力恒为 None |
+| 附庸值 | Faction.vassal_value | ★ 1–99，越大越听从宗主；独立势力恒 0（100 = 融入宗主，未实现） |
+| 派生显示色 | core/faction_color.py::faction_display_color | ★ 运行时派生，**不写回** Faction.color（§3.2） |
+| 弹窗分组 | EditDialog(sections=…) / FieldGroup | ★ 只影响布局，不改变取值与校验（§9.4） |
 | 日志系统 | logging_setup.py / LOG_DIR | ★ 每次启动一个文件，DEBUG，保留 30 个（§5.6） |
 | 日志总开关 | LOG_ENABLED（constants.py） | ★ 编译期一键关闭全部日志（§5.6）；风格同 APP_MODE |
 | session id | logging_setup._SESSION_ID | ★ 8 位十六进制，每行日志前缀，区分多次启动 |
@@ -156,6 +161,14 @@
 - _troops_ref 不建（没有 Troop 容器可注入）。
 - 展示落点：势力面板「兵力」列 + 势力编辑弹窗只读行。
 
+**「势力分类（独立 / 附庸）」约定：**
+
+- 三个可落盘字段：`independent`（bool，缺省 True）/ `overlord_id`（附庸的宗主 id）/ `vassal_value`（1–99）。
+- 不变量：独立势力的 `overlord_id` 恒 None、`vassal_value` 恒 0；附庸势力的 `overlord_id` 必为**某个独立势力**的 id。
+- 加载剧本时按 §3.6 的顺序校验，关系损坏的势力连同名下据点 / 人物一起移除（§3.6）。
+- 改这三个字段只走 `FactionEditCommand`（可包 `CompositeCommand` 带级联）；UI 不直接赋值。
+- 显示色由 `core/faction_color.py` 派生（独立 → 自身 color；董卓 → 固定 `#5C4033`；附庸 → 按附庸值混宗主色 + 同宗主色相偏移），**不写回** `Faction.color`（§8.3 第 52 条）。
+
 ---
 
 ## 1. 项目概述
@@ -168,7 +181,7 @@
 | 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报窗口（Pillow 头像 + 五维雷达图 + 关系）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + undo/redo + 增量保存）；全流程日志 |
 | 运行环境 | Python 3 + 标准库 tkinter + Pillow（第三方，仅人物情报窗口的头像用；雷达图/关系区纯 Canvas/Widget） |
 | 数据来源 | assets/map.geojson：13 州 / 106 郡 / **1152 县**；roads.geojson；water.geojson；mountains.geojson（未接入）；characters.json：1049 人；assets/portrait/：739 张头像 |
-| 剧本来源 | scenarios/default.json（190 年 · 州郡外官；50 势力 / 1049 人物全覆盖 / 626 据点 / 49 条外官） |
+| 剧本来源 | scenarios/default.json（190 年 · 州郡外官；54 势力 / 1049 人物全覆盖 / 616 据点 / 53 条外官） |
 | 用户数据 | userdata/settings.json；userdata/logs/ |
 
 **当前完成度（粗粒度）：**
@@ -262,7 +275,8 @@ san9edit/
         ├── settings_window.py         设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
         │                              +「面板列」tab + 8 个方法
         ├── character_info_window.py   人物情报窗口（头像 + 五维雷达图 + 关系 + 生平占位）
-        ├── node_info_window.py        ★ 据点情报窗口（基本情况 / 外官 / 州郡 / 实际控制 / 宣称权冲突）
+        │                              （据点情报已并入编辑据点弹窗，见 §5.21 EditDialog）
+        ├── dialogs/pick_list.py      ★ 通用单选列表（弹窗挑一行用：单选 / 无右键 / 不分组）
         ├── window_utils.py            窗口工具（最大化 / 居中）
         ├── dialogs/                   ★ 编辑弹窗（数据驱动）
         │   ├── field_spec.py          Field NamedTuple（6 种 kind）
@@ -306,7 +320,7 @@ san9edit/
 | 列表 | Treeview 构建、列宽/对齐、滚动条、group tag | COLUMNS / NAME_COLUMN |
 | 排序 | 列头点击切换升降序、空值排最后 | （无需） |
 | 分组 | 默认维度分组（GROUP_DIMS + GroupBar） | GROUP_DIMS / DEFAULT_GROUP / PRIORITY_NAME |
-| 固定分组 | CUSTOM_GROUPING 时走 build_groups() 回调 | build_groups()（势力用） |
+| 固定分组 | CUSTOM_GROUPING 时走 build_groups() 回调 | build_groups()（暂无人用） |
 | 搜索 | 过滤调度、多词 AND、保留分组结构 | （无需） |
 | 右键菜单 | 菜单弹出、多选上下文、MenuItem 构建 | context_menu_items() |
 | 列渲染 | Column.image 扩展点（文本前加图片） | image 取值函数（势力色块） |
@@ -329,7 +343,21 @@ san9edit/
 
 ### 3.2 势力（Faction）
 
-id = 君主人物 id。可落盘字段：id / name / color / prestige / stance。stance_label() → "敌对" / "盟友" / "中立"（stance < 0 敌对；> 80 盟友；其余中立）。
+id = 君主人物 id。可落盘字段：id / name / color / prestige / stance / **independent / overlord_id / vassal_value**。stance_label() → "敌对" / "盟友" / "中立"（stance < 0 敌对；> 80 盟友；其余中立）。
+
+**分类三字段（独立 / 附庸）：**
+
+| 字段 | 类型 | 默认 | 语义 |
+|---|---|---|---|
+| independent | bool | True | True = 独立势力；False = 附庸势力 |
+| overlord_id | str \| None | None | 宗主势力 id；独立势力恒 None；附庸必为某独立势力 id |
+| vassal_value | int | 0 | 附庸值 1–99（越大越听从宗主）；独立势力恒 0 |
+
+- `to_dict` 对**所有势力**都写这三个字段；`from_dict` 三者均容错（缺省 = 独立 / 无宗主 / 0）。
+- 加载时钳制（§3.6 / `Faction.from_dict`）：独立 → `vassal_value` 强制 0；附庸 → clamp 到 1–99（0 → 1，≥ 100 → 99）。
+- 附庸值 100（融入宗主）/ 降到 0（自动独立）**未实现**，只存储不消费（§8.4）。
+- `vassal_label(overlord_name)` → 独立势力「独立」，附庸 → 宗主势力名；势力面板「独立/附庸」列与宗主分组都用它。
+- **派生显示色**：`core/faction_color.py::faction_display_color(faction, factions)` 是纯函数，独立 → 自身 color，董卓 → 固定 `#5C4033`，附庸 → 宗主显示色按 `vassal_value` 混合自身落盘色，同宗主多附庸按附庸值降序分配色相偏移（首项 0°，其后 ±5°、±10°…）。落盘 color 仍是势力自身默认色，**派生色不写回**。
 
 ★ gold / food / troops 是派生值：
 
@@ -376,7 +404,7 @@ def troops(self):
 | 类 | to_dict 写什么 |
 |---|---|
 | Node | 从零写全 7 字段：owner / troops / gold / food / type / level / is_capital |
-| Faction | name / color / prestige / stance（不写 gold / food / troops） |
+| Faction | name / color / prestige / stance / independent / overlord_id / vassal_value（不写 gold / food / troops） |
 | Character | 全 31 字段（含 portrait / appeared / faction / node / location / role） |
 
 理由见 §8.3 第 43 条：加新的可编辑静态字段时，写 / 读 / 显示三处必须同步。
@@ -451,7 +479,9 @@ def troops(self):
 
 - 容器：`{region_id: {"name", "character_id", "rank"}}`，region_id 2 / 4 / 6 位混放。
 - 与 Character 无关：**不加** `Character.official` 字段，也不进 `characters` 段（外官以 region 为键）。
-- 本轮只读不写：不入 serialize / diff；UI 三处展示（据点「主官」列、州郡分组标题、人物「官职」列 + 情报窗口）。
+- **可编辑**：officials 段参与 `serialize` / `diff`（与 factions / characters / nodes 同构）；
+  增删改一律走 `OfficialSetCommand` / `OfficialRemoveCommand`（§10.2），`save` 仍靠 `deepcopy(raw)` 保留未改动条目。
+- UI 展示：据点「主官」列、州郡组头、人物「官职」列 + 情报窗口，编辑入口在「编辑人物」窗口的外官区（§5.23）。
 
 **查询：**
 
@@ -527,7 +557,22 @@ SidePanel.on_panel_edit → refresh_all()：四个面板一起重算，势力面
 character_id_range：剧本顶层可选字段，[lo, hi]。不写 = 全加载（[1, 9999]）。
 仍保留兼容（老剧本还能按 id 白名单过滤）；190 剧本已不再写它。
 
-据点构造与覆盖顺序（_build_nodes_from_geo → _build_region_names → _apply_node_overrides → bind_factions）见 §5.10。
+据点构造与覆盖顺序（_build_nodes_from_geo → _build_region_names → _apply_node_overrides → **★ _validate_vassals** → bind_factions）见 §5.10。
+
+**附庸关系校验（`_validate_vassals`，必须在据点 / 人物都落位之后）：**
+
+| 情况 | 处理 |
+|---|---|
+| independent=True 且 overlord_id 非空 | 忽略 overlord_id，记 warning（该势力仍是独立势力） |
+| independent=False 且宗主为空 / 不存在 / 本身是附庸 / 成环 | 视为损坏 → **移除该势力** |
+
+「移除该势力」：摘 `world.factions` + 名下据点 `owner` 置空 + 名下人物 `faction` 置空；
+其他势力指向它时**下一轮按同一规则处理**（循环到无损坏为止 = 递归）。三处提示：
+`logger.warning`（势力 id + 原因）、`print()`（不受 LOG_ENABLED 影响）、
+`world.vassal_removals`（`[(id, 势力名, 原因)]`）→ MainWindow 加载后弹 `messagebox.showwarning`。
+
+- `_remove_damaged_faction` 直接改 World —— 加载期还没有 EditSession，不属于「绕过 Command」（§8.3 第 36 条只管运行时编辑）。
+- 老剧本无这三个字段 → 全按独立处理，不触发任何移除。
 
 ★ death_year 不再被消费：加载不筛、登场判定不看。字段本身保留（历史人物长寿化 / 穿越设定）。
 
@@ -622,9 +667,9 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
   "desc": "190年，十八路诸侯讨董……",
   "start": { "year": 190, "month": 1, "xun": 1 },
   "player_faction": "0521",
-  "factions": { "…50 家…" },
+  "factions": { "…54 家…" },
   "characters": { "…1049 条，写 5 字段（appeared/faction/node/location/role），按 id 排序…" },
-  "nodes": { "…626 条…" },
+  "nodes": { "…616 条…" },
   "officials": { "…49 条，键为行政区 id…" }
 }
 ```
@@ -634,17 +679,17 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 | 段 | 写什么 |
 |---|---|
 | character_id_range | 老剧本可写 [1, 1000] 或省略；190 剧本**不写** |
-| factions | name / color / prestige / stance（不写 gold / food / troops） |
+| factions | name / color / prestige / stance / independent / overlord_id / vassal_value（不写 gold / food / troops） |
 | characters | appeared / faction / node / location / role（全量 1049 人） |
 | nodes | owner / troops / gold / food；个别条目额外带 is_capital / level |
 | officials | name（已拼好的完整官名）/ character_id / rank（`州` / `郡` / `县`） |
 
 - 各段均为 **dict（键 = id）而非数组**：factions 键 4 位势力 id、characters 键 4 位人物 id、nodes 键 6 位据点 id、officials 键 2 / 4 / 6 位行政区 id（三层混放同一 dict）。
-- nodes 只有 626 条 < map.geojson 的 1152 县 —— 剧本只覆盖有主的据点，其余县由 GeoData 建出来后保持无主。
+- nodes 只有 616 条 < map.geojson 的 1152 县 —— 剧本只覆盖有主的据点，其余县由 GeoData 建出来后保持无主。
 - nodes 的 is_capital / level 是**可选字段**，解析端必须容错（`_apply_node_overrides` 用 `in` 判断）。
 - characters 的 appeared 也是**可选字段**：不写 → 默认 true（老剧本兼容）。
 - officials 段整体**可选**：老剧本没有 → `World.officials` 为空 dict，UI 一律显示空 /「—」。
-- officials 改 World 的口径与编辑无关：本轮**不入 serialize / diff**（不可编辑），`save` 的 `deepcopy(raw)` 天然保留该段。
+- officials 改 World 的口径与编辑无关：**不入 serialize / diff**（不可编辑），`save` 的 `deepcopy(raw)` 天然保留该段。
 
 **officials 一区一官**：键唯一 → 一个行政区只能有一个外官；同一人物可担任多个外官（以 region 为键天然支持）。
 键的层级即 rank：2 位 = 州、4 位 = 郡、6 位 = 县。
@@ -663,11 +708,12 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 - ★ `death_year` **不参与判定**。
 - 未登场人物的 faction / node / location / role 一律 null；「设为登场」后仍是「在野」，归属由完整人物编辑补。
 
-### 4.5 190 剧本势力（50 家）
+### 4.5 190 剧本势力（54 家）
 
-- 键 = 4 位势力 id = 君主的人物 id；字段 name / color / prestige / stance（初始 prestige 1000、stance 恒 0）。
-- 完整清单见 tools/build_scenario_190.py 的 `MONARCHS` 常量（13 州级 + 37 郡级），生成结果落在 scenarios/default.json。
+- 键 = 4 位势力 id = 君主的人物 id；字段 name / color / prestige / stance + independent / overlord_id / vassal_value（初始 prestige 1000、stance 恒 0）。
+- 完整清单见 tools/build_scenario_190.py 的 `MONARCHS` 常量（13 州级 + 38 郡级）+ 董卓名单新建的 4 家（`DONGZHUO_NEW_MONARCHS`），生成结果落在 scenarios/default.json。
 - 四位主角色锁定：刘备 #3B8B3B 暗绿 / 袁绍 #E8C500 亮黄 / 曹操 #2928EF 蓝 / 孙坚 #C83030 红。
+- 附庸推导结果：16 家附庸 / 38 家独立（董卓 7 家附庸值 85，其余 9 家附庸值 10）。
 
 ### 4.6 势力与地盘表达（build_scenario_190.py）
 
@@ -688,12 +734,16 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 - 势力范围不必等于行政区全境：治所被占时落在别的郡（`effective_capital` = 地盘首县）。
 - 注意：州级势力若治所所在郡已被郡级占走，会退到州内第一个空郡。
 
-两处常量可点名改地盘（都在脚本顶部）：
+三处常量可点名改地盘（都在脚本顶部）：
 
 ```python
-TERRITORY_COUNTIES  = {"董卓": ("0707", "0703", "0705")}  # 点名要哪几个郡（河南尹 + 京兆尹 + 弘农）
+TERRITORY_CITIES     = {"刘备": ("平原", "漯阴", "高唐")}  # 点名要哪几个县（按县名，优先于一切自动划地）
+TERRITORY_COUNTIES   = {"董卓": ("0707", "0703", "0705")}  # 点名要哪几个郡（河南尹 + 京兆尹 + 弘农）
 TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}              # 上限县数（治所优先），不占整郡
 ```
+
+★ `TERRITORY_CITIES`（按县名）与 `DONGZHUO_VASSALS`（董卓名单）都走 `resolve_city_names()` 解析，
+命中时直接返回全量据点、**不再按等级自动划地** —— 所以刘备虽是「郡」级（外官 = 平原太守），也只占平原郡三县。
 
 **配色**（`assign_colors()`）：两势力的**县点**距离 < `CITY_ADJ_DEG`(0.8°) 视为相邻（先做包围盒粗筛）
 → 贪心染色，相邻势力必须满足「色相差 ≥ `MIN_HUE_GAP`(40°) 或明度差 ≥ `MIN_VAL_GAP`(0.19)」；
@@ -708,8 +758,36 @@ TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}              # 上限县数（
 登场预计算：分配完势力后逐人算 appeared（规则见 §4.4）——有势力的一律 true，其余按生年规则；穿越人物一律 false。
 未登场人物仍写进 characters 段（faction / node / location / role 一律 null），编辑器里可查可改。
 
+官名规则（`core/official_title.py`）：州 = 州名 + 牧 / 刺史（司州 → 司隶校尉）；郡 = 尹 / 属国都尉 / 相 / 太守；
+县 = 令（level < 9）/ 长（level ≥ 9）、关隘 = 都尉（level < 6）/ 障尉、渡口 = 津长。
+★ 「去后缀再拼」只在**前缀 ≥ 2 字**时做：XX郡 → XX太守、XX县 → XX令/长；
+前缀 1 字时保留原名 —— 东郡 → 东郡太守、范县 → 范县长、邺县 → 邺县令（需求 §3.3 / §3.4 示例）。
+
 外官生成：君主即该行政区的唯一外官（`build_officials()`）。官名由 core/official_title.py 的规则生成，
 与 `MONARCHS` 里的定稿名不一致时按定稿记并打日志（当前仅「左冯翊 → 冯翊太守」一条走 `TITLE_OVERRIDES`）。
+一区一官：同一行政区已有外官 → 跳过并打日志。
+
+★ **董卓名单附庸的外官按实际占据的据点现算**（`official_from_territory()`，不再用 `MONARCHS` 的定稿官名）：
+占据的据点里含某郡的**郡治** → 该郡太守；否则 → 治所的县令（治所落在关隘 / 渡口时取第一个「城」定官名）。
+例：段煨据弘农（郡治）→ 弘农太守；胡轸的据点全是关隘 + 县城 → 治所取梁县 → 梁县令。
+
+**附庸关系推导（`derive_vassals()`，必须在 `build_officials()` 之后 —— 要用州官名判「牧」还是「刺史」）：**
+
+| 输入 | 判定 |
+|---|---|
+| 州级势力 | independent=True |
+| 郡级，所在州外官名以「牧」结尾或是「司隶校尉」 | 附庸，vassal_value=10，宗主 = 该州势力 |
+| 郡级，所在州外官名以「刺史」结尾 | independent=True |
+| 曹操 / 袁绍 / 刘备（`FORCED_INDEPENDENT`，按**姓名**匹配） | 强制 independent=True，覆盖上面两条 |
+| `DONGZHUO_VASSALS` 名单（7 家） | 附庸，vassal_value=85，宗主 = 董卓 |
+| 其余 | independent=True |
+
+- 名单用君主名做键：「郭氾」按 characters.json 的写法记作「郭汜」。
+- 名单里 `MONARCHS` 没有的君主（段煨 0592 / 徐荣 0428 / 胡轸 0301 / 牛辅 0199）由 `add_dongzhuo_vassals()`
+  新建同构势力条目（等级「县」，据点 = 名单清单）；名单据点**抢占**（`_claim()` 从原主手里拿走）。
+- 运行结束打印附庸清单（宗主 → 附庸 → 附庸值）供人工确认。
+
+★ 势力 id 一律从 characters.json **按名反查**，不要写死：刘备 = 0952、曹操 = 0521、袁绍 = 0035、董卓 = 0736。
 
 ### 4.7 头像资产
 
@@ -949,7 +1027,7 @@ GameState：回合 / 日期 / 玩家势力 / 资源的信息栏数据源。
 | 模块 | 导出 |
 |---|---|
 | edit_session.py | Command（抽象基类）/ CompositeCommand / EditSession |
-| edit_commands.py | NodeEditCommand / FactionEditCommand / CharacterEditCommand |
+| edit_commands.py | NodeEditCommand / FactionEditCommand / CharacterEditCommand / FactionCreateCommand / FactionDeleteCommand / OfficialSetCommand / OfficialRemoveCommand / `build_vassal_commands()`（§10.2） |
 | scenario_writer.py | ScenarioWriter.serialize / .diff / .save（全静态方法） |
 
 ### 5.14 game/map/geo_data.py / viewport.py / renderer.py
@@ -1201,13 +1279,18 @@ class CharacterInfoWindow(tk.Toplevel):
         # update_idletasks → center_on_parent(self, self._top, 600, max(req_h, 640))
         # Escape 关闭
 
-    def _build_ui(self):                    # 四区布局
+    def _build_ui(self):                    # 内容装入滚动容器 + 四区布局
+    def _build_scroll_host(self):           # ★ Canvas + 纵向滚动条，返回内容 Frame
+    def _on_wheel(self, event):             # 滚轮滚动
+    def _group_body(self, wrap, title):     # 关系 / 生平：编辑形态用 CollapsibleSection
     def _build_portrait(self, parent):      # 头像框
     def _build_radar(self, parent):         # ★ 雷达图（Canvas）
+    def _redraw_radar(self):                # ★ delete("all") 后整块重画
+    def _edit_stat(self, attr):             # ★ 点轴标签 → 输入框改该维数值
     def _axis_angles(self):                 # 5 轴角度：-90° + i * 72°
     def _axis_points(self):                 # 5 个最外层顶点坐标
-    def _fill_and_edge(self):               # 势力色 / 无势力主题灰
-    def _draw_data_polygon(self, canvas):   # 数据多边形 + 顶点小圆
+    def _fill_and_edge(self):               # ★ 势力**派生显示色** / 无势力主题灰
+    def _draw_data_polygon(self, canvas):   # 数据多边形 + 顶点小圆（值取自 self._stats）
     def _build_relations(self, parent):     # ★ 关系区（8 字段）
     def _relation_cell(self, parent, col, label, cid)   # 单值（父/母/配偶）
     def _relation_list_row(self, parent, label, ids)    # 列表（义兄弟/亲爱/厌恶）
@@ -1233,9 +1316,10 @@ class CharacterInfoWindow(tk.Toplevel):
 - Canvas 尺寸固定 340×340，坐标全硬编码，**不问 winfo_width**（布局未完成时拿到的是 1）。
 - 5 轴：-90° 起，顺时针 72° 步进（统 → 武 → 智 → 政 → 魅）。
 - 5 层同心五边形网格（对应 20 / 40 / 60 / 80 / 100）；中心到顶点的轴线。
-- 数据多边形：`stipple="gray50"` 模拟半透明填充 + 势力色描边；无势力 → `#7F8C8D`。
+- 数据多边形：`stipple="gray50"` 模拟半透明填充 + 势力**派生显示色**描边（`faction_display_color`，§3.2）；无势力 → `#7F8C8D`。
 - 轴上限 100：> 100 截到 100 画；数值列表仍显示真实值。
 - 轴标签单字（统/武/智/政/魅）+ 标签下小字数值；数据顶点小圆 r=3。
+- 编辑形态下轴标签是蓝色可点（`tag_bind` + `hand2`），点开输入框改值 → 整块重画。
 
 **关系区（8 字段全画）：**
 
@@ -1246,9 +1330,22 @@ class CharacterInfoWindow(tk.Toplevel):
 - 查不到的人 → 灰色 `#999999` "—" 不可点（§8.3 第 33 条）。
 - 血缘是字符串标签不可点；世代是数字。
 
+**编辑形态（MODE_EDIT，`session` 有值）：**
+
+- 标题「XXX — 编辑人物」；头部按 `CollapsibleSection` 分四组：**基础**（姓名 / 字 / 性别下拉「男·女」/ 已登场，
+  **横向一行**）、**五维**（雷达图 + 轴标签）、**归属**（势力下拉 + 所属 / 所在按钮 → `pick_node` 据点单选窗）、
+  **外官（N）**（逐行列官名 + 行政区 id，带「编辑外官」按钮）。
+- **五维没有独立输入框**：数值只存在 `self._stats`，点雷达图轴标签 → `simpledialog.askinteger`
+  （int，0–100）→ 改 `self._stats` → `_redraw_radar()`；**不写 World**，保存时随其它字段一起提交。
+- 关系区 / 生平区在编辑形态下也套 `CollapsibleSection`（默认展开）；只读形态保持「标题 + 正文」平铺。
+- 「保存」统一收集变化 → `CharacterEditCommand`；君主守卫（必须保持登场 / 需先解散势力）在保存前拦截。
+- 「编辑外官」的 `open_dialog` 必须等弹窗关闭（`self.wait_window(dlg)`），否则读到的 `dlg.ok` 恒为 False。
+
 **窗口：**
 
 - 宽固定 600，高自适应（`resizable(False, True)`）；最小高 640。
+- **内容装在 Canvas + 纵向滚动条里**（`_scroll_canvas` / `SCROLL_H = WIN_MIN_H − 80`），滚轮绑在 Toplevel 上
+  （Tk 的 bindtags 让子控件的滚轮事件冒泡到 toplevel，指针停在任意子控件上都能滚）。
 - 居中基准 = 游戏主窗口（§8.3 第 32 条）。
 - **不做单例**：重复右键会开多个窗口。
 
@@ -1258,13 +1355,21 @@ class CharacterInfoWindow(tk.Toplevel):
 
 | 文件 | 内容 |
 |---|---|
-| field_spec.py | Field NamedTuple（key / label / kind / default / options / min / max / editable / hint / display_fn） |
-| edit_dialog.py | EditDialog：通用数据驱动弹窗，`get_changed() -> (new_values, old_values)` |
-| node_fields.py | NODE_FIELDS，10 项 |
-| faction_fields.py | FACTION_FIELDS，8 项 |
-| node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥） |
-| faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool` |
-| move_to_node.py | `move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`（详见 §5.23） |
+| field_spec.py | Field NamedTuple（key / label / kind / default / options / min / max / editable / hint / display_fn）+ **FieldGroup**（title / fields / desc / info，弹窗分组用） |
+| edit_dialog.py | EditDialog：通用数据驱动弹窗，`get_changed() -> (new_values, old_values)`；
+  三个可选形态：`info_sections=((标题, 文本), …)` 在字段上方渲染只读信息块、`readonly=True` 全部字段按只读渲染且按钮只剩「关闭」—— 这就是「编辑XX / XX情报」同一个窗的实现方式、
+  **`sections=(FieldGroup, …)` 分组 + `scroll=True` 纵向滚动**。分组只影响布局（`self.fields` 由分组拍平），
+  联动靠 `on_change(key, value, dialog)` 回调 + `set_field_enabled/set_field_value/field_value`（弹窗本身不认业务） |
+| node_fields.py | NODE_FIELDS，10 项 + **NODE_SECTIONS**（基本情况 / 归属与资源）+ `node_sections(fields, info)` |
+| faction_fields.py | FACTION_FIELDS，11 项（含 independent / overlord_id / vassal_value / 只读 display_color）
+  + **FACTION_SECTIONS**（基本情况 / 可编辑信息 / 独立·附庸）；`faction_fields(world, faction)` 运行期补宗主选项与显示色，`overlord_options()` 只列独立势力 |
+| node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥；弹窗分组 + 滚动） |
+| faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool`（分组弹窗 + 独立/附庸联动，`_make_linkage(fields)`） |
+| move_to_node.py | `move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`；另导出 `pick_node(parent, world, title)` 通用据点选择窗（详见 §5.23） |
+| pick_list.py | `PickList`：GenericListPanel 的裁剪副本（`SELECT_MODE=browse` / 无分组 / 无右键 / 禁用 Ctrl+A），列与取值由构造参数给 |
+| faction_lifecycle.py | `create_faction(...)` / `delete_faction(...)` + 两个弹窗；`plan_delete()` / `build_create_commands()` / `build_delete_commands()` 纯逻辑（★ `plan_delete()` 顺带算出 `vassal_ids`，删宗主时名下附庸自动独立） |
+| node_owner.py | `change_node_owner(...)` + `ChangeOwnerDialog`；`plan_owner_changes()` / `person_change()` / `build_commands()` 纯逻辑 |
+| official_edit.py | `edit_officials(...)` + `OfficialEditDialog`；`region_options()`（限实控区域）/ `build_official_commands()` 纯逻辑 |
 
 详见 §9.4 / §9.5 / §9.6。
 
@@ -1288,12 +1393,16 @@ class CharacterInfoWindow(tk.Toplevel):
 | `group_values(dim_key, 组名, rows)` | `{}` | 组头行在**其它列**里显示的文本（据点面板把州 / 郡外官放进「主官」列，不挤 #0） |
 | `row_priority(group_keys)` | None | 叶子行优先排序键（人物面板「君主置顶 + 登场在前」），在用户列排序之后做稳定排序 |
 | `row_tags(row)` | `()` | 行级 tag（人物面板未登场深灰），与组给的 `row_tag` 合并 |
+| `group_tooltip(dim_key, 组名, rows)` | `""` | 组头悬停提示（完整信息，如该区全部外官）；框架在 `<Motion>` 里按 item 查 `_item_tips` 弹浮窗 |
 | `KEEP_VIEW_ON_EDIT` | False | True → 编辑后的 `refresh(keep_view=True)` 走**就地刷新** |
 
 - 三处 `self.COLUMNS` → `self._visible_columns`：_match_one / _column_index / _insert_row。
 - **就地刷新**（`_reconcile()`）：按结构 key 复用 item —— 组 = 组标题路径元组、行 = `("row", row_key)`；`_item_keys` 存 item → key。只对位置变化的项调 `tree.move`，滚动位置按「原可见区顶部第一个未变化条目」还原（用可见序号 ÷ 可见条目数 + `yview_moveto`，**Treeview 没有 `yview(item)`**），选中项与展开状态天然保留；异常时退回整表重建，避免登记表写脏后每次刷新都报错。
 - 组头行：`Group.label()` 只出「组名（N）」放 #0；组头的其它信息走 `Group.values`（列 key -> 文本）填到对应列 —— ttk.Treeview 的单元格**不能跨列**，所以「让标题显示全」只有两条路：加宽 #0，或把信息挪进别的列，这里选后者。
-- `#0` 列 `stretch=True`（吸收右侧剩余空间）；`_fit_name_column()` 按最长组标题兜底加宽（上限 `GROUP_COLUMN_MAX = 360`）；ttk.Treeview 没有 `-font`，量宽度用的字体按 `group` tag 规格自建（默认族 + 9pt 粗体）。
+- `#0` 列 `stretch=False`；`_fit_name_column()` 取「最长组标题 + 最长数据行」较大者兜底加宽（上限 `GROUP_COLUMN_MAX = 360`），**不持久化**。
+- ★ 用户拖动表头后不再自动调整：`<ButtonRelease-1>` + `identify_region()` 命中 `heading` / `separator` 时记下 `_name_width_manual`，之后每次 `_fit_name_column()` 只把该宽度写回去（重建表格也保留）；列宽不写 settings（用户明确不要存盘）。
+- ★ 列宽预算：侧栏约 530px − 竖向滚动条 ≈ 509px 可用，所以 `#0` 只能占 100–130、其余列按内容压到「州 46 / 郡 52 / 等级 38 / 类型 42 / 势力 54 / 主官 104 / 人物 38」（合计 374 + #0 129 = 503，刚好不出横向滚动条）。改这些宽度前先算总账。
+- ttk.Treeview 没有 `-font`，量宽度用的字体按 `group` tag 规格自建（默认族 + 9pt 粗体）。
 - 刷新入口：`refresh()` = 整表重建，`refresh(keep_view=True)` = 就地刷新（仅 `KEEP_VIEW_ON_EDIT` 的面板采用）；`_notify_edit(keep_view=)` → SidePanel.on_panel_edit → refresh_all(keep_view=)。
 
 ### 5.23 game/ui/panels/{node,character,faction,troop}_panel.py
@@ -1302,15 +1411,21 @@ class CharacterInfoWindow(tk.Toplevel):
 
 - 行模型 NodeRow：node_id / name / type / level / coords / state_name / county_name / owner_id / owner_name / is_capital / person_count（另预留 governor_name）。display_type = 郡治 或 type。
 - `fetch_rows` 循环外调一次 `world.count_characters_by_node()`，把人数传给 `NodeRow.from_node(..., person_count=)`；聚合不缓存，每次 refresh 现算（登场开关 / undo / redo 后自动跟着变）。
-- COLUMNS：州 52 / 郡 62 / **等级** 42 / 类型 46 / 势力 64 / 主官 56 / 人物 42；NAME_COLUMN = 县（110，左对齐）。
+- COLUMNS：州 46 / 郡 52 / **等级** 38 / 类型 42 / 势力 54 / 主官 104 / 人物 38；NAME_COLUMN = 县（110 基宽，左对齐，#0 由 `_fit_name_column` 自适应）。
 - 「主官」列（宽 112）= 该**县**外官（`World.official_of(node.id)` 的 6 位键）姓名，无则「—」；州 / 郡外官不进数据行，而是进**组头**的同一列（见下）。
 - `group_values()`：按州 / 郡分组时，组头行在「主官」列显示外官「官名-姓名」（`World.official_label(id[:2])` / `(id[:4])`）。
-- 右键「据点情报」→ 打开 `ui/node_info_window.py::NodeInfoWindow`（只读 Toplevel，Esc 关闭）；地图右键的「据点情报」也走同一个窗口（`MainWindow._map_intel`）。
+- 右键「编辑据点 · 据点情报」→ 同上一条同一个 `edit_node`（信息块 = 原来的据点情报窗口内容：据点 / 县外官 / 州郡 / 实际控制 / 本郡其它据点 / 宣称权冲突）；
+  地图右键的同一项也走这条链（`MainWindow._edit_node_from_map`）。
 - ★ 组标题画在 #0 列，长标题（如「司州（125）· 司隶校尉-董卓」）会被列宽截断 → 框架的 `_fit_name_column()`
   按最长组标题自动加宽 #0（上限 `GROUP_COLUMN_MAX = 360`）；标题变短（老剧本无外官）时自动收回名称列基宽。
   ttk.Treeview 没有 `-font` 选项，量宽度用的字体按 `group` tag 的规格自己造（默认族 + 9pt 粗体）。
 - GROUP_DIMS：faction(势力) / state(州) / county(郡) / type(类型)。
-- 右键：行名（禁用）/ 编辑（单选，edit=True）/ 据点情报 / 人物情报 / 势力情报 / 定位到地图 / 全部展开折叠。情报三项目前只写日志。
+- 右键：行名（禁用）/ **编辑据点 · 据点情报**（同一个窗，标签随模式；单选）/ **批量修改所属**（edit=True）/
+  **编辑人物 · 人物情报**（本据点君主的人物窗）/ **编辑势力 · 势力情报**（本据点所属势力的同一窗）/ 定位到地图 / 全部展开折叠。
+- ★ 标签随模式切换：`_label(edit_text, info_text)` 按 `edit_session is not None` 取词 —— 与 `MenuItem(edit=True)` 同一判据，
+  不在入口里写 APP_MODE 判断（§8.3 第 40 条）。主入口**不带 edit 标识**：游戏模式下它是只读情报入口。
+- 组头：`group_values` 把州 / 郡外官放进「主官」列；本区无外官时退一步显示下辖首位「等 N 个」；
+  完整列表走 `group_tooltip`（悬停浮窗）。
 
 **character_panel.py** — PANEL_KEY = "character"，DEFAULT_GROUP = ("faction",)
 
@@ -1321,6 +1436,11 @@ class CharacterInfoWindow(tk.Toplevel):
 - GROUP_DIMS：faction(势力，默认) / node(所在) / role(身份) / sex(性别) / **appear(登场 → 已登场 / 未登场)**。默认分组维持 ("faction",)，不强制先按登场分。
 - `priority_name()`：返回玩家势力名，用于分组置顶（只对最外层生效）。
 - 右键：人物情报 / 复制编号 / **设为登场·设为未登场** / **移动到据点** / 定位到据点 / 全部展开折叠。
+- 外官区：「编辑外官」按钮 → `official_edit.edit_officials`。open_dialog 必须**等弹窗关闭**再返回
+  （`lambda: self.wait_window(dlg)`），否则读到的 `dlg.ok` 恒为 False、命令不执行。
+- 「人物情报」在 MODE_EDIT 下打开的是**编辑人物**窗口（`CharacterInfoWindow(session=...)`）：
+  姓名 / 字 / 性别 / 五维 / 登场 / 势力 / 所属 / 所在可编辑 + 外官区（`official_edit`）；
+  MODE_GAME 传 `session=None` → 标题回落「人物情报」，纯只读。
   - 「移动到据点」→ `_move_to_node(selected_rows)` → `dialogs/move_to_node.py::move_characters`（弹窗模态，走 `_open_dialog`）。弹窗内是据点面板的**裁剪副本**（`NodePickList`：`SELECT_MODE="browse"` 强制单选、`GROUP_DIMS={}` 无分组条、`context_menu_items` 返回空 = 无右键、`_on_select_all` 返回 "break" = 禁用 Ctrl+A），列配置与据点面板共享（`PANEL_KEY="node"`）。
   - 单人规则见 `plan_moves()`：君主只能去自己的据点（否则阻断 + 提示）；非君主 → 目标有主则 faction 跟随 owner、无主则下野；`node` / `location` 一起改；`role` 不动；未登场人物 + 目标有主会询问是否同时设为登场。
   - 命令复用 `CharacterEditCommand`（多人包 `CompositeCommand("移动到据点")`），`old/new` 只含真正变化的字段；已在目标 / 被阻断者不进命令。
@@ -1329,7 +1449,27 @@ class CharacterInfoWindow(tk.Toplevel):
   - `edit=True` 标识 → 非编辑模式下由 build_menu 统一置灰（不在入口里写模式判断）。
 - 行数 = World.characters 全量（1049），未登场的人也在列表里（否则没法编辑他们）。
 
-**faction_panel.py** — PANEL_KEY = "faction"，CUSTOM_GROUPING = True
+**faction_panel.py** — PANEL_KEY = "faction"，走框架的 GROUP_DIMS + GroupBar（**不再用 CUSTOM_GROUPING**）
+
+分组维度（用户可切，默认 `stance_group`）：
+
+| key | 显示名 | 取值 | 组序 |
+|---|---|---|---|
+| stance_group | 玩家/盟友/敌对/中立 | `FactionRow.stance_group` | 固定组序（`独立` 之外的四组） |
+| overlord | 宗主 | `FactionRow.lord_group` | 按组名排序 |
+
+- `lord_group`：附庸 → 宗主势力名；**有附庸的独立势力 → 自己**（宗主本人也在该组里）；其余独立势力 →「独立」。
+- `row_priority(group_keys)`：选了 `overlord` 维度时返回 `(0 if is_lord else 1,)` → **宗主排在所在组第一行**，附庸跟在后面。
+- 组头 / 行的配色（`_GROUP_TAGS` / `_ROW_TAGS`）按**组名**匹配（不再是内部 key），由 `_build_groups()` 覆写补 tag、
+  `row_tags()` 给行上色 —— 框架的默认分组不带 tag。
+- 色块与 `FactionRow.color` 都用**派生显示色**（§3.4）。
+
+右键：**编辑势力 · 势力情报**（同一个窗，标签随模式，单选）/ **新建势力**（edit=True）/ **删除势力**（单选，edit=True）。
+
+- 新建：`create_faction`（`dialogs/faction_lifecycle.py`）→ 弹窗选**无主据点**作都城 + 选**已登场且无势力**人物作君主；
+  两者缺一即弹提示、不创建（§4）；确认后 `FactionCreateCommand` + 君主 `CharacterEditCommand` + 都城 `NodeEditCommand` 合成一个 CompositeCommand。
+- 删除：`delete_faction` → 预览名下据点 / 人物 / 外官清单 → `OfficialRemoveCommand`（仅删「其人物属于本势力」的条目）+
+  人物下野 `CharacterEditCommand` + 据点改无主 `NodeEditCommand` + `FactionDeleteCommand`（顺带清 player_faction_id）；一次 undo 全退。
 
 色块：
 
@@ -1355,17 +1495,30 @@ class FactionRow:
     ruler_name: str
     node_count: int = 0
     char_count: int = 0
+    vassal_text: str = "独立"        # ★ 独立/附庸列（独立 或 宗主势力名）
+    stance_group: str = "中立"       # ★ 玩家/盟友/敌对/中立（分组维度取值）
+    lord_group: str = "独立"         # ★ 宗主维度的组名
+    is_lord: bool = False            # ★ 本势力是否是别人的宗主（组内排第一）
 
     @classmethod
-    def from_faction(cls, f, world, node_count=0, char_count=0):
+    def from_faction(cls, f, world, node_count=0, char_count=0,
+                     player_id=None, lord_ids=frozenset()):
         ruler = world.characters.get(f.ruler_id)
+        overlord = world.factions.get(f.overlord_id) if f.overlord_id else None
+        is_lord = f.id in lord_ids          # lord_ids = 被附庸指向的势力 id 集合
         return cls(
-            id=f.id, name=f.name, color=f.color,
+            id=f.id, name=f.name,
+            color=faction_display_color(f, world.factions),   # ★ 派生显示色
             prestige=f.prestige, gold=f.gold, food=f.food,
             troops=f.troops,
             stance=f.stance,
             ruler_name=ruler.name if ruler is not None else "—",
             node_count=node_count, char_count=char_count,
+            vassal_text=f.vassal_label(overlord.name if overlord else None),
+            stance_group=cls.stance_group_of(f, player_id),
+            lord_group=cls.lord_group_of(f, overlord.name if overlord else None,
+                                         is_lord),
+            is_lord=is_lord,
         )
 ```
 
@@ -1375,7 +1528,8 @@ class FactionRow:
 class FactionPanel(GenericListPanel):
     COLUMNS = COLUMNS           # ★ 必须：否则 self.COLUMNS 取基类默认 ()
     PANEL_KEY = "faction"
-    CUSTOM_GROUPING = True
+    GROUP_DIMS = {...}          # stance_group / overlord（见上）
+    DEFAULT_GROUP = ("stance_group",)
     ...
 ```
 
@@ -1398,7 +1552,7 @@ def fetch_rows(self):
     ]
 ```
 
-COLUMNS（模块级，8 列）：
+COLUMNS（模块级，9 列）：
 
 ```python
 COLUMNS = (
@@ -1410,6 +1564,7 @@ COLUMNS = (
     Column("nodes",    "据点", 55, "e", lambda r: str(r.node_count), sort_numeric=True),
     Column("chars",    "人物", 55, "e", lambda r: str(r.char_count), sort_numeric=True),
     Column("stance",   "关系", 50, "center", lambda r: r.stance_text),
+    Column("vassal",   "独立/附庸", 80, "center", lambda r: r.vassal_text),  # ★ 追加在末尾（§8.3 第 26 条）
 )
 ```
 
@@ -1445,7 +1600,7 @@ def _edit(self, row):
 
 | 文件 | 作用 |
 |---|---|
-| build_scenario_190.py | 生成 190 年默认剧本：FACTIONS 常量（name/color/stance/capital/territories/max_cities）+ CORE 人物种子 + 网络投票扩展 + affinity 兜底 + 全量人物 appeared 预计算 |
+| build_scenario_190.py | 生成 190 年默认剧本：`MONARCHS` 常量 + `TERRITORY_CITIES` / `TERRITORY_COUNTIES` / `TERRITORY_MAX_CITIES` 点名地盘 + `DONGZHUO_VASSALS` 附庸名单 + CORE 人物种子 + 网络投票扩展 + affinity 兜底 + 全量人物 appeared 预计算 + `derive_vassals()` 附庸推导（详见 §4.6） |
 | 头像.py | 头像批量重命名 / 重名复制 / 对账。顶部三开关：APPLY / REMOVE_ORIGINAL / FORCE |
 | characters/314.py | 从 xlsx 生成 characters.json |
 | map/*.py | 地图预处理（县域边界生成 / 精简 / 道路生成 / 重叠与过小面积诊断） |
@@ -1515,8 +1670,8 @@ _load_scenario(path)                                 编辑模式下额外做 �
 
 ```text
 tools/build_scenario_190.py
- ├─ MONARCHS 常量（50 家：君主名 / 官职 / 治所 / 等级 / 颜色）
- ├─ territories 展开：4 位 = 整郡，6 位 = 单县；按 level 优先取大城市，受 max_cities 限制
+ ├─ MONARCHS 常量（君主名 / 官职 / 治所 / 等级 / 颜色）+ add_dongzhuo_vassals 补建
+ ├─ territories 展开：点名县（TERRITORY_CITIES / DONGZHUO_VASSALS）→ 4 位 = 整郡，6 位 = 单县；受 max_cities 限制
  ├─ 人物分配：CORE 手写种子 + 网络投票扩展 + affinity 兜底（只分 id ≤ 1000 的历史人物）
  ├─ appeared 预计算：compute_appeared（规则见 §4.4），全量 1049 人都写
  └─ 写出 scenarios/default.json（factions / characters / nodes 三段，均以 id 为键）
@@ -1537,7 +1692,14 @@ tools/build_scenario_190.py
 | 设置保存 | _on_settings_applied → 地图相关则 map_canvas.redraw()；PANEL_COLUMNS* 则 side_panel.reload_panel_columns() |
 | 面板列重载 | side_panel.reload_panel_columns() → 各 panel reload_columns() → _resolve_columns() 读 style.PANEL_COLUMNS → _build_tree_in() + refresh() |
 | hover tooltip | 4 行：县-县令XX / 郡-太守XX / 州-刺史XX / 势力名（`MainWindow._official_line` + `_short_post`：官名去掉区名前缀取裸职务） |
-| 据点右键 → 据点情报 | MenuItem「据点情报」 → NodePanel._open_info_window → NodeInfoWindow（只读） |
+| 据点右键 → 编辑据点 / 据点情报 | MenuItem（标签随模式）→ NodePanel._edit → dialogs.node_edit.edit_node → EditDialog（信息块 + 字段；只读模式 session=None） |
+| 据点右键 → 批量修改所属 | MenuItem「批量修改所属」 → NodePanel._change_owner → dialogs.node_owner.change_node_owner → NodeEditCommand（+ 可选 CharacterEditCommand）→ CompositeCommand |
+| 势力右键 → 编辑势力 / 势力情报 | MenuItem（标签随模式）→ FactionPanel._edit → dialogs.faction_edit.edit_faction → EditDialog（信息块 + 字段） |
+| 势力右键 → 新建势力 | MenuItem「新建势力」 → FactionPanel._create → dialogs.faction_lifecycle.create_faction → FactionCreateCommand + CharacterEditCommand + NodeEditCommand |
+| 势力右键 → 删除势力 | MenuItem「删除势力」 → FactionPanel._delete → dialogs.faction_lifecycle.delete_faction → OfficialRemoveCommand + CharacterEditCommand + NodeEditCommand + FactionDeleteCommand |
+| 人物右键 → 人物情报 | MenuItem「人物情报」 → CharacterInfoWindow(session=edit_session)：MODE_EDIT 建编辑区，保存走 CharacterEditCommand |
+| 「编辑人物」→ 编辑外官 | OfficialEditDialog（区域限实控区域）→ OfficialSetCommand / OfficialRemoveCommand（+ 可选级联） |
+| 组头悬停 | GenericListPanel._on_tree_motion → `_item_tips` 命中 → 弹浮窗（组头完整外官列表） |
 | 据点右键 → 展开/折叠 | MenuItem「全部展开/折叠」 → GenericListPanel._toggle_all |
 | 据点列头点击 | _on_heading_click → _sort_key/_sort_desc → refresh |
 | 据点分组切换 | GroupBar._toggle → on_change → NodePanel.refresh |
@@ -1699,8 +1861,8 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | character_id_range 不写 | [1, 9999] | 全部加载 |
 | Character.appeared 默认 | True | 老剧本无该字段 → 全部登场 |
 | 登场判定分界 | year − birth_year ≥ 16 | 另有「已分配势力 → true」优先 |
-| 190 剧本势力 / 人物 / 据点 | 50 / 1049 / 626 | 定稿 |
-| 190 剧本外官 | 49 条（州 13 / 郡 35 / 县 1） | 一区一官；汉阳郡两名太守取其一 |
+| 190 剧本势力 / 人物 / 据点 | 54 / 1049 / 616 | 定稿 |
+| 190 剧本外官 | 53 条（州 13 / 郡 35 / 县 5） | 一区一官；汉阳郡两名太守取其一 |
 | Character._DEFAULT_STAT | 50 | 五维缺省值 |
 | 选中描边 | #00C8FF / 2px | renderer.SELECT_TAG |
 | hover 描边 | #00BFFF / 2px | renderer.HOVER_TAG |
@@ -1776,7 +1938,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 郡面分级调色 | 字段全保留但不消费 |
 | 字体可在 UI 里改 | 只支持更换候选字体，不支持任意路径 |
 | 据点面板「主官」列 | 已接入（县外官，无则「—」） |
-| 据点面板「人物情报」「势力情报」右键 | 占位（只写日志）；「据点情报」已接入窗口 |
+| 据点面板情报三项 | 已接入：均指向实体自己的窗（标签随模式），不再有占位项 |
 | 据点面板右键三项 | 占位（据点情报 / 人物情报 / 势力情报），只写日志 |
 | 据点面板字体 / 字号可调 | 不支持 |
 | 据点面板列宽 / 分组 / 排序持久化 | 不支持 |
@@ -1800,9 +1962,9 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | Character.portrait 字段清理 | 保留但不再消费（§3.3） |
 | characters.json 的 location_name / affiliation | 垃圾字段未清理（§3.3） |
 | 头像缺图提示 | 只显示「（无头像）」，无占位图 |
-| 据点 owner 编辑 + 级联 | 推迟到 phase2 |
-| 势力新建 / 删除 / 消亡 | 推迟到 phase2（World.add_faction 等为 NotImplementedError） |
-| 人物编辑 | 未做（弹窗骨架已就绪，未接 CHARACTER_FIELDS） |
+| 据点 owner 批量编辑 + 级联 | 已接入（「批量修改所属」+ 编辑弹窗 owner） |
+| 势力新建 / 删除 | 已接入；「消亡」仍无（`remove_faction_if_empty` 保持 NotImplementedError） |
+| 人物编辑 | 已接入（「编辑人物」窗口：字段 + 外官区） |
 | GameState.change_gold / food | 未适配派生值（编辑模式不跑回合，标记 TODO(phase3)） |
 | 设置窗口「日志」入口 | 只做后端，无 UI |
 | 日志级别 / 保留数量配置化 | 不支持（_MAX_LOG_FILES = 30 硬编码） |
@@ -1900,6 +2062,14 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 
 51. ★ 静态地理图层（州面 / 势力染色 / 郡界）**不做视口裁剪**：静态层只在 `draw_full()` 里重画，而滚轮缩放走的是 `canvas.scale("all", …)` 整体变换（O(1)，不重画）。一旦按视口裁剪，缩小后新暴露的区域就没有几何，表现为「一块块没上色」，要等 180ms 后的 settle 全量重绘才补上。县点 / 水域 / 道路 / 标签这些**动态**层不受影响（每次 refresh_dynamic 都按当前视口重算），仍走 LOD + 裁剪。
 
+**势力分类（独立 / 附庸）**
+
+52. ★ 派生显示色不写回 `Faction.color`：`core/faction_color.py::faction_display_color(faction, factions)` 是**纯函数**（不依赖 UI），调用点 = 地图染色层 `render_territory` / 势力面板色块 / 人物情报窗口雷达图 / 势力编辑弹窗的只读「显示色」字段。落盘 color 永远是势力自身的默认色；**不要**把派生结果 `setattr` 回 `faction.color`，也不要在派生函数里读 tk / 面板状态。
+53. ★ 附庸三字段的写 / 读 / 显示三处必须同步（同第 43 条）：`Faction.to_dict`（写）/ `Faction.from_dict` + `ScenarioLoader._validate_vassals`（读）/ 势力面板「独立/附庸」列 + 编辑弹窗独立·附庸组（显示）。加新字段时漏掉任何一处，`diff` 就会静默丢改动或老剧本读不出来。
+54. ★ 附庸关系校验只在**加载期**做（`ScenarioLoader._validate_vassals`），必须在据点 / 人物都落位之后：早于 `_apply_node_overrides` / `_apply_character_overrides` 会「清完又被覆盖回来」。运行时编排（UI 编辑 / 删势力）**不做**该校验 —— 靠编辑弹窗的「附庸必须有宗主」拦截 + 删宗主时附庸自动独立兜住。
+55. ★ 运行时改附庸关系只走 `FactionEditCommand`（级联包 `CompositeCommand`）：独立 → 附庸时原有附庸改指新宗主的级联由 `core/edit_commands.py::build_vassal_commands()` 给出，UI 只负责把弹窗的 `old_values / new_values` 交给它。**不要**在弹窗里直接改别的 Faction。
+56. ★ 势力面板分组走框架的 `GROUP_DIMS` + GroupBar，**不要**退回 `CUSTOM_GROUPING`：组头 / 行的配色按**组名**匹配（`_GROUP_TAGS` / `_ROW_TAGS`），`row_priority` 只在选了 `overlord` 维度时返回排序键。新增分组维度只需往 `GROUP_DIMS` 加一项 + 给 `FactionRow` 加取值属性。
+
 ### 8.4 建议的下一步
 
 - ★ **Troop 数据模型（phase2 前置）**：
@@ -1908,6 +2078,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
   - Faction.troops property 展开部队求和（TODO 注释已就位）
   - 剧本 characters 段扩 troop 段；scenario_writer serialize / diff
 - ★ **部队面板落地**：TroopPanel 目前只 fetch_rows 返回 []；与人物面板同构接入
+- ★ **附庸值 100 / 0 的运行时语义**：100 = 融入宗主（并吞势力、据点与人物易主），0 = 自动独立。当前只存储不消费（加载时 clamp 到 1–99），实现时必须走 CompositeCommand 保证 undo
 - 实现「出征 / 调动」：改 Character.location，不动 node（与「移动到据点」的编制变更区分开 —— 当时需要重新评估「人物移动时是否改所在」，见 §8.3 第 50 条）
 - 人物情报窗口单例化（同一人物只开一个窗口，重复右键聚焦已开窗口）
 - 人物情报窗口生平数据源（拼装式编年？静态文本？）
@@ -1926,9 +2097,6 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 - 面板列宽持久化（PANEL_COLUMNS 里加 widths 字段）
 - 面板列配置支持拖拽（tkinter 需手写，暂用按钮替代）
 - 搜索匹配扩展到表字（_match_one 加 family_name 字段）
-- 据点 owner 编辑 + 级联弹窗（phase2：改 owner → 人物 faction/node/location 联动）
-- 势力新建 / 删除 / 消亡（phase2：World.add_faction / remove_faction / remove_faction_if_empty）
-- 人物编辑（复用 §9.4 弹窗骨架，新增 CharacterEditCommand + CHARACTER_FIELDS）
 - GameState.change_gold/food 适配派生值（phase3：Faction.gold 已无 setter）
 - 编辑弹窗多实例控制 / 滚动（同一实体只开一个窗口；字段 > 10 时加滚动）
 - 设置窗口「日志」tab（查看当前日志路径 / 打开目录 / 切换级别）
@@ -2009,14 +2177,14 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 
 ### 9.5 字段表
 
-**NODE_FIELDS（10 项）**
+**NODE_FIELDS（10 项；分 2 组：基本情况 = id/name/coords/type/level/is_capital，归属与资源 = owner/troops/gold/food）**
 
 | key | 标签 | kind | 约束 |
 |---|---|---|---|
 | id | 编号 | readonly | |
 | name | 县名 | readonly | |
 | coords | 坐标 | readonly | display_fn 格式化为 `(x, y)`，空为 "—" |
-| owner | 势力 | readonly | display_fn 查 world.faction(v).name，否则「无主」 |
+| owner | 势力 | choice | 无主 + 势力列表；选项由 `node_fields(world)` 运行期给（`owner_options()`） |
 | type | 类型 | choice | (("城","城"), ("关隘","关隘"), ("渡口","渡口")) |
 | level | 规模 | int | 1 – 10 |
 | is_capital | 郡治 | bool | |
@@ -2024,18 +2192,31 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 | gold | 金钱 | int | ≥ 0 |
 | food | 军粮 | int | ≥ 0 |
 
-**FACTION_FIELDS（8 项）**
+**FACTION_FIELDS（11 项）**
 
 | key | 标签 | kind | 约束 |
 |---|---|---|---|
 | id | 编号 | readonly | |
 | name | 势力名 | str | |
-| color | 颜色 | color | |
+| color | 颜色 | color | 落盘色 |
+| display_color | 显示色 | readonly | 派生显示色（§3.2），不可编辑 |
 | prestige | 威望 | int | ≥ 0 |
 | stance | 关系 | int | -100 – 100 |
 | gold | 金钱 | readonly | 派生值 |
 | food | 军粮 | readonly | 派生值 |
 | troops | 兵力 | readonly | 派生值（§8.3 第 44 条） |
+| independent | 独立 | bool | |
+| overlord_id | 宗主势力 | choice | 选项 = 未选择 + 全部**独立**势力（排除自己），运行期由 `faction_fields(world, faction)` 补 |
+| vassal_value | 附庸值 | int | 1 – 99 |
+
+**FACTION_SECTIONS（3 组）：** 基本情况（id + 只读信息块，desc 提示「若要修改，请到对应编辑窗体中修改」）/
+可编辑信息（name…troops）/ 独立·附庸（independent / overlord_id / vassal_value）。
+
+**独立 / 附庸联动（`faction_edit._make_linkage`，经 `EditDialog(on_change=…)` 注入）：**
+
+- 勾上「独立」→ `overlord_id` 归 None、`vassal_value` 归 0，两个控件**禁用**（禁用字段不参与校验 / 收集）。
+- 取消「独立」→ 两控件启用；宗主为空时预选第一个独立势力，附庸值为 0 时填默认值 50。
+- 提交前守卫：`independent=False` 但没宗主 → `messagebox.showwarning` 并整体取消（省得下次加载被 §3.6 判损坏移除）。
 
 ### 9.6 共用编辑流程
 
@@ -2053,7 +2234,12 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 6. append `NodeEditCommand(node.id, old_values, new_values)`；单条直接 execute，多条包 `CompositeCommand(cmds, "设置郡治")`。
 7. `session.execute(cmd)` → True（调用方负责刷新面板 / 地图）。
 
-**edit_faction 步骤：** 守卫 → 弹窗 → get_changed() → 空则 False → `session.execute(FactionEditCommand(faction.id, old_values, new_values))`（无互斥逻辑）。
+**edit_faction 步骤：** 守卫 → 弹窗（分组 + 独立/附庸联动）→ get_changed() → 空则 False →
+**附庸无宗主 → `showwarning` 并整体取消返回 False** →
+`cmds = build_vassal_commands(world, faction, old_values, new_values)` → 1 条直接 execute，多条包 `CompositeCommand(cmds, "编辑势力")`。
+
+**势力编辑弹窗分组（§9.4 的 `sections=FieldGroup`）：** 三层布局只影响排版，`EditDialog.fields` 由分组拍平，
+取值 / 校验 / `get_changed` 仍按整张字段表走 —— 所以分组与字段表**不能各自维护一份**，都用 `faction_fields()` 的返回值。
 
 **调用方：**
 
@@ -2117,6 +2303,15 @@ class FactionEditCommand(Command):
 
 class CharacterEditCommand(Command):
     def __init__(self, character_id, old_values: dict, new_values: dict): ...
+
+class FactionCreateCommand(Command):     # 新建势力（容器 + _nodes_ref 注入）
+class FactionDeleteCommand(Command):     # 删除势力（摘容器 + 清 player_faction_id，都可还原）
+def build_vassal_commands(world, faction, old_values, new_values) -> list[Command]:
+    # ★ 独立 → 附庸的级联：该势力原有附庸的 overlord_id 全部改指新宗主（附庸值不变）
+    # 附庸 → 独立：只改自身（原有附庸不自动处理，见 §3.6 校验）
+    # 返回列表首位永远是自身那条 FactionEditCommand
+class OfficialSetCommand(Command):       # 设置 / 替换外官（old_item=None 表示原本没有）
+class OfficialRemoveCommand(Command):    # 删除外官
     def label(self): return f"编辑人物 {character_id}"
 ```
 
@@ -2128,7 +2323,10 @@ class CharacterEditCommand(Command):
   - 「移动到据点」—— `{"node": …, "location": …, "faction": …}`（只含真正变化的字段，
     多人包 `CompositeCommand("移动到据点")`，见 dialogs/move_to_node.py::move_characters）。
   将来的完整人物编辑（CHARACTER_FIELDS）沿用同一个命令。
-- TODO(phase2)：owner 级联、FactionCreate / Delete。
+- 级联一律由调用方包 `CompositeCommand`：势力新建（势力 + 君主 + 都城 owner）、
+  势力删除（外官 + 人物下野 + 据点改无主 + 势力摘除）、据点易主（owner + 可选人物归属）、
+  外官编辑（外官增删 + 可选的移动到治所 / 变更势力）。
+- 命令自身只改自己那块；`World.remove_faction` 不再碰 `player_faction_id`（交给 FactionDeleteCommand，undo 才还原得回来）。
 
 ### 10.3 测试
 
@@ -2141,6 +2339,8 @@ class CharacterEditCommand(Command):
 | tests/test_list_reconcile.py | 就地刷新（含子分组消失的回归） |
 | tests/test_move_to_node.py | 移动到据点：单人规则 / 命令生成 |
 | tests/test_official.py | 官名规则 / officials 加载与查询 / 不进 serialize |
+| tests/test_faction_vassal.py | 三字段容错与 clamp / serialize+diff+save / 加载期损坏（无宗主·宗主不存在·宗主本身是附庸·成环·独立带宗主）/ 颜色派生 / 编辑联动与删宗主级联 / 宗主分组取值 |
+| tests/test_build_scenario_vassal.py | 跑真实 map.geojson：刘备只占三县 / 董卓名单据点解析 / 按据点定外官（郡治→太守，否则第一个「城」→县令）/ `derive_vassals()` 规则 |
 
 ---
 

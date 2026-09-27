@@ -54,6 +54,10 @@ class GenericListPanel(ttk.Frame):
         self._search_query = ""
         self._syncing = False        # 反向定位防递归
         self._menus = []             # 持有菜单引用防 GC
+        self._item_tips = {}         # tree item id -> 悬停提示（目前只有组头用）
+        self._name_width_manual = None   # 用户拖过的 #0 列宽（有值就不再自动调整）
+        self._name_width_auto = None     # 上次自动算出的 #0 列宽
+        self._tip = None             # 组头 tooltip 的 Toplevel
         # ★ 按 PANEL_COLUMNS 解析可见列（先于 _build_ui）
         self._visible_columns, self._visible_name = self._resolve_columns()
         
@@ -104,8 +108,10 @@ class GenericListPanel(ttk.Frame):
                 "#0", text=self.NAME_COLUMN.title,
                 command=lambda: self._on_heading_click(self.NAME_COLUMN.key),
             )
+            # stretch=False：宽度由 _fit_name_column 兜底 / 用户拖动决定，
+            # 不让 Tk 随控件宽度重算（否则用户刚拖完就被改回去）
             self.tree.column("#0", width=self.NAME_COLUMN.width,
-                             anchor=self.NAME_COLUMN.anchor, stretch=True)
+                             anchor=self.NAME_COLUMN.anchor, stretch=False)
 
         for c in self._visible_columns:
             self.tree.heading(c.key, text=c.title,
@@ -127,6 +133,9 @@ class GenericListPanel(ttk.Frame):
         self.tree.bind("<Button-3>", self._on_right_click)
         self.tree.bind("<Button-2>", self._on_right_click)
         self.tree.bind("<Control-a>", self._on_select_all)
+        self.tree.bind("<Motion>", self._on_tree_motion)
+        self.tree.bind("<ButtonRelease-1>", self._on_tree_release)
+        self.tree.bind("<Leave>", lambda e: self._hide_tip())
 
         # 子类自定义 tag（faction_panel 有 _configure_tags）
         hook = getattr(self, "_configure_tags", None)
@@ -194,6 +203,7 @@ class GenericListPanel(ttk.Frame):
             row_priority=self.row_priority(group_keys),
             title_count=self.GROUP_TITLE_COUNT,
             values_fn=self.group_values,
+            tooltip_fn=self.group_tooltip,
         )
 
     # ==========================================================
@@ -248,12 +258,66 @@ class GenericListPanel(ttk.Frame):
             gid = self.tree.insert(parent, "end",
                                    text=g.label(), open=g.open, tags=g.tags,
                                    values=self._iter_group_values(g))
+            if g.tooltip:
+                self._item_tips[gid] = g.tooltip
             self._item_keys[gid] = gkey
             if g.has_subgroups():
                 self._insert_group_nodes(gid, g.children, gkey)
             else:
                 for r in g.children:
                     self._insert_row(gid, r, row_tag=g.row_tag)
+
+    # ==========================================================
+    # 组头悬停提示 / #0 列宽
+    # ==========================================================
+    def _on_tree_release(self, event):
+        """用户拖过表头分隔条 → 记住手动列宽，之后不再自动调整 #0。"""
+        try:
+            region = self.tree.identify_region(event.x, event.y)
+        except tk.TclError:
+            return
+        if region not in ("separator", "heading"):
+            return
+        width = self.tree.column("#0", "width")
+        if width != self._name_width_auto:
+            self._name_width_manual = width
+            logger.debug("用户手动设定 #0 列宽：%d", width)
+
+    def _on_tree_motion(self, event):
+        item = self.tree.identify_row(event.y)
+        tip = self._item_tips.get(item)
+        if tip:
+            self._show_tip(tip, event.x_root + 14, event.y_root + 14)
+        else:
+            self._hide_tip()
+
+    def _show_tip(self, text, x, y):
+        if self._tip is None:
+            import tkinter.font as tkfont
+            self._tip = tk.Toplevel(self)
+            self._tip.overrideredirect(True)
+            try:
+                self._tip.attributes("-topmost", True)
+            except tk.TclError:
+                pass
+            self._tip_lbl = tk.Label(
+                self._tip, text=text, bg="#FFFFE0", fg="#333333",
+                relief="solid", bd=1, padx=8, pady=4, justify="left",
+                font=(tkfont.nametofont("TkDefaultFont").actual("family"),
+                      9),
+            )
+            self._tip_lbl.pack()
+        else:
+            self._tip_lbl.configure(text=text)
+        self._tip.geometry("+%d+%d" % (x, y))
+
+    def _hide_tip(self):
+        if self._tip is not None:
+            try:
+                self._tip.destroy()
+            except tk.TclError:
+                pass
+            self._tip = None
 
     def _fit_name_column(self):
         """组标题画在 #0 列，长标题（如「荆州（102）· 荆州刺史-刘表」）会被截断 →
@@ -263,19 +327,25 @@ class GenericListPanel(ttk.Frame):
         """
         if self.NAME_COLUMN is None:
             return
+        if self._name_width_manual is not None:
+            # 用户拖过 → 用他的宽度（重建表格后也要还回来）
+            self.tree.column("#0", width=self._name_width_manual)
+            return
         width = self.NAME_COLUMN.width
         font = self._group_header_font()
-        if font is not None:
-            stack = list(self.tree.get_children(""))
-            seen = 0
-            while stack and seen < 200:
-                item = stack.pop()
-                seen += 1
-                if item not in self._item_rows:      # 组头
-                    text = self.tree.item(item, "text") or ""
-                    width = max(width, font.measure(text) + 26)
-                stack.extend(self.tree.get_children(item))
-        self.tree.column("#0", width=min(width, self.GROUP_COLUMN_MAX))
+        if font is None:
+            return
+        # 组标题 + 数据行名称列取较大者（需求 §3.8：两者都可能超宽）
+        stack = list(self.tree.get_children(""))
+        seen = 0
+        while stack and seen < 2000:
+            item = stack.pop()
+            seen += 1
+            text = self.tree.item(item, "text") or ""
+            width = max(width, font.measure(text) + 26)
+            stack.extend(self.tree.get_children(item))
+        self._name_width_auto = min(width, self.GROUP_COLUMN_MAX)
+        self.tree.column("#0", width=self._name_width_auto)
 
     def _group_header_font(self):
         """组头字体（与 "group" tag 的 ("", 9, "bold") 对齐）；取不到 → None。
@@ -371,6 +441,11 @@ class GenericListPanel(ttk.Frame):
             else:
                 self._update_spec(item, spec)
             self._item_keys[item] = spec["key"]
+            if spec["kind"] == "group":
+                if spec["tooltip"]:
+                    self._item_tips[item] = spec["tooltip"]
+                else:
+                    self._item_tips.pop(item, None)
             index = pos.get(parent_item, 0)
             if self.tree.parent(item) != parent_item \
                     or self.tree.index(item) != index:
@@ -405,6 +480,9 @@ class GenericListPanel(ttk.Frame):
                            tags=spec["tags"])
 
     def _forget_item(self, item):
+        self._item_tips.pop(item, None)
+        if self._tip is not None:
+            self._hide_tip()
         self._item_rows.pop(item, None)
         key = self._item_keys.pop(item, None)
         if key and key[0] == "row":
@@ -431,6 +509,7 @@ class GenericListPanel(ttk.Frame):
                 "key": gkey, "kind": "group", "parent": parent_key,
                 "text": g.label(), "values": self._iter_group_values(g),
                 "tags": tuple(g.tags), "row": None, "open": g.open,
+                "tooltip": g.tooltip,
             })
             if g.has_subgroups():
                 self._collect_specs(g.children, gkey, out)
@@ -444,6 +523,7 @@ class GenericListPanel(ttk.Frame):
             "key": ("row", self.row_key(row)), "kind": "row", "parent": parent_key,
             "text": text, "values": [c.value(row) for c in self._visible_columns],
             "tags": self._row_tags(row, row_tag), "row": row, "open": None,
+            "tooltip": "",
         }
 
     def _anchor_key(self, by_key):
@@ -707,6 +787,10 @@ class GenericListPanel(ttk.Frame):
         返回 {"governor": "荆州刺史-刘表"} 就落到「主官」列 —— 组头信息不挤 #0 列。
         """
         return {}
+
+    def group_tooltip(self, dim_key, group_name, rows):
+        """组头悬停提示（完整信息，如该区全部外官「官名-姓名」）。子类覆盖。"""
+        return ""
 
     def row_key(self, row):
         return getattr(row, "id", None) or getattr(row, "name", None)

@@ -64,6 +64,10 @@ class ScenarioLoader:
         cls._apply_node_overrides(world, raw.get("nodes") or {})
         cls._apply_officials(world, raw.get("officials") or {})
 
+        # ★ 附庸关系校验（需求 §3.3）：必须在据点 / 人物都落位之后，
+        #   否则「名下据点置空 / 人物置空」会被随后的覆盖段重新写回。
+        cls._validate_vassals(world)
+
         world.bind_factions()   # ★ 注入 nodes 引用（供 Faction.gold/food property）
 
         logger.info("剧本加载完成：%s", world.summary())
@@ -75,6 +79,97 @@ class ScenarioLoader:
     @staticmethod
     def _build_faction(fid, fdata):
         return Faction.from_dict(fid, fdata)
+
+    # ============================================================
+    # 附庸关系校验（需求 §3.3）
+    # ============================================================
+    @classmethod
+    def _validate_vassals(cls, world):
+        """加载 factions 段后逐势力校验主从关系，损坏者按方案 B 递归移除。
+
+        判定顺序：
+            1. independent=True 且 overlord_id 非空 → 忽略 overlord_id，记 warning
+            2. independent=False 且宗主为空 / 不存在 / 本身是附庸 / 成环 → 损坏
+
+        移除该势力 = 摘容器 + 名下据点 owner 置空 + 名下人物 faction 置空；
+        其他势力指向它时，下一轮按同一规则处理（递归）。
+        三处提示：logger.warning / print / world.vassal_removals（UI 弹窗用）。
+        """
+        # 1) 独立势力带宗主 → 忽略（不破坏其它字段）
+        for fid in sorted(world.factions):
+            f = world.factions[fid]
+            if getattr(f, "independent", True) and f.overlord_id:
+                logger.warning("势力 %s（%s）标记为独立却带宗主 %s，已忽略该宗主",
+                               f.id, f.name, f.overlord_id)
+                f.overlord_id = None
+
+        # 2) 损坏势力逐个移除；删掉一个可能让它的附庸也变损坏 → 循环到无损坏为止
+        removed = []
+        while True:
+            damaged = None
+            for fid in sorted(world.factions):
+                reason = cls._vassal_break_reason(world, fid)
+                if reason:
+                    damaged = (fid, reason)
+                    break
+            if damaged is None:
+                break
+            cls._remove_damaged_faction(world, damaged[0], damaged[1], removed)
+
+        if removed:
+            world.vassal_removals = removed
+            logger.warning("附庸关系校验：移除 %d 个损坏势力", len(removed))
+
+    @staticmethod
+    def _vassal_break_reason(world, fid):
+        """附庸关系损坏的原因；正常（独立 / 关系完好）→ None。"""
+        f = world.factions.get(fid)
+        if f is None or getattr(f, "independent", True):
+            return None
+        overlord_id = f.overlord_id
+        if not overlord_id:
+            return "附庸未指定宗主"
+        overlord = world.factions.get(overlord_id)
+        if overlord is None:
+            return "宗主 %s 不存在" % overlord_id
+        if not getattr(overlord, "independent", True):
+            return "宗主 %s 本身是附庸" % overlord_id
+        if ScenarioLoader._reaches(world, overlord_id, fid):
+            return "附庸关系成环"
+        return None
+
+    @staticmethod
+    def _reaches(world, start_id, target_id):
+        """沿宗主链从 start 往上走，能否回到 target（成环检测）。"""
+        seen = set()
+        cur = start_id
+        while cur and cur not in seen:
+            if cur == target_id:
+                return True
+            seen.add(cur)
+            f = world.factions.get(cur)
+            if f is None or getattr(f, "independent", True):
+                return False
+            cur = f.overlord_id
+        return False
+
+    @staticmethod
+    def _remove_damaged_faction(world, fid, reason, removed):
+        """移除损坏势力：摘容器 + 据点置无主 + 人物下野 + 三处提示。"""
+        f = world.factions.get(fid)
+        if f is None:
+            return
+        for node in world.nodes.values():
+            if node.owner == fid:
+                node.owner = None
+        for ch in world.characters.values():
+            if ch.faction == fid:
+                ch.faction = None
+        world.remove_faction(fid)
+        removed.append((fid, f.name, reason))
+        # 提示 1：日志；提示 2：终端（print 不受 LOG_ENABLED 影响）
+        logger.warning("移除损坏势力：%s（%s）原因：%s", fid, f.name, reason)
+        print("[附庸校验] 移除势力 %s %s —— %s" % (fid, f.name, reason))
 
     # ============================================================
     # 人物：第一层 基础数据

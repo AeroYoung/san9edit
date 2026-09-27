@@ -12,9 +12,9 @@
                                  东郡 → 东郡太守、蜀郡 → 蜀郡太守）
     县（6 位）  城 · level < 9   → 去「县」+ 令（阳翟 → 阳翟令）
                 城 · level ≥ 9   → 去「县」+ 长（樊县 → 樊长）
-                 ★ 需求 §3.4 的示例写作「樊县长」（未去「县」），与同表的规则
-                   文字「去「县」后缀 + 长」矛盾；此处按**规则文字**实现，
-                   与「令」分支保持同一条规则，也与汉代官名惯例一致。
+                 ★ 去「县」只在**前缀 ≥ 2 字**时做（与郡 / 国同一条守卫）：
+                   XX县 → XX + 令/长；X县 → X县 + 令/长（范县 → 范县长）。
+                   这条守卫同时满足需求 §3.4 的示例（樊县 → 樊县长）。
                 关隘 · level < 6 → 原样 + 都尉（玉门关 → 玉门关都尉）
                 关隘 · level ≥ 6 → 原样 + 障尉（桥门 → 桥门障尉）
                 渡口             → 末尾为「津」才去「津」，再 + 津长
@@ -85,6 +85,8 @@ def city_title(city_name, type_=CITY_TYPE_CITY, level=5):
     if type_ == CITY_TYPE_FERRY:
         return strip_suffix(city_name, "津") + "津长"
     base = strip_suffix(city_name, "县")
+    if len(base) == 1:               # 「范县」→ 范县长（前缀 1 字时保留「县」）
+        base = city_name
     return base + ("长" if level >= CITY_LEVEL_LING else "令")
 
 

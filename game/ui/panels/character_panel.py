@@ -177,7 +177,8 @@ class CharacterPanel(GenericListPanel):
         return [
             MenuItem(row.display_name, enabled=False),
             MenuItem.sep(),
-            MenuItem("人物情报", lambda: self._open_info_window(row)),
+            MenuItem("编辑人物" if self.edit_session is not None else "人物情报",
+                     lambda: self._open_info_window(row)),
             MenuItem("复制编号", lambda: self._copy_id(row.id)),
             MenuItem.sep(),
             # 目标状态写在标签里（符号在前），对**整个选中集**生效
@@ -208,7 +209,10 @@ class CharacterPanel(GenericListPanel):
         top = self.winfo_toplevel()
         font_family = getattr(top, "font_family", "TkDefaultFont")
         logger.debug("人物情报：%s %s", ch.id, ch.name)
-        CharacterInfoWindow(self, ch, world=world, font_family=font_family)
+        # session 有值 → 窗口进入「编辑人物」形态（MODE_GAME 传 None 即只读）
+        CharacterInfoWindow(self, ch, world=world, font_family=font_family,
+                            session=self.edit_session,
+                            on_saved=self._notify_edit)
 
     def _set_appeared(self, rows, target):
         """批量设为登场 / 未登场：对选中集统一设置目标状态。

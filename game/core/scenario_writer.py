@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """World ↔ JSON 序列化 + diff + 增量保存。
 
-serialize：把 World 完整转成 dict（含元字段 + factions / characters / nodes）。
+serialize：把 World 完整转成 dict（含元字段 + factions / characters / nodes / officials）。
 diff：逐实体逐字段对比，只返回变化的字段。
 save：raw 原样 + 用户增量写回（未改动字段不出现，保留 raw 原始形态）。
 """
@@ -22,6 +22,7 @@ class ScenarioWriter:
         factions 段：不写 gold / food（派生值）
         characters 段：全字段（含 portrait / faction / node / location / role）
         nodes 段：全字段（owner / troops / gold / food / type / level / is_capital）
+        officials 段：name / character_id / rank（键 = 行政区 id）
         """
         result = {
             "version": world.version,
@@ -49,6 +50,12 @@ class ScenarioWriter:
         result["nodes"] = {
             nid: n.to_dict() for nid, n in world.nodes.items()
         }
+        result["officials"] = {
+            rid: {"name": item.get("name", ""),
+                  "character_id": item.get("character_id"),
+                  "rank": item.get("rank", "")}
+            for rid, item in world.officials.items()
+        }
         return result
 
     @staticmethod
@@ -57,10 +64,10 @@ class ScenarioWriter:
 
         返回 {section: {id: {field: (old, new)}}}
         只返回变化的字段。
-        section ∈ {"factions", "characters", "nodes"}。元字段不参与 diff。
+        section ∈ {"factions", "characters", "nodes", "officials"}。元字段不参与 diff。
         """
         result = {}
-        for section in ("factions", "characters", "nodes"):
+        for section in ("factions", "characters", "nodes", "officials"):
             cur = current.get(section) or {}
             base = baseline.get(section) or {}
             section_diff = {}

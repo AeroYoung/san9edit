@@ -22,7 +22,7 @@ from tkinter import messagebox, ttk
 from typing import List, Optional
 
 from game.config.style import THEME, FONT_SIZES
-from game.ui.panels.list.panel import GenericListPanel
+from game.ui.dialogs.pick_list import PickList, WorldHolder
 from game.ui.panels.node_panel import (
     COLUMNS as NODE_COLUMNS,
     NAME_COLUMN as NODE_NAME_COLUMN,
@@ -164,45 +164,81 @@ def move_characters(parent, world, rows, session, open_dialog) -> bool:
 
 
 # ============================================================
-# 弹窗内嵌的据点列表（据点面板的裁剪副本）
+# 弹窗内嵌的据点列表（据点面板的裁剪副本，列配置与据点面板共享）
 # ============================================================
-class _WorldBox:
-    """GenericListPanel 只要求 game_state.world。"""
+class NodePickList(PickList):
+    PANEL_KEY = "node"                 # ★ 复用据点面板的列配置（PANEL_COLUMNS）
 
-    def __init__(self, world):
-        self.world = world
+    def __init__(self, master, world):
+        super().__init__(
+            master, WorldHolder(world),
+            columns=NODE_COLUMNS, name_column=NODE_NAME_COLUMN,
+            rows_fn=lambda: self._fetch(world),
+            key_fn=lambda row: row.node_id,
+        )
 
-
-class NodePickList(GenericListPanel):
-    PANEL_KEY = "node"                 # 与据点面板共享列配置
-    COLUMNS = NODE_COLUMNS             # ★ 必须显式绑定（§8.3 第 25 条）
-    NAME_COLUMN = NODE_NAME_COLUMN
-    GROUP_DIMS = {}                    # 空 → 不建分组条
-    DEFAULT_GROUP = ()
-    SELECT_MODE = "browse"             # 强制单选
-
-    def fetch_rows(self):
-        world = getattr(self.game_state, "world", None)
-        if world is None:
-            return []
+    @staticmethod
+    def _fetch(world):
         counts = world.count_characters_by_node()
         return [NodeRow.from_node(n, world, person_count=counts.get(n.id, 0))
                 for n in world.nodes.values()]
 
-    def row_key(self, row):
-        return row.node_id
 
-    def context_menu_items(self, ctx):
-        return []                      # 禁用右键菜单（空列表 → 不弹）
+# ============================================================
+# 通用据点选择（给「编辑人物」的所属 / 所在用）
+# ============================================================
+class NodePickDialog(tk.Toplevel):
+    """通用据点单选弹窗：确定后 `node_id` 为目标据点，取消为 None。"""
 
-    def _on_select_all(self, event=None):
-        return "break"                 # 禁用 Ctrl+A 全选
+    def __init__(self, master, world, title="选择据点"):
+        super().__init__(master)
+        self.world = world
+        self.node_id = None
 
-    def selected_row(self):
-        selection = self.tree.selection()
-        if not selection:
-            return None
-        return self._item_rows.get(selection[0])
+        self._top = master.winfo_toplevel()
+        self.font_family = getattr(self._top, "font_family", "TkDefaultFont")
+
+        self.title(title)
+        self.transient(self._top)
+        self.configure(bg=THEME["panel_bg"])
+        self.resizable(False, False)
+
+        tk.Label(self, text=title, bg=THEME["panel_bg"], fg="#222222",
+                 font=(self.font_family, FONT_SIZES["panel_title"] + 2, "bold")
+                 ).pack(anchor="w", padx=16, pady=(12, 2))
+        holder = tk.Frame(self, height=LIST_H, bg=THEME["panel_bg"])
+        holder.pack(fill="x", padx=12, pady=(2, 6))
+        holder.pack_propagate(False)
+        self.picker = NodePickList(holder, world)
+        self.picker.pack(fill="both", expand=True)
+
+        buttons = tk.Frame(self, bg=THEME["panel_bg"])
+        buttons.pack(fill="x", padx=16, pady=(0, 12))
+        tk.Button(buttons, text="确定", width=10,
+                  command=self._confirm).pack(side="right")
+        tk.Button(buttons, text="取消", width=10,
+                  command=self.destroy).pack(side="right", padx=(0, 8))
+
+        self.update_idletasks()
+        center_on_parent(self, self._top, WIN_W, max(self.winfo_reqheight(), 420))
+        try:
+            self.grab_set()
+        except tk.TclError:
+            pass
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.focus_set()
+
+    def _confirm(self):
+        row = self.picker.selected_row()
+        self.node_id = row.node_id if row is not None else None
+        self.destroy()
+
+
+def pick_node(parent, world, title="选择据点"):
+    """弹出据点单选窗，返回选中的 node_id（取消 → None）。"""
+    dlg = NodePickDialog(parent, world, title)
+    parent.wait_window(dlg)
+    return dlg.node_id
 
 
 # ============================================================
@@ -259,7 +295,7 @@ class MoveToNodeDialog(tk.Toplevel):
         holder = tk.Frame(self, height=LIST_H, bg=THEME["panel_bg"])
         holder.pack(fill="x", padx=12, pady=(2, 6))
         holder.pack_propagate(False)
-        self.picker = NodePickList(holder, _WorldBox(self.world))
+        self.picker = NodePickList(holder, self.world)
         self.picker.pack(fill="both", expand=True)
         self.picker.tree.bind("<<TreeviewSelect>>", self._on_pick)
 

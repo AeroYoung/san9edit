@@ -4,7 +4,18 @@
 Field 是数据驱动的核心：EditDialog 只认 kind，不认业务。
 """
 
-from typing import NamedTuple, Optional, Callable, Any
+from typing import NamedTuple, Optional, Callable, Any, Tuple
+
+
+class FieldGroup(NamedTuple):
+    """弹窗分组（需求 §3.8 / §3.11）：标题 + 字段 + 可选说明 / 只读信息块。
+
+    分组只影响**布局**，不影响取值与校验 —— 那些仍按字段表整体走。
+    """
+    title: str
+    fields: Tuple = ()
+    desc: str = ""                     # 组标题下的说明行（CollapsibleSection.desc）
+    info: Tuple = ()                   # 只读信息块 ((标题, 文本), ...)，画在字段上方
 
 
 class Field(NamedTuple):

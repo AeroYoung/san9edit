@@ -202,6 +202,8 @@ class MainWindow:
         self.side_panel.refresh_all()
         self.map_canvas.redraw()
 
+        self._warn_vassal_removals(world)
+
         pf = world.player_faction()
         pf_name = pf.name if pf else "—"
         self.status_bar.set_message(
@@ -225,6 +227,23 @@ class MainWindow:
                 open_dialog=self.open_edit_dialog,
             )
             self._sync_undo_redo_state()
+
+    def _warn_vassal_removals(self, world):
+        """附庸关系损坏的势力已被加载期移除 → 弹窗列出清单与原因（需求 §3.3）。
+
+        日志 / 终端两处提示在 ScenarioLoader 里已完成，这里是第三处。
+        """
+        removals = getattr(world, "vassal_removals", None)
+        if not removals:
+            return
+        from tkinter import messagebox
+        lines = "\n".join(
+            f"· {name}（{fid}）：{reason}" for fid, name, reason in removals)
+        messagebox.showwarning(
+            "附庸关系损坏",
+            "以下势力因附庸关系损坏已被移除（名下据点改为无主、人物下野）：\n\n"
+            + lines,
+            parent=self.root)
 
     def open_geojson(self):
         path = filedialog.askopenfilename(
@@ -318,20 +337,22 @@ class MainWindow:
         if node.owner:
             f = world.faction(node.owner)
             faction_name = f.name if f else "无主"
-        text = "\n".join((
-            self._official_line(world, node.id, node.name),
-            self._official_line(world, node.county_id,
-                                world.county_name(node.county_id)),
-            self._official_line(world, node.state_id,
-                                world.state_name(node.state_id)),
-            faction_name,
-        ))
+        # 需求 §3.7：第一行所属势力（加粗），随后县 / 郡 / 州各一行，
+        # 该级无外官 → 直接显示县名 / 郡名 / 州名（不留空档）
+        lines = (
+            (faction_name, True),
+            (self._official_line(world, node.id, node.name), False),
+            (self._official_line(world, node.county_id,
+                                 world.county_name(node.county_id)), False),
+            (self._official_line(world, node.state_id,
+                                 world.state_name(node.state_id)), False),
+        )
 
         px = info.get("px", 0)
         py = info.get("py", 0)
         rootx = self.map_canvas.canvas.winfo_rootx()
         rooty = self.map_canvas.canvas.winfo_rooty()
-        self._show_tooltip(text, rootx + px + 14, rooty + py + 14)
+        self._show_tooltip(lines, rootx + px + 14, rooty + py + 14)
 
     @classmethod
     def _official_line(cls, world, region_id, region_name):
@@ -360,7 +381,8 @@ class MainWindow:
             post = "县" + post
         return post
 
-    def _show_tooltip(self, text, x, y):
+    def _show_tooltip(self, lines, x, y):
+        """lines = ((文本, 是否加粗), ...) —— 一行一个 Label，才能只加粗首行。"""
         if self._tooltip is None:
             self._tooltip = tk.Toplevel(self.root)
             self._tooltip.overrideredirect(True)
@@ -368,14 +390,19 @@ class MainWindow:
                 self._tooltip.attributes("-topmost", True)
             except Exception:
                 pass
-            self._tooltip_lbl = tk.Label(
-                self._tooltip, text=text, bg="#FFFFE0", fg="#333333",
-                relief="solid", bd=1, padx=8, pady=4, justify="left",
-                font=(self.font_family, 10),
-            )
-            self._tooltip_lbl.pack()
-        else:
-            self._tooltip_lbl.config(text=text)
+            frame = tk.Frame(self._tooltip, bg="#FFFFE0",
+                             relief="solid", bd=1, padx=8, pady=4)
+            frame.pack()
+            self._tooltip_lbls = []
+            for _ in lines:
+                lbl = tk.Label(frame, text="", bg="#FFFFE0", fg="#333333",
+                               anchor="w", justify="left")
+                lbl.pack(fill="x")
+                self._tooltip_lbls.append(lbl)
+        for lbl, (text, bold) in zip(self._tooltip_lbls, lines):
+            lbl.config(text=text,
+                       font=(self.font_family, 10, "bold") if bold
+                       else (self.font_family, 10))
         self._tooltip.geometry(f"+{x}+{y}")
 
     def _hide_tooltip(self):
@@ -422,21 +449,20 @@ class MainWindow:
         # ★ 编辑类入口：状态由 APP_MODE 单点决定（D9）
         edit_state = "normal" if self.editable else "disabled"
 
-        menu.add_command(label="编辑据点",
-                         command=lambda: self._edit_node_from_map(node_id),
-                         state=edit_state)
+        # 编辑 / 情报同一个窗：非编辑模式下只读展示，标签随模式变
+        menu.add_command(
+            label="编辑据点" if self.editable else "据点情报",
+            command=lambda: self._edit_node_from_map(node_id))
 
-        # 有势力 → 显示「编辑势力：XXX」；无势力 / 脏 owner → 不显示
+        # 有势力 → 显示「编辑势力：XXX」/「势力情报：XXX」；无势力 / 脏 owner → 不显示
         if faction is not None:
             menu.add_command(
-                label=f"编辑势力：{faction.name}",
+                label=("%s：%s" % ("编辑势力" if self.editable else "势力情报",
+                                  faction.name)),
                 command=lambda fid=faction.id: self._edit_faction_from_map(fid),
-                state=edit_state,
             )
 
         menu.add_separator()
-        menu.add_command(label="据点情报",
-                         command=lambda: self._map_intel("node", node_id))
         menu.add_command(label="人物情报",
                          command=lambda: self._map_intel("character", node_id))
         menu.add_command(label="势力情报",
@@ -458,10 +484,10 @@ class MainWindow:
                          command=lambda: self.map_canvas.zoom(1 / 1.25))
 
     def _edit_node_from_map(self, node_id):
-        """★ 地图右键 →「编辑据点」：与面板右键共用同一套编辑流程。"""
-        logger.info("地图右键编辑据点：%s", node_id)
+        """★ 地图右键 →「编辑据点 / 据点情报」：与面板右键共用同一套流程。"""
+        logger.info("地图右键据点：%s（可编辑=%s）", node_id, self.editable)
         world = getattr(self, "_world", None)
-        if world is None or self.edit_session is None:
+        if world is None:
             return
         node = world.nodes.get(node_id)
         if node is None:
@@ -474,10 +500,10 @@ class MainWindow:
             self.on_edit_executed()
 
     def _edit_faction_from_map(self, faction_id):
-        """★ 地图右键 →「编辑势力」：与面板右键共用 edit_faction。"""
-        logger.info("地图右键编辑势力：%s", faction_id)
+        """★ 地图右键 →「编辑势力 / 势力情报」：与面板右键共用 edit_faction。"""
+        logger.info("地图右键势力：%s（可编辑=%s）", faction_id, self.editable)
         world = getattr(self, "_world", None)
-        if world is None or self.edit_session is None:
+        if world is None:
             return
         f = world.factions.get(faction_id)
         if f is None:
@@ -491,15 +517,6 @@ class MainWindow:
 
     def _map_intel(self, kind, node_id):
         logger.debug("地图情报：kind=%s node=%s", kind, node_id)
-        if kind != "node":
-            return
-        world = getattr(self, "_world", None)
-        node = world.node(node_id) if world is not None else None
-        if node is None:
-            return
-        from game.ui.node_info_window import NodeInfoWindow
-        NodeInfoWindow(self.root, node, world=world,
-                       font_family=self.font_family)
 
     # ==========================================================
     # 双向定位（地图 → 列表）

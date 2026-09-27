@@ -63,14 +63,16 @@ class NodeRow:
         return ch.name if ch is not None else (item.get("name") or "—")
 
 
+# 列宽按「侧栏约 530px − 竖向滚动条」分配：合计 ≈ 374，加上 #0 自适应的
+# 129（组标题 + 最长县名）仍不撑出横向滚动条
 COLUMNS = (
-    Column("state",    "州",   52, "center", lambda r: r.state_name),
-    Column("county",   "郡",   62, "center", lambda r: r.county_name),
-    Column("level",    "等级", 42, "center", lambda r: r.level, sort_numeric=True),
-    Column("type",     "类型", 46, "center", lambda r: r.display_type),
-    Column("owner",    "势力", 64, "center", lambda r: r.owner_name),
-    Column("governor", "主官", 112, "center", lambda r: r.governor_name),
-    Column("persons",  "人物", 42, "center", lambda r: r.person_count, sort_numeric=True),
+    Column("state",    "州",   46, "center", lambda r: r.state_name),
+    Column("county",   "郡",   52, "center", lambda r: r.county_name),
+    Column("level",    "等级", 38, "center", lambda r: r.level, sort_numeric=True),
+    Column("type",     "类型", 42, "center", lambda r: r.display_type),
+    Column("owner",    "势力", 54, "center", lambda r: r.owner_name),
+    Column("governor", "主官", 104, "center", lambda r: r.governor_name),
+    Column("persons",  "人物", 38, "center", lambda r: r.person_count, sort_numeric=True),
 )
 
 NAME_COLUMN = Column("name", "县", 110, "w", lambda r: r.name)
@@ -107,21 +109,44 @@ class NodePanel(GenericListPanel):
     def group_values(self, dim_key, group_name, rows):
         """州 / 郡组头把外官「官名-姓名」放进「主官」列（不挤 #0 列）。
 
-        县外官不进组头，它们在数据行的「主官」列里。
+        本区没有外官时退一步显示下辖首位外官「等 N 个」（多值不换行，
+        完整列表走 group_tooltip）。县外官不进组头，它们在数据行的「主官」列里。
         """
-        if not rows:
-            return {}
+        own, subs = self._region_officials(dim_key, rows)
+        if own:
+            return {"governor": own}
+        if len(subs) == 1:
+            return {"governor": subs[0]}
+        if subs:
+            return {"governor": f"{subs[0]} 等 {len(subs)} 个"}
+        return {}
+
+    def group_tooltip(self, dim_key, group_name, rows):
+        """组头悬停：完整的外官「官名-姓名」列表（本区 + 下辖）。"""
+        own, subs = self._region_officials(dim_key, rows)
+        lines = []
+        if own:
+            lines.append(f"{group_name}：{own}")
+        lines.extend(subs)
+        return "\n".join(lines)
+
+    def _region_officials(self, dim_key, rows):
+        """(本区外官「官名-姓名」| None, 下辖各区的外官列表)。"""
         world = getattr(self.game_state, "world", None)
-        if world is None:
-            return {}
+        if world is None or not rows:
+            return None, []
         node_id = rows[0].node_id
         if dim_key == "state":
-            label = world.official_label(node_id[:2])
+            own = world.official_label(node_id[:2])
+            subs = [world.official_label(co) for co in
+                    sorted({r.node_id[:4] for r in rows})]
         elif dim_key == "county":
-            label = world.official_label(node_id[:4])
+            own = world.official_label(node_id[:4])
+            subs = [world.official_label(r.node_id) for r in
+                    sorted(rows, key=lambda r: r.node_id)]
         else:
-            return {}
-        return {"governor": label} if label else {}
+            return None, []
+        return (own or None), [s for s in subs if s]
 
     def context_menu_items(self, ctx):
         row = ctx.right_click_row
@@ -129,18 +154,63 @@ class NodePanel(GenericListPanel):
         return [
             MenuItem(row.name, enabled=False),
             MenuItem.sep(),
-            # edit=True 标识：非编辑模式由 build_menu 统一置灰
-            MenuItem("编辑", lambda: self._edit(row), enabled=single, edit=True),
+            # 编辑 / 情报同一个窗：非编辑模式只读展示（标签随模式变）
+            MenuItem(self._edit_label(), lambda: self._edit(row), enabled=single),
+            MenuItem("批量修改所属",
+                     lambda: self._change_owner(ctx.selected_rows), edit=True),
             MenuItem.sep(),
-            MenuItem("据点情报", lambda: self._open_info_window(row)),
-            MenuItem("人物情报", lambda: self._intel("character", ctx.selected_rows)),
-            MenuItem("势力情报", lambda: self._intel("faction", ctx.selected_rows)),
+            MenuItem(self._label("编辑人物", "人物情报"),
+                     lambda: self._open_ruler(row)),
+            MenuItem(self._label("编辑势力", "势力情报"),
+                     lambda: self._open_faction(row)),
             MenuItem.sep(),
             MenuItem("定位到地图", lambda: self.locate_on_map(row)),
             MenuItem.sep(),
             MenuItem("全部展开", lambda: self._toggle_all(True)),
             MenuItem("全部折叠", lambda: self._toggle_all(False)),
         ]
+
+    def _edit_label(self):
+        """据点面板的主入口标签：编辑模式「编辑据点」，游戏模式「据点情报」。"""
+        return self._label("编辑据点", "据点情报")
+
+    def _label(self, edit_text, info_text):
+        """按模式取标签：有编辑会话 = 编辑模式（与 MenuItem(edit=True) 同一判据）。"""
+        return edit_text if self.edit_session is not None else info_text
+
+    def _open_ruler(self, row):
+        """人物情报：本据点的君主（无主 → 不动作）。"""
+        world = getattr(self.game_state, "world", None)
+        node = world.node(row.node_id) if world else None
+        if node is None or not node.owner:
+            logger.debug("据点 %s 无主，人物情报不可用", row.node_id)
+            return
+        from game.ui.character_info_window import CharacterInfoWindow
+        ch = world.character(node.owner)
+        if ch is None:
+            logger.warning("据点 %s 的 owner=%s 没有对应人物", node.id, node.owner)
+            return
+        top = self.winfo_toplevel()
+        CharacterInfoWindow(self, ch, world=world,
+                            font_family=getattr(top, "font_family",
+                                                "TkDefaultFont"),
+                            session=self.edit_session,
+                            on_saved=self._notify_edit)
+
+    def _open_faction(self, row):
+        """势力情报 / 编辑势力：本据点所属势力的同一个窗。"""
+        world = getattr(self.game_state, "world", None)
+        node = world.node(row.node_id) if world else None
+        if node is None or not node.owner:
+            logger.debug("据点 %s 无主，势力情报不可用", row.node_id)
+            return
+        f = world.faction(node.owner)
+        if f is None:
+            logger.warning("据点 %s 的 owner=%s 没有对应势力", node.id, node.owner)
+            return
+        from game.ui.dialogs.faction_edit import edit_faction
+        if edit_faction(self, world, f, self.edit_session, self._open_dialog):
+            self._notify_edit()
 
     def _edit(self, row):
         world = getattr(self.game_state, "world", None)
@@ -149,18 +219,15 @@ class NodePanel(GenericListPanel):
         if edit_node(self, world, node, self.edit_session, self._open_dialog):
             self._notify_edit()
 
-    def _open_info_window(self, row):
-        """据点情报窗口（只读：基本情况 / 外官 / 州郡 / 实际控制 / 宣称权冲突）。"""
+    def _change_owner(self, rows):
+        """批量修改所属：弹窗选新 owner（可勾选同步调整人物归属）。"""
         world = getattr(self.game_state, "world", None)
-        node = world.node(row.node_id) if world else None
-        if node is None:
-            logger.warning("据点不存在：%s", row.node_id)
+        if self.edit_session is None or world is None or not rows:
             return
-        from game.ui.node_info_window import NodeInfoWindow
-        top = self.winfo_toplevel()
-        font_family = getattr(top, "font_family", "TkDefaultFont")
-        logger.debug("据点情报：%s %s", node.id, node.name)
-        NodeInfoWindow(self, node, world=world, font_family=font_family)
+        from game.ui.dialogs.node_owner import change_node_owner
+        if change_node_owner(self, world, rows, self.edit_session,
+                             self._open_dialog):
+            self._notify_edit()
 
     def _intel(self, kind, rows):
         names = "、".join(r.name for r in rows[:5])

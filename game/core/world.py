@@ -38,6 +38,10 @@ class World:
         self.state_names = {}     # "01"   -> "并州"
         self.county_names = {}    # "0101" -> "上党郡"
 
+        # 加载期附庸关系校验中被移除的势力：[(id, 势力名, 原因)]，空 = 无损坏
+        # 由 ScenarioLoader._validate_vassals 填；MainWindow 据此弹 showwarning
+        self.vassal_removals = []
+
     # ---------- 查询 ----------
     def player_faction(self):
         if self.player_faction_id is None:
@@ -150,14 +154,25 @@ class World:
         logger.debug("bind_factions：注入 nodes 引用 %d 个势力", len(self.factions))
 
     def add_faction(self, faction):
-        """新增势力。只能被 Command 调用，UI 不得直接调。"""
-        # TODO(phase2): 实现
-        raise NotImplementedError("phase2")
+        """新增势力。只能被 Command 调用，UI 不得直接调。
+
+        这里只负责容器与引用注入：级联（君主 faction / node / location、
+        都城 owner）由调用方的 CompositeCommand 负责。
+        """
+        self.factions[faction.id] = faction
+        faction._nodes_ref = self.nodes          # 派生值 gold / food / troops 要用
+        logger.debug("新增势力：%s %s", faction.id, faction.name)
 
     def remove_faction(self, fid):
-        """删除势力。只能被 Command 调用。"""
-        # TODO(phase2): 实现
-        raise NotImplementedError("phase2")
+        """删除势力。只能被 Command 调用。
+
+        只摘容器；级联（据点改无主、人物下野、外官摘除、player_faction_id 清空）
+        由调用方的 CompositeCommand / 命令自己负责 —— 这样 undo 才能把它们都还原。
+        """
+        faction = self.factions.pop(fid, None)
+        if faction is not None:
+            faction._nodes_ref = None
+        logger.debug("删除势力：%s", fid)
 
     def remove_faction_if_empty(self, fid):
         """势力据点归零时删除。供 CompositeCommand 级联调用。"""
