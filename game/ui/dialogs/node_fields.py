@@ -44,23 +44,34 @@ def node_fields(world=None):
     )
 
 
-# 分组（需求 §3.11）
+# 分组：
+#   组 1「据点属性」—— 可编辑字段，两栏
+#   组 2「基本情况」—— 只读情报块
 NODE_SECTIONS = (
-    ("基本情况",
-     ("id", "name", "coords", "type", "level", "is_capital")),
-    ("归属与资源",
-     ("owner", "troops", "gold", "food")),
+    ("据点属性",
+     ("id", "name", "coords", "type", "level", "is_capital",
+      "owner", "troops", "gold", "food")),
+    ("基本情况", ()),
 )
 
+# 「据点属性」组的左栏字段 key；其余进右栏
+NODE_LEFT_KEYS = ("id", "name", "coords", "owner")
 
 def node_sections(fields, info=()):
-    """字段表 → 分组（FieldGroup 元组）；据点情报的只读信息块并入「基本情况」。"""
+    """字段表 → 分组（FieldGroup 元组）。
+
+    - 据点属性：两栏 —— 左栏静态字段，右栏 owner/troops/gold/food
+    - 基本情况：只显示 info（据点情报），无字段
+    """
     by_key = {f.key: f for f in fields}
     groups = []
     for index, (title, keys) in enumerate(NODE_SECTIONS):
+        is_main = (index == 0)           # ★ 主组改成 index 0
         groups.append(FieldGroup(
             title=title,
             fields=tuple(by_key[k] for k in keys if k in by_key),
-            info=tuple(info) if index == 0 else (),
+            info=tuple(info) if not is_main else (),
+            layout="two_cols" if is_main else "rows",
+            left_keys=NODE_LEFT_KEYS if is_main else (),
         ))
     return tuple(groups)

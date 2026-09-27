@@ -107,3 +107,102 @@ def make_title(region_id, *, state_name=None, county_name=None, city_name=None,
     if rank == RANK_CITY:
         return city_title(city_name or "", type_, level)
     return ""
+
+# ============================================================
+# 外官 rank（1–32）
+# ============================================================
+# 州级：固定
+RANK_SILI = 10           # 司隶校尉
+RANK_MU = 11             # 州牧
+RANK_CI_SHI = 12         # 州刺史
+
+# 郡级：固定特例（脱离分数查表）
+COUNTY_RANK_FIXED = {
+    "0707": 14,          # 河南尹
+    "0703": 15,          # 京兆尹
+}
+RANK_SHUGUO_DUWEI = 21   # 属国都尉
+
+# ★ 郡级金字塔：按分数查表（分数越高越重要，从高到低匹配，命中即止）
+#   郡分数 = Σ(11 − 县.level)，县 level 1 贡献 10 分、level 10 贡献 1 分。
+#   想调金字塔结构，改这张表即可。
+COUNTY_RANK_THRESHOLDS = (
+    (85, 16),            # 一等郡：分数 ≥ 85
+    (60, 17),            # 二等郡：分数 ≥ 60
+    (45, 18),            # 三等郡：分数 ≥ 45
+    (28, 19),            # 四等郡：分数 ≥ 30
+    (0,  20),            # 五等郡：分数 <  30
+)
+
+# 县级：按县 level 直接映射（城 / 关隘 / 渡口一视同仁）
+CITY_RANK_BY_LEVEL = {
+    1: 23, 2: 24, 3: 25, 4: 26, 5: 27, 6: 28,
+    7: 29, 8: 30, 9: 31, 10: 32,
+}
+
+
+def county_score(cities):
+    """郡分数 = Σ(11 − 县.level)。cities 是县对象（Node / dict）可迭代。"""
+    total = 0
+    for c in cities:
+        lv = c.level if hasattr(c, "level") else c.get("level", 5)
+        total += 11 - lv
+    return total
+
+def county_rank_by_score(score):
+    """分数 → 郡级 rank（16–20）。线性扫描，O(5)。"""
+    for threshold, rank in COUNTY_RANK_THRESHOLDS:
+        if score >= threshold:
+            return rank
+    return COUNTY_RANK_THRESHOLDS[-1][1]
+
+
+def county_rank(county_id, score):
+    """单郡的 rank。先查固定特例，否则按分数查表。"""
+    if county_id in COUNTY_RANK_FIXED:
+        return COUNTY_RANK_FIXED[county_id]
+    return county_rank_by_score(score)
+
+def compute_county_ranks(nodes):
+    """一次算完全部郡的 rank。返回 {county_id: rank(14–20)}。O(县数)。"""
+    buckets = {}
+    for n in nodes:
+        cid = n.id[:4] if hasattr(n, "id") else n.get("id", "")[:4]
+        if not cid:
+            continue
+        lv = n.level if hasattr(n, "level") else n.get("level", 5)
+        buckets[cid] = buckets.get(cid, 0) + (11 - lv)
+    return {cid: county_rank(cid, s) for cid, s in buckets.items()}
+
+def city_rank_by_level(level):
+    """县（城 / 关隘 / 渡口）rank：按 level 映射（23–32）。非法 level → None。"""
+    return CITY_RANK_BY_LEVEL.get(level)
+
+def official_rank_of_title(title, region_id, county_ranks=None):
+    """按官名 + 行政区 id 判定 rank。
+
+    州级 → 10 / 11 / 12
+    郡级 → 14 / 15 / 21，或查 county_ranks（太守 / 相）
+    县级 → 返回 None（调用方拿县 level 走 city_rank_by_level）
+    未识别 → None
+    """
+    if not title:
+        return None
+    if title == "司隶校尉":
+        return RANK_SILI
+    if title.endswith("牧"):
+        return RANK_MU
+    if title.endswith("刺史"):
+        return RANK_CI_SHI
+    if title == "河南尹":
+        return 14
+    if title == "京兆尹":
+        return 15
+    if title.endswith("属国都尉"):
+        return RANK_SHUGUO_DUWEI
+    if title.endswith(("太守", "相")):
+        if county_ranks and region_id and len(region_id) == 4:
+            return county_ranks.get(region_id)
+        return None
+    # 县级：令 / 长 / 都尉 / 障尉 / 津长 → 由调用方按 level 查
+    return None

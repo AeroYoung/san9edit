@@ -1,52 +1,78 @@
 # -*- coding: utf-8 -*-
 """通用数据驱动编辑弹窗。
 
-只认 Field.kind，不认业务实体。骨架中不出现「if 据点 elif 势力」这类分支。
+只认 Field.kind，不认业务实体。
 校验走 Field 的 min/max，readonly 走 display_fn。
 
-两种可选形态（都保持数据驱动）：
-    info_sections  只读信息块（(标题, 文本) 列表），放在字段上方 —— 情报/编辑同窗
-    readonly=True  全部字段按只读渲染，按钮只剩「关闭」—— 非编辑模式的「XX情报」
-    side_image     右侧竖图（头像路径）+ side_caption：势力编辑窗放君主头像用，
-                   找不到图 / 没装 Pillow → 显示占位文字，不崩
-
-分组与滚动（需求 §3.8 / §3.11 / §3.10）：
-    sections  FieldGroup 元组，分组复用 CollapsibleSection，不另起弹窗框架
-    scroll    True → 内容超出 MAX_BODY_H 时出现纵向滚动条
-
-联动（需求 §3.8 独立/附庸）：
-    on_change(key, value, dialog)  字段值变化时回调，由调用方决定启用/禁用别的字段
-    set_field_enabled(key, flag)   启 / 禁某个字段的输入控件（禁用字段不参与校验）
+形态：
+    info_sections  只读信息块（(标题, 文本) 列表），放在字段上方
+    readonly=True  全部字段按只读渲染，按钮只剩「关闭」
+    sections       FieldGroup 元组，分组复用 CollapsibleSection
+    scroll         True → 内容超出上限时出现滚动条
+    on_link_click  信息块中 [[c:id|名字]] / [[f:id|名字]] / [[n:id|名字]]
+                   标记的点击回调，签名 fn(kind, entity_id)
 """
 
 import logging
+import re
 import tkinter as tk
 from tkinter import ttk, colorchooser
 
+from game.ui.widgets.searchable_combo import SearchableCombobox
 from game.ui.window_utils import center_on_parent
 
 logger = logging.getLogger(__name__)
 
-MAX_BODY_H = 620            # 内容区最大高度（超出走滚动条）
+MAX_BODY_H = 620
+
+_LINK_RE = re.compile(r"\[\[([cfn]):([^|\]]+)\|([^\]]+)\]\]")
+
+
+def _parse_link_text(text):
+    """把带链接标记的字符串拆成 [(seg_text, kind|None, entity_id|None), ...]。
+
+    标记形如 [[c:0952|刘备]] / [[f:0521|曹操]] / [[n:030703|居风]]。
+    """
+    result = []
+    pos = 0
+    for m in _LINK_RE.finditer(text):
+        if m.start() > pos:
+            result.append((text[pos:m.start()], None, None))
+        result.append((m.group(3), m.group(1), m.group(2)))
+        pos = m.end()
+    if pos < len(text):
+        result.append((text[pos:], None, None))
+    return result
+
+
+def _readonly_entry(parent, text):
+    """只读单行 Entry：可鼠标拖动选中 + Ctrl+C 复制。"""
+    entry = tk.Entry(
+        parent, relief="flat", borderwidth=0, highlightthickness=0,
+        readonlybackground="white", fg="#333333",
+    )
+    entry.insert(0, str(text))
+    entry.configure(state="readonly")
+    return entry
 
 
 class EditDialog(tk.Toplevel):
     def __init__(self, master, fields, entity, world=None, title="编辑",
                  info_sections=(), readonly=False,
                  side_image=None, side_caption=None,
-                 sections=None, scroll=False, on_change=None):
+                 sections=None, scroll=False, on_change=None,
+                 on_link_click=None):
         super().__init__(master)
         logger.debug("构建弹窗：%s（%d 字段，只读=%s，信息块=%d，分组=%d）",
                      title, len(fields), readonly, len(info_sections),
                      len(sections or ()))
         self.title(title)
-        self.resizable(False, False)
-        # 相对主窗口（root）居中 + transient，而非相对右侧面板
+        self.resizable(True, True)
+        self.minsize(360, 240)
         self._top = master.winfo_toplevel()
         self.transient(self._top)
 
         self.sections = tuple(sections) if sections else ()
-        # 分组给的是布局，字段表给的是取值 / 校验 —— 有分组时以分组为准，避免两处漂移
         self.fields = (tuple(f for g in self.sections for f in g.fields)
                        if self.sections else fields)
         self.entity = entity
@@ -58,21 +84,23 @@ class EditDialog(tk.Toplevel):
         self._side_caption = side_caption
         self._scroll = bool(scroll)
         self._on_change_hook = on_change
-        self._link_busy = False    # 联动回调重入保护
-        self._photo = None       # ★ 保引用，防 GC
+        self._on_link_click = on_link_click
+        self._link_busy = False
+        self._photo = None
+        self._scroll_canvas = None
+        self._fitting = False
 
-        self._vars = {}            # key -> tk.Variable
-        self._widgets = {}         # key -> 输入控件（set_field_enabled 用）
-        self._disabled = set()     # 被联动禁用的字段 key（不参与校验 / 收集）
-        self._old_values = {}      # key -> 原值（可编辑字段）
-        self._label_to_value = {}  # key -> {label: value}（choice 字段）
-        self._swatches = {}        # key -> 色块 Label（color 字段）
+        self._vars = {}
+        self._widgets = {}
+        self._disabled = set()
+        self._old_values = {}
+        self._label_to_value = {}
+        self._swatches = {}
         self._err_label = None
 
         self._build(self.fields, self._info_sections)
         self._build_buttons()
 
-        # 联动初值：让调用方把「当前值决定的启用/禁用状态」先摆正
         if self._on_change_hook is not None:
             for f in self.fields:
                 if self._vars.get(f.key) is not None:
@@ -81,7 +109,6 @@ class EditDialog(tk.Toplevel):
         self.bind("<Escape>", lambda e: self._cancel())
         self.protocol("WM_DELETE_WINDOW", self._cancel)
 
-        # 尺寸确定后再居中（相对主窗口）
         self.update_idletasks()
         w = max(self.winfo_reqwidth(), 300)
         h = self.winfo_reqheight()
@@ -93,6 +120,7 @@ class EditDialog(tk.Toplevel):
             pass
         self.focus_set()
 
+
     # ============================================================
     # 构建
     # ============================================================
@@ -100,7 +128,7 @@ class EditDialog(tk.Toplevel):
         main = tk.Frame(self)
         main.pack(fill="both", expand=True)
         if self._side_image is not None or self._side_caption:
-            self._build_side(main)          # 右侧头像（先 pack 的靠右）
+            self._build_side(main)
         outer = tk.Frame(main, padx=14, pady=12)
         outer.pack(side="left", fill="both", expand=True)
 
@@ -121,28 +149,51 @@ class EditDialog(tk.Toplevel):
             self._build_row(body, r, f)
 
     def _make_scroll_body(self, outer):
-        """把内容区放进 Canvas，超出 MAX_BODY_H 时纵向滚动。返回内容 Frame。"""
+        """内容区放入 Canvas：横 / 竖滚动条按内容 vs 视口大小自动出现。"""
         canvas = tk.Canvas(outer, width=560, height=MAX_BODY_H,
                            highlightthickness=0, bg=self.cget("bg"))
-        bar = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-        canvas.configure(yscrollcommand=bar.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        bar.pack(side="right", fill="y")
+        bar_y = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        bar_x = ttk.Scrollbar(outer, orient="horizontal", command=canvas.xview)
+        canvas.configure(yscrollcommand=bar_y.set, xscrollcommand=bar_x.set)
+
+        outer.rowconfigure(0, weight=1)
+        outer.columnconfigure(0, weight=1)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        bar_y.grid(row=0, column=1, sticky="ns")
+        bar_x.grid(row=1, column=0, sticky="ew")
+        bar_y.grid_remove()
+        bar_x.grid_remove()
 
         body = tk.Frame(canvas, bg=self.cget("bg"))
         window = canvas.create_window((0, 0), window=body, anchor="nw")
 
         def _fit_inner(_evt=None):
-            want = body.winfo_reqheight()
-            canvas.configure(height=min(want, MAX_BODY_H),
-                             scrollregion=canvas.bbox("all"))
-            outer_width = canvas.winfo_width()
-            if outer_width > 1:
-                canvas.itemconfigure(window, width=outer_width)
+            if self._fitting:
+                return
+            self._fitting = True
+            try:
+                body.update_idletasks()
+                natural_w = body.winfo_reqwidth()
+                natural_h = body.winfo_reqheight()
+                cw = canvas.winfo_width()
+                ch = canvas.winfo_height()
+                if cw <= 1 or ch <= 1:
+                    return
+                canvas.itemconfigure(window, width=max(cw, natural_w))
+                if natural_h > ch:
+                    bar_y.grid()
+                else:
+                    bar_y.grid_remove()
+                if natural_w > cw:
+                    bar_x.grid()
+                else:
+                    bar_x.grid_remove()
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            finally:
+                self._fitting = False
 
         body.bind("<Configure>", _fit_inner)
         canvas.bind("<Configure>", _fit_inner)
-        # 滚轮（Canvas 自己没有滚动条，绑在画布与内容上）
         for widget in (canvas, body):
             widget.bind("<MouseWheel>", lambda e: self._on_wheel(canvas, e))
         self._scroll_canvas = canvas
@@ -153,7 +204,7 @@ class EditDialog(tk.Toplevel):
         canvas.yview_scroll(-1 if event.delta > 0 else 1, "units")
 
     def _build_sections(self, body):
-        """分组布局：每组一个 CollapsibleSection，默认全部展开。"""
+        """分组布局：每组一个 CollapsibleSection，按 group.layout 分派渲染。"""
         from game.ui.widgets.collapsible import CollapsibleSection
 
         for group in self.sections:
@@ -161,15 +212,99 @@ class EditDialog(tk.Toplevel):
                                          expanded=True)
             section.pack(fill="x", pady=(0, 6))
             inner = section.body
-            inner.columnconfigure(1, weight=1)
-            row = 0
-            if group.info:
-                row = self._build_info(inner, group.info) + 1
-                tk.Frame(inner, bg="#DDDDDD", height=1).grid(
-                    row=row - 1, column=0, columnspan=3, sticky="ew", pady=6)
-            for f in group.fields:
-                self._build_row(inner, row, f)
-                row += 1
+            layout = getattr(group, "layout", "rows")
+            if layout == "two_cols":
+                self._render_two_cols(inner, group)
+            elif layout == "inline":
+                self._render_inline(inner, group)
+            else:
+                self._render_rows(inner, group)
+
+    def _render_rows(self, inner, group):
+        """默认：标签在左、控件在右，一行一个字段。"""
+        self._render_group_body(inner, group.info, group.fields)
+
+    def _render_group_body(self, frame, info, fields):
+        """在某容器里按「info 块 → 字段行」顺序 grid 排布。"""
+        frame.columnconfigure(1, weight=1)
+        row = 0
+        if info:
+            row = self._build_info(frame, info) + 1
+            tk.Frame(frame, bg="#DDDDDD", height=1).grid(
+                row=row - 1, column=0, columnspan=3, sticky="ew", pady=6)
+        for f in fields:
+            self._build_row(frame, row, f)
+            row += 1
+
+    def _render_two_cols(self, inner, group):
+        """左右两栏：按 left_keys / left_info_titles 划分，左栏顶部可挂头像。"""
+        left = tk.Frame(inner, bg=self.cget("bg"))
+        right = tk.Frame(inner, bg=self.cget("bg"))
+        left.grid(row=0, column=0, sticky="nw", padx=(0, 16))
+        right.grid(row=0, column=1, sticky="new")
+        inner.columnconfigure(1, weight=1)
+
+        if group.side_image or group.side_caption:
+            self._build_side_inline(left, group.side_image, group.side_caption)
+
+        left_body = tk.Frame(left, bg=self.cget("bg"))
+        left_body.pack(fill="x")
+
+        left_keys = set(group.left_keys or ())
+        left_titles = set(group.left_info_titles or ())
+        left_info = [t for t in group.info if t[0] in left_titles]
+        right_info = [t for t in group.info if t[0] not in left_titles]
+        left_fields = [f for f in group.fields if f.key in left_keys]
+        right_fields = [f for f in group.fields if f.key not in left_keys]
+
+        if left_info or left_fields:
+            self._render_group_body(left_body, left_info, left_fields)
+        self._render_group_body(right, right_info, right_fields)
+
+    def _render_inline(self, inner, group):
+        """所有字段排成一行：标签 + 控件依次横向排列。"""
+        bar = tk.Frame(inner, bg=self.cget("bg"))
+        bar.pack(anchor="w", fill="x", pady=(2, 0))
+        for f in group.fields:
+            cell = tk.Frame(bar, bg=self.cget("bg"))
+            cell.pack(side="left", padx=(0, 12))
+            tk.Label(cell, text=f.label + "：", anchor="e",
+                     bg=self.cget("bg")).pack(side="left")
+            value = getattr(self.entity, f.key, f.default)
+            self._old_values[f.key] = value
+            place, var, state = self._make_field_widget(cell, f, value)
+            place.pack(side="left")
+            self._vars[f.key] = var
+            self._widgets[f.key] = state
+            if self._on_change_hook is not None and var is not None:
+                var.trace_add("write",
+                              lambda *_a, k=f.key: self._on_value_change(k))
+
+    def _build_side_inline(self, parent, image_path, caption):
+        """组内左侧头像（140×140），找不到图 → 占位文字，不崩。"""
+        from game.ui.portrait import load_thumbnail
+
+        wrap = tk.Frame(parent, bg=self.cget("bg"))
+        wrap.pack(anchor="w", pady=(0, 8))
+
+        box = tk.Frame(wrap, width=140, height=140,
+                       highlightthickness=1,
+                       highlightbackground="#CCCCCC")
+        box.pack()
+        box.pack_propagate(False)
+        label = tk.Label(box, bg="#F5F5F5")
+        label.pack(expand=True, fill="both")
+
+        photo, note = load_thumbnail(image_path, 140, 140, master=self)
+        if photo is not None:
+            self._photo = photo
+            label.configure(image=photo)
+        else:
+            label.configure(text=note or "（无头像）", fg="#999999",
+                            font=("", 9), justify="center")
+        if caption:
+            tk.Label(wrap, text=caption, fg="#333333", font=("", 9),
+                     wraplength=140, justify="center").pack(pady=(4, 0))
 
     def _build_row(self, parent, row, f):
         tk.Label(parent, text=f.label + "：", anchor="e", bg=self.cget("bg")
@@ -181,7 +316,7 @@ class EditDialog(tk.Toplevel):
                 row=row, column=2, sticky="w", padx=(8, 0))
 
     def _build_side(self, main):
-        """右侧竖图（头像）：占位文字兜底，图与说明居中。"""
+        """右侧竖图（头像）：占位文字兜底。"""
         from game.ui.portrait import load_thumbnail
 
         side = tk.Frame(main, padx=14, pady=12)
@@ -206,43 +341,118 @@ class EditDialog(tk.Toplevel):
                      font=("", 9), wraplength=140, justify="center"
                      ).pack(pady=(6, 0))
 
+    # ============================================================
+    # info 块（只读，可拖选复制，支持 [[k:id|名字]] 链接）
+    # ============================================================
     def _build_info(self, body, info_sections):
-        """只读信息块：(标题, 文本) → 标题加粗 + 正文（可多行）。"""
         row = 0
         for title, text in info_sections:
             tk.Label(body, text=title, anchor="w", font=("", 9, "bold")
-                     ).grid(row=row, column=0, columnspan=2, sticky="w",
+                     ).grid(row=row, column=0, columnspan=3, sticky="w",
                             pady=(6, 0))
             row += 1
-            tk.Label(body, text=str(text), anchor="w", justify="left",
-                     wraplength=520, fg="#333333"
-                     ).grid(row=row, column=0, columnspan=2, sticky="w")
+            self._build_info_text(body, row, str(text))
             row += 1
         return row
 
+    def _build_info_text(self, parent, row, text):
+        """只读多行文本：支持拖选 / Ctrl+C；[[k:id|名字]] 渲染为可点链接。"""
+        t = tk.Text(parent, height=1, wrap="word",
+                    relief="flat", borderwidth=0, highlightthickness=0,
+                    padx=0, pady=0, bg="white", fg="#333333",
+                    cursor="arrow", font=("", 9))
+        t.grid(row=row, column=0, columnspan=3, sticky="ew", pady=(0, 3))
+
+        for seg_text, kind, eid in _parse_link_text(str(text)):
+            if kind is None:
+                t.insert("end", seg_text)
+            else:
+                tag = "link_%s_%s_%s" % (kind, eid, t.index("end-1c"))
+                t.insert("end", seg_text, (tag,))
+                t.tag_configure(tag, foreground="#1F6FBF")
+                t.tag_bind(tag, "<Button-1>",
+                           lambda e, k=kind, i=eid: self._on_link(k, i))
+                t.tag_bind(tag, "<Enter>",
+                           lambda e, c=t: c.configure(cursor="hand2"))
+                t.tag_bind(tag, "<Leave>",
+                           lambda e, c=t: c.configure(cursor="arrow"))
+
+        def _on_key(event):
+            if event.state & 0x4 and event.keysym.lower() in ("c", "a"):
+                return None
+            return "break"
+        t.bind("<Key>", _on_key)
+
+        def _fit():
+            try:
+                if t.winfo_width() <= 1:
+                    t.after(20, _fit)
+                    return
+                n = t.count("1.0", "end-1c", "displaylines")
+                if n is None:
+                    return
+                if isinstance(n, (list, tuple)):
+                    n = n[0] if n else 1
+                if n is None:
+                    return
+                want = max(1, int(n))
+                if int(t.cget("height")) != want:
+                    t.configure(height=want)
+            except (tk.TclError, TypeError, ValueError):
+                pass
+        t.after_idle(_fit)
+
+        return t
+
+    def _on_link(self, kind, entity_id):
+        """点链接：先释放本弹窗的 grab，调回调，再抢回 grab。"""
+        if self._on_link_click is None:
+            return
+        try:
+            self.grab_release()
+        except tk.TclError:
+            pass
+        try:
+            self._on_link_click(kind, entity_id)
+        finally:
+            try:
+                self.grab_set()
+            except tk.TclError:
+                pass
+
+    # ============================================================
+    # 字段渲染
+    # ============================================================
     def _build_field(self, parent, row, f):
         value = getattr(self.entity, f.key, f.default)
 
         if f.kind == "readonly" or self.readonly:
             text = (f.display_fn(value, self.world) if f.display_fn
                     else str(value))
-            tk.Label(parent, text=text, anchor="w", fg="#333333",
-                     bg=self.cget("bg")).grid(
-                row=row, column=1, sticky="w", pady=4)
+            entry = _readonly_entry(parent, text)
+            entry.grid(row=row, column=1, sticky="ew", pady=4)
             self._vars[f.key] = None
             return
 
-        # 可编辑字段：记录旧值
         self._old_values[f.key] = value
+        place, var, state = self._make_field_widget(parent, f, value)
+        place.grid(row=row, column=1, sticky="w", pady=4)
+        self._vars[f.key] = var
+        self._widgets[f.key] = state
 
+        if self._on_change_hook is not None and var is not None:
+            var.trace_add("write",
+                          lambda *_a, k=f.key: self._on_value_change(k))
+
+    def _make_field_widget(self, parent, f, value):
+        """创建字段控件（未布局）。返回 (place, var, state)。"""
         if f.kind == "bool":
             var = tk.BooleanVar(value=bool(value))
-            widget = tk.Checkbutton(parent, variable=var, bg=self.cget("bg"),
-                                    activebackground=self.cget("bg"))
-            widget.grid(row=row, column=1, sticky="w", pady=4)
-            self._vars[f.key] = var
-            self._widgets[f.key] = widget
-        elif f.kind == "choice":
+            w = tk.Checkbutton(parent, variable=var, bg=self.cget("bg"),
+                               activebackground=self.cget("bg"))
+            return w, var, w
+
+        if f.kind == "choice":
             labels = [label for _v, label in f.options]
             value_by_label = {label: v for v, label in f.options}
             self._label_to_value[f.key] = value_by_label
@@ -250,63 +460,66 @@ class EditDialog(tk.Toplevel):
                 (label for v, label in f.options if v == value),
                 labels[0] if labels else "")
             var = tk.StringVar(value=current_label)
-            widget = ttk.Combobox(parent, textvariable=var, values=labels,
-                                  state="readonly", width=16)
-            widget.grid(row=row, column=1, sticky="w", pady=4)
-            self._vars[f.key] = var
-            self._widgets[f.key] = widget
-        elif f.kind == "color":
-            self._build_color(parent, row, f, value)
-        else:  # int / str
-            var = tk.StringVar(value=str(value))
-            widget = tk.Entry(parent, textvariable=var, width=18)
-            widget.grid(row=row, column=1, sticky="w", pady=4)
-            self._vars[f.key] = var
-            self._widgets[f.key] = widget
+            w = SearchableCombobox(parent, labels,
+                                   textvariable=var, width=18)
+            return w, var, w
 
-        if self._on_change_hook is not None:
-            self._vars[f.key].trace_add(
-                "write", lambda *_a, k=f.key: self._on_value_change(k))
+        if f.kind == "color":
+            cell = tk.Frame(parent, bg=self.cget("bg"))
+            initial = str(value or "#888888")
+            swatch = tk.Label(cell, width=4, bg=initial, relief="solid",
+                              bd=1, cursor="hand2")
+            swatch.pack(side="left", padx=(0, 6))
+            self._swatches[f.key] = swatch
+            hexvar = tk.StringVar(value=initial)
+            ent = tk.Entry(cell, textvariable=hexvar, width=10)
+            ent.pack(side="left")
 
-    def _build_color(self, body, row, f, value):
-        cell = tk.Frame(body, bg=self.cget("bg"))
-        cell.grid(row=row, column=1, sticky="w", pady=4)
+            def _set(v):
+                v = str(v or "").strip()
+                if not v.startswith("#") or len(v) != 7:
+                    return
+                swatch.configure(bg=v)
+                hexvar.set(v)
 
-        initial = str(value or "#888888")
-        swatch = tk.Label(cell, width=4, bg=initial, relief="solid",
-                          bd=1, cursor="hand2")
-        swatch.pack(side="left", padx=(0, 6))
-        self._swatches[f.key] = swatch
+            def _pick(_evt=None):
+                _rgb, hexval = colorchooser.askcolor(
+                    color=hexvar.get() or "#000000",
+                    parent=self, title=f.label)
+                if hexval:
+                    _set(hexval)
 
-        hexvar = tk.StringVar(value=initial)
-        ent = tk.Entry(cell, textvariable=hexvar, width=10)
-        ent.pack(side="left")
+            def _on_commit(_evt=None):
+                _set(hexvar.get())
 
-        def _set(v):
-            v = str(v or "").strip()
-            if not v.startswith("#") or len(v) != 7:
-                return
-            swatch.configure(bg=v)
-            hexvar.set(v)
+            swatch.bind("<Button-1>", _pick)
+            ent.bind("<Return>", _on_commit)
+            ent.bind("<FocusOut>", _on_commit)
+            return cell, hexvar, ent
 
-        def _pick(_evt=None):
-            _rgb, hexval = colorchooser.askcolor(
-                color=hexvar.get() or "#000000",
-                parent=self, title=f.label)
-            if hexval:
-                _set(hexval)
+        # int / str
+        var = tk.StringVar(value=str(value))
+        w = tk.Entry(parent, textvariable=var, width=18, bg="white")
 
-        def _on_commit(_evt=None):
-            _set(hexvar.get())
+        if f.kind == "int":
+            def _validate(new_val, _f=f):
+                if new_val == "":
+                    return True
+                if not new_val.isdigit():
+                    return False
+                v = int(new_val)
+                if _f.min is not None and v < _f.min:
+                    return False
+                if _f.max is not None and v > _f.max:
+                    return False
+                return True
+            vcmd = w.register(_validate)
+            w.configure(validate="key", validatecommand=(vcmd, "%P"))
 
-        swatch.bind("<Button-1>", _pick)
-        ent.bind("<Return>", _on_commit)
-        ent.bind("<FocusOut>", _on_commit)
-        self._vars[f.key] = hexvar
-        self._widgets[f.key] = ent
+        return w, var, w
 
     # ============================================================
-    # 联动（由调用方通过 on_change 注入规则，弹窗自身不认业务）
+    # 联动
     # ============================================================
     def _on_value_change(self, key):
         if self._link_busy or self._on_change_hook is None:
@@ -318,10 +531,6 @@ class EditDialog(tk.Toplevel):
             self._link_busy = False
 
     def field_value(self, key):
-        """当前控件里的值（未收集 / 未校验，仅供联动判断）。
-
-        choice 字段返回**选项值**而不是显示用的 label（与 set_field_value 对称）。
-        """
         var = self._vars.get(key)
         if var is None:
             return getattr(self.entity, key, None)
@@ -334,7 +543,6 @@ class EditDialog(tk.Toplevel):
         return raw
 
     def set_field_value(self, key, value):
-        """直接写控件值（联动用；choice 传 value，不是 label）。"""
         var = self._vars.get(key)
         if var is None:
             return
@@ -347,7 +555,6 @@ class EditDialog(tk.Toplevel):
         var.set("" if value is None else str(value))
 
     def set_field_enabled(self, key, enabled):
-        """启用 / 禁用某字段的输入控件（禁用字段不参与校验与收集）。"""
         widget = self._widgets.get(key)
         if widget is None:
             return
@@ -355,7 +562,7 @@ class EditDialog(tk.Toplevel):
             if isinstance(widget, tk.Checkbutton):
                 widget.configure(state="normal" if enabled else "disabled")
             elif isinstance(widget, ttk.Combobox):
-                widget.configure(state="readonly" if enabled else "disabled")
+                widget.configure(state="normal" if enabled else "disabled")
             else:
                 widget.configure(state="normal" if enabled else "disabled")
         except tk.TclError:
@@ -385,7 +592,7 @@ class EditDialog(tk.Toplevel):
     def _validate(self):
         for f in self.fields:
             if f.key in self._disabled:
-                continue          # 联动禁用的字段（如独立时的附庸值）不校验
+                continue
             if f.kind == "int":
                 raw = self._vars[f.key].get().strip()
                 try:
@@ -429,7 +636,6 @@ class EditDialog(tk.Toplevel):
     # 结果
     # ============================================================
     def get_changed(self):
-        """返回 (new_values, old_values)，只含真正变化的字段。"""
         new_values = self._collect()
         changed_new = {}
         changed_old = {}
@@ -451,6 +657,13 @@ class EditDialog(tk.Toplevel):
         if not self._validate():
             logger.warning("弹窗校验失败，拒绝提交")
             return
+        # destroy 前先规范化所有可搜索下拉（normalize 需要 widget 尚存）
+        for widget in self._widgets.values():
+            if isinstance(widget, SearchableCombobox):
+                try:
+                    widget.normalize()
+                except tk.TclError:
+                    pass
         self.ok = True
         self.destroy()
         logger.debug("弹窗确定")

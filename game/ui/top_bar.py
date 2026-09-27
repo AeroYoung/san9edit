@@ -33,6 +33,8 @@ class TopBar(tk.Frame):
         # ★ 编辑类菜单项登记表：[(menu, index)]，按 APP_MODE 一键全禁/全启
         self._edit_entries = []
         self._edit_enabled = True
+        self._undo_entry = None     # ★ 撤销菜单项 (menu, index)
+        self._redo_entry = None     # ★ 重做菜单项 (menu, index)
 
         self._build_left_info()
         self._build_right_menus()
@@ -124,10 +126,8 @@ class TopBar(tk.Frame):
 
         menu_specs = [
             ("文件", self._build_file_menu),
-            ("编辑", self._build_edit_menu),
+            ("情报", self._build_intel_menu),     # ★ 新增
             ("游戏", self._build_game_menu),
-            ("势力", self._build_faction_menu),
-            ("命令", self._build_order_menu),
             ("查看", self._build_view_menu),
             ("帮助", self._build_help_menu),
         ]
@@ -181,9 +181,12 @@ class TopBar(tk.Frame):
 
     # ---------- 各下拉菜单定义 ----------
     def _add_edit_command(self, menu, **kw):
-        """★ 登记一个「编辑类」菜单项：非编辑模式下可一键全禁。"""
+        """★ 登记一个「编辑类」菜单项：非编辑模式下可一键全禁。
+        返回 (menu, index) 供撤销/重做入口单独持有。"""
         menu.add_command(**kw)
-        self._edit_entries.append((menu, menu.index("end")))
+        entry = (menu, menu.index("end"))
+        self._edit_entries.append(entry)
+        return entry
 
     def _build_file_menu(self, m):
         self._add_edit_command(m, label="选择剧本",
@@ -194,15 +197,15 @@ class TopBar(tk.Frame):
         self._add_edit_command(m, label="另存为", accelerator="Ctrl+Shift+S",
                                command=lambda: self._emit("save_scenario_as"))
         m.add_separator()
+        # ★ 撤销/重做从「编辑」菜单移入
+        self._undo_entry = self._add_edit_command(
+            m, label="撤销", accelerator="Ctrl+Z",
+            command=lambda: self._emit("undo"))
+        self._redo_entry = self._add_edit_command(
+            m, label="重做", accelerator="Ctrl+Shift+Z",
+            command=lambda: self._emit("redo"))
+        m.add_separator()
         m.add_command(label="退出", command=lambda: self._emit("quit"))
-
-    def _build_edit_menu(self, m):
-        self._edit_menu = m
-        # 撤销/重做也是编辑类项：统一登记，state 由 set_edit_state 动态控
-        self._add_edit_command(m, label="撤销", accelerator="Ctrl+Z",
-                               command=lambda: self._emit("undo"))
-        self._add_edit_command(m, label="重做", accelerator="Ctrl+Shift+Z",
-                               command=lambda: self._emit("redo"))
 
     def _build_game_menu(self, m):
         m.add_command(label="新游戏", command=lambda: self._emit("new_game"))
@@ -212,37 +215,6 @@ class TopBar(tk.Frame):
         m.add_command(label="游戏设置", command=lambda: self._emit("settings"))
         m.add_separator()
         m.add_command(label="退出", command=lambda: self._emit("quit"))
-
-    def _build_faction_menu(self, m):
-        internal = tk.Menu(m, tearoff=0)
-        internal.add_command(label="内政 · 开发",
-                             command=lambda: self._emit("internal_develop"))
-        internal.add_command(label="内政 · 商业",
-                             command=lambda: self._emit("internal_trade"))
-        internal.add_command(label="内政 · 农业",
-                             command=lambda: self._emit("internal_farm"))
-        m.add_cascade(label="内政", menu=internal)
-
-        military = tk.Menu(m, tearoff=0)
-        military.add_command(label="征兵", command=lambda: self._emit("military_recruit"))
-        military.add_command(label="训练", command=lambda: self._emit("military_train"))
-        military.add_command(label="出征", command=lambda: self._emit("military_expedition"))
-        m.add_cascade(label="军事", menu=military)
-
-        diplomacy = tk.Menu(m, tearoff=0)
-        diplomacy.add_command(label="同盟", command=lambda: self._emit("diplomacy_ally"))
-        diplomacy.add_command(label="停战", command=lambda: self._emit("diplomacy_truce"))
-        diplomacy.add_command(label="劝降", command=lambda: self._emit("diplomacy_surrender"))
-        m.add_cascade(label="外交", menu=diplomacy)
-
-        m.add_separator()
-        m.add_command(label="结束本回合", command=lambda: self._emit("end_turn"))
-
-    def _build_order_menu(self, m):
-        m.add_command(label="移动", command=lambda: self._emit("order_move"))
-        m.add_command(label="攻击", command=lambda: self._emit("order_attack"))
-        m.add_command(label="计略", command=lambda: self._emit("order_scheme"))
-        m.add_command(label="待机", command=lambda: self._emit("order_hold"))
 
     def _build_view_menu(self, m):
         m.add_command(label="地图缩放 · 放大",
@@ -259,17 +231,24 @@ class TopBar(tk.Frame):
         m.add_command(label="操作说明", command=lambda: self._emit("help_manual"))
         m.add_command(label="关于", command=lambda: self._emit("help_about"))
 
+    def _build_intel_menu(self, m):
+        m.add_command(label="官职体系…",
+                      command=lambda: self._emit("job_system"))
+
     # ==========================================================
     # 编辑模式控制
     # ==========================================================
     def set_edit_state(self, can_undo, can_redo):
-        """编辑菜单撤销/重做的置灰状态。由 MainWindow 主动调用。"""
-        menu = getattr(self, "_edit_menu", None)
-        if menu is None:
-            return
+        """撤销/重做的置灰状态。入口现在在文件菜单里。"""
         e = self._edit_enabled
-        menu.entryconfig(0, state="normal" if (can_undo and e) else "disabled")
-        menu.entryconfig(1, state="normal" if (can_redo and e) else "disabled")
+        for entry, can in ((self._undo_entry, can_undo),
+                           (self._redo_entry, can_redo)):
+            if entry is None:
+                continue
+            menu, index = entry
+            menu.entryconfig(index,
+                             state="normal" if (can and e) else "disabled")
+
 
     def set_edit_enabled(self, enabled):
         """★ 按 APP_MODE 统一启用/禁用所有登记过的编辑类菜单项。

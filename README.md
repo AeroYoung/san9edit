@@ -29,6 +29,9 @@
 | 反向定位 | GenericListPanel.scroll_to_row(key) | 地图 → 列表：切 Tab + 滚动 + 选中 + 展开组 |
 | 据点人物数 | World.count_characters_by_node | ★ 按所属 node 聚合，未登场不计（§3.5） |
 | 外官 | World.officials / core/official_title.py | ★ 行政区 id(2/4/6 位) → 官名 + 人物；一区一官，一人可多职 |
+| 位阶 rank | official_title.RANK_* / military_title.rank_of | ★ 1–32，数字越小越尊贵；「官职体系」窗口按它排序（§5.26） |
+| 武官 | Character.military_title / core/military_title.py | ★ **荣誉头衔**，与行政区外官独立；一人最多一个；rank < 26 势力内唯一（§3.3） |
+| 官职体系窗口 | ui/job_system_window.py::JobSystemWindow | ★ 「情报」菜单打开的人物 / 官职双模式总览（§5.26） |
 | 势力兵力 | Faction.troops | ★ 派生值：名下据点 troops 求和 + 所属部队求和（部队项恒 0，§3.2） |
 | 势力兵力口径 | —— | ★ Σ node.troops (owner=本势力) + Σ troop.troops（Troop 未建模，见 §8.4） |
 | 面板列配置 | style.PANEL_COLUMNS | 每面板 {order:[], hidden:[]}，见 §5.22 |
@@ -54,6 +57,9 @@
 | 附庸值 | Faction.vassal_value | ★ 1–99，越大越听从宗主；独立势力恒 0（100 = 融入宗主，未实现） |
 | 派生显示色 | core/faction_color.py::faction_display_color | ★ 运行时派生，**不写回** Faction.color（§3.2） |
 | 弹窗分组 | EditDialog(sections=…) / FieldGroup | ★ 只影响布局，不改变取值与校验（§9.4） |
+| 弹窗分组布局 | FieldGroup.layout | ★ rows（默认）/ two_cols / inline 三种排版（§9.4） |
+| 可搜索下拉 | ui/widgets/searchable_combo.py::SearchableCombobox | ★ 输入关键字实时过滤；normalize() 把非法输入纠正为合法选项 |
+| 弹窗链接标记 | [[c:id\|名]] / [[f:id\|名]] / [[n:id\|名]] | ★ info 块里的可点实体引用，点击回调 on_link_click(kind, entity_id)（§9.4） |
 | 日志系统 | logging_setup.py / LOG_DIR | ★ 每次启动一个文件，DEBUG，保留 30 个（§5.6） |
 | 日志总开关 | LOG_ENABLED（constants.py） | ★ 编译期一键关闭全部日志（§5.6）；风格同 APP_MODE |
 | session id | logging_setup._SESSION_ID | ★ 8 位十六进制，每行日志前缀，区分多次启动 |
@@ -121,7 +127,8 @@
 
 - 居中基准 = **游戏主窗口**（`self._top = master.winfo_toplevel()`），不是右侧面板。
 - 窗口宽固定 600，高自适应（`resizable(False, True)`）；最小高 640。
-- 内容四区：标题（名字）/ 上区（头像 + 五维雷达图）/ 关系 / 生平（占位）。
+- 内容分区：只读形态 = 官职 + 头像 + 五维雷达图 / 关系 / 生平；编辑形态 = 基础（左头像 + 右字段）/ 五维 / 归属 / 外官 / 关系 / 生平 + 底部「保存 / 取消」。
+- 内容装在 Canvas 里，纵向 / 横向滚动条按「内容 vs 视口」自动出现。
 - 五维雷达图用 **tkinter Canvas** 画（不用 Pillow，避免跨平台字体文件路径问题）。
 - 关系区 8 字段全画；姓名带表字（display_name），不带势力。
 - 可点姓名 → 蓝字 + hand2 → 打开新窗口（master = 主窗口）。
@@ -178,7 +185,7 @@
 | 项目名称 | 暗耻三国志（APP_TITLE） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | main.py → MainWindow().run() |
-| 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报窗口（Pillow 头像 + 五维雷达图 + 关系）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + undo/redo + 增量保存）；全流程日志 |
+| 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报窗口（Pillow 头像 + 五维雷达图 + 关系）；官职体系窗口（按人物 / 按官职 + 位阶）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + undo/redo + 增量保存）；全流程日志 |
 | 运行环境 | Python 3 + 标准库 tkinter + Pillow（第三方，仅人物情报窗口的头像用；雷达图/关系区纯 Canvas/Widget） |
 | 数据来源 | assets/map.geojson：13 州 / 106 郡 / **1152 县**；roads.geojson；water.geojson；mountains.geojson（未接入）；characters.json：1049 人；assets/portrait/：739 张头像 |
 | 剧本来源 | scenarios/default.json（190 年 · 州郡外官；54 势力 / 1049 人物全覆盖 / 616 据点 / 53 条外官） |
@@ -189,7 +196,8 @@
 - ✅ 地图 / 渲染：州郡县三级边界 + 道路 + 水域 + 图层显隐 + 县名避让；县面势力染色（唯一着色图层，不吃 LOD）；县点选 + hover 高亮（5 开关）；地图 ⇄ 列表双向定位；精确反查州 · 郡 · 县 · 势力
 - ✅ 面板：4 面板共享 panels/list/ 框架（列 / 排序 / 嵌套分组 / 搜索 / 多选 / 右键菜单）+ 列顺序与显隐可配置；势力色块；兵力 / 据点数 / 人物数三列现算（兵力是派生值不落盘，人物数未登场不计）；据点面板「主官」列与据点情报三项右键仍是占位
 - ✅ 人物情报窗口：Pillow 头像 + Canvas 五维雷达图 + 关系区（8 字段，可点击跳转）+ 生平占位
-- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（50 势力 / 1049 人物 / 611 据点 / 49 条外官）+ 三层加载 + character_id_range 仅老剧本兼容
+- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（54 势力 / 1049 人物 / 616 据点 / 53 条外官 / 221 人武官头衔）+ 三层加载 + character_id_range 仅老剧本兼容
+- ✅ 官职体系：外官位阶 rank（州 / 郡 / 县，郡级按县 level 分数分等）+ 武官 32 rank 官名表 + 官职体系窗口（只读总览，暂不可编辑）
 - ✅ 剧本编辑：APP_MODE 编译期切换 + 据点 / 势力编辑（共用流程 + 郡治互斥）+ 人物登场开关 + undo/redo + 增量保存 + 未保存提示；编辑入口统一标识（edit=True / set_edit_enabled）
 - ✅ 设置窗口：主题 / 地图样式 / 图层 / 面板列 多 Tab
 - ✅ 日志：会话文件 + session id + sys/tk 异常钩子 + LOG_ENABLED 编译期总开关
@@ -252,7 +260,8 @@ san9edit/
     │   ├── character.py               Character：人物（31 字段，node / location 分离）
     │   ├── node.py                    Node：县 = 据点（静态 + 动态 owner/troops/gold/food）
     │   ├── scenario.py                剧本加载（三层人物 + character_id_range + 应用登场状态 + 外官）
-    │   ├── official_title.py          ★ 外官官名生成（州 / 郡 / 县，纯函数无依赖）
+    │   ├── official_title.py          ★ 外官官名生成 + 位阶 rank（州 / 郡 / 县，纯函数无依赖）
+    │   ├── military_title.py          ★ 武官官名表（32 rank / 84 官名）+ 唯一性校验接口
     │   ├── territory.py               郡级势力统计（保留，暂不消费）
     │   ├── edit_session.py            ★ Command / CompositeCommand / EditSession
     │   ├── edit_commands.py           ★ NodeEditCommand / FactionEditCommand / CharacterEditCommand
@@ -274,8 +283,9 @@ san9edit/
         │                              + reload_panel_columns()
         ├── settings_window.py         设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
         │                              +「面板列」tab + 8 个方法
-        ├── character_info_window.py   人物情报窗口（头像 + 五维雷达图 + 关系 + 生平占位）
+        ├── character_info_window.py   人物情报 / 编辑人物窗口（头像 + 五维雷达图 + 关系 + 生平占位）
         │                              （据点情报已并入编辑据点弹窗，见 §5.21 EditDialog）
+        ├── job_system_window.py       ★ 官职体系窗口（按人物 / 按官职 + 位阶，只读）
         ├── dialogs/pick_list.py      ★ 通用单选列表（弹窗挑一行用：单选 / 无右键 / 不分组）
         ├── window_utils.py            窗口工具（最大化 / 居中）
         ├── dialogs/                   ★ 编辑弹窗（数据驱动）
@@ -286,7 +296,8 @@ san9edit/
         │   ├── node_edit.py           ★ 据点编辑共用流程（含郡治互斥）
         │   └── faction_edit.py        ★ 势力编辑共用流程
         ├── widgets/
-        │   └── collapsible.py         折叠区块（设置窗口分组用）
+        │   ├── collapsible.py         折叠区块（设置窗口分组用）
+        │   └── searchable_combo.py    ★ 可搜索下拉（输入实时过滤 + normalize）
         └── panels/                    右侧四个面板
             ├── list/                  ★ 通用列表框架（通用代码唯一集中点）
             │   ├── panel.py           GenericListPanel 基类：UI 组装 + 排序/分组/搜索
@@ -309,7 +320,7 @@ san9edit/
 
 依赖方向单向：main → ui → core/map → config。
 
-第三方依赖：**Pillow**（仅 game/ui/character_info_window.py 的头像加载用）。仓库内没有 requirements.txt，需自行安装：`pip install Pillow`。未安装时该窗口降级显示「未安装 Pillow」，其余功能不受影响（§8.3 第 34 条）。
+第三方依赖：**Pillow**（仅 game/ui/character_info_window.py 的头像加载用）。仓库内没有 requirements.txt，需自行安装：`pip install Pillow`。未安装时该窗口降级显示「未安装 Pillow」，其余功能不受影响（§8.3 第 32 条）。
 
 ---
 
@@ -413,7 +424,7 @@ def troops(self):
 
 四位 id（"0001"–"1049"）。静态来自 characters.json，动态由剧本覆盖。
 
-**字段一览（共 31 项，其中剧本动态 5 项）**
+**字段一览（类内 32 项，其中剧本动态 6 项；to_dict 仍只写 31 项 —— military_title 不落盘）**
 
 | 分组 | 字段 | 汉语 | 类型 |
 |---|---|---|---|
@@ -428,6 +439,15 @@ def troops(self):
 | | node | 所属（编制所属据点 id） | str \| None |
 | | location | 所在（当前所在据点 id） | str \| None |
 | | role | 身份 | str \| None |
+| | military_title | 武官（荣誉头衔） | str \| None |
+
+★ military_title 字段（武官）：
+
+- 含义 = 荣誉头衔，与行政区外官（`World.officials`）**互相独立**；一人最多一个。
+- 官名表与 rank 见 `core/military_title.py`（32 个 rank / 84 个官名）；rank < 26 的官名在同一势力内唯一。
+- **只加载、不落盘**：`from_dict` 读（老剧本无 → None），`to_dict` **不写**，不参与 EditSession 的 diff。
+- 保存时剧本里原有的 `military_title` 由 `ScenarioWriter` 的 `deepcopy(raw)` 天然保留（§9.3）。
+- 目前**只读**：编辑入口与唯一性校验（`is_title_free` / `is_title_free_global`）尚未接入 UI。
 
 ★ 基础数据里的废弃字段（location_name / affiliation）：
 
@@ -789,6 +809,16 @@ TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}              # 上限县数（
 
 ★ 势力 id 一律从 characters.json **按名反查**，不要写死：刘备 = 0952、曹操 = 0521、袁绍 = 0035、董卓 = 0736。
 
+**武官分配（`assign_military_titles()`，两阶段；直接写 `characters[cid]["military_title"]`）：**
+
+1. **君主史实武官** —— `MILITARY_TITLES_190_MONARCHS` 名单（按人名 → 官名），只给 rank ≤ 25；
+   同 rank 已用过就跳过并打日志（势力内唯一，见 `core/military_title.py`）。
+2. **武力分档** —— 其余**已登场**人物里，排除君主 / 已有外官 / `MIGHT_EXCLUDE` 名单，
+   且满足 `might > politics 且 might > intelligence` 的，按 `might_tier(might)` 落到 rank 26–32 的低阶头衔。
+
+未分配的人 `military_title` 为 null。运行结束打印各头衔人数供人工确认。
+分配结果随剧本落盘（`characters` 段每人的 `military_title`，见 §4.4）。
+
 ### 4.7 头像资产
 
 目录：assets/portrait/（当前 739 张） 命名：{id}-{name}.{ext}，如 0651-张南.jpg 扩展名：.jpg / .jpeg / .png / .gif / .bmp / .webp 同名多人：复制多份，如 0651-张南.jpg + 0652-张南.jpg
@@ -817,7 +847,7 @@ def main():
     MainWindow().run()
 ```
 
-顺序约束：setup_logging() 必须在 MainWindow() 之前，否则构造期间的日志丢失（§8.3 第 48 条）。
+顺序约束：setup_logging() 必须在 MainWindow() 之前，否则构造期间的日志丢失（§8.3 第 46 条）。
 
 ### 5.2 game/config/constants.py
 
@@ -834,7 +864,7 @@ def main():
 | SCENARIOS_DIR | PROJECT_ROOT / "scenarios" | 与 assets/ 并列 |
 | DEFAULT_SCENARIO_PATH | SCENARIOS_DIR / "default.json" | |
 | APP_TITLE | "暗耻三国志" | |
-| WINDOW_SIZE | "1440x900" | 字符串；当前窗口走 maximize，此常量未被使用（§8.3 第 21 条） |
+| WINDOW_SIZE | "1440x900" | 字符串；当前窗口走 maximize，此常量未被使用（§8.3 第 20 条） |
 | MIN_WINDOW_SIZE | (1024, 640) | 元组 |
 | MODE_EDIT / MODE_GAME | "edit" / "game" | 应用模式 |
 | APP_MODE | MODE_EDIT | 全局开关：编译期切换 |
@@ -878,7 +908,7 @@ min_scale / max_scale 单位是像素/度；低于 min 或达到 max 均隐藏�
 
 **MAP_INTERACTION（5 开关）**：highlight_hover_border / _fill / _faction_all / _region 默认 False，_tooltip 默认 True。
 
-**PANEL_COLUMNS（4 面板）**：node / character / faction / troop，结构统一 `{"order": [], "hidden": []}`。order 为空 = 沿用 COLUMNS 声明顺序；NAME_COLUMN(#0) 锁定必显；未出现在 order 中的新列自动追加到末尾并默认显示（§8.3 第 28 条）。
+**PANEL_COLUMNS（4 面板）**：node / character / faction / troop，结构统一 `{"order": [], "hidden": []}`。order 为空 = 沿用 COLUMNS 声明顺序；NAME_COLUMN(#0) 锁定必显；未出现在 order 中的新列自动追加到末尾并默认显示（§8.3 第 26 条）。
 
 ### 5.4 game/config/settings_manager.py
 
@@ -914,7 +944,7 @@ class _SessionFilter              # 给每条 record 注入 record.session
 关键点：
 
 - 只挂 FileHandler：不挂 StreamHandler，控制台完全静默。
-- _SessionFilter 挂 handler：`handler.addFilter(...)`，不是 `logger.addFilter(...)`（§8.3 第 49 条）。
+- _SessionFilter 挂 handler：`handler.addFilter(...)`，不是 `logger.addFilter(...)`（§8.3 第 47 条）。
 - install_tk_excepthook 覆盖 `Tk.report_callback_exception`：sys.excepthook 接不到 tk 回调异常。
 - 安装顺序：setup_logging() → install_sys_excepthook() → MainWindow()；tk hook 在 Tk() 之后立即。
 - KeyboardInterrupt 交回原生 `sys.__excepthook__`，不吞 Ctrl+C。
@@ -1008,7 +1038,7 @@ GameState：回合 / 日期 / 玩家势力 / 资源的信息栏数据源。
 7. _apply_officials(world, raw["officials"])
      外官段（§4.4）：人物不在 World.characters → warning + 跳过该条；
      行政区 id 不在 GeoData → warning 但仍保留；老剧本无该段 → 空 dict
-8. world.bind_factions()      ★ 必须在 node overrides 之后（§8.3 第 39 条）
+8. world.bind_factions()      ★ 必须在 node overrides 之后（§8.3 第 37 条）
 9. logger.info("剧本加载完成：%s", world.summary())
 ```
 
@@ -1074,7 +1104,8 @@ GameState：回合 / 日期 / 玩家势力 / 资源的信息栏数据源。
 | 地图联动 | _on_location_change（拼 州·郡·县·势力 + 经纬度写状态栏，并驱动 tooltip）/ _faction_at / _on_zoom_change / _locate_to_list |
 | 气泡 | _update_tooltip / _show_tooltip（复用一个 overrideredirect Toplevel）/ _hide_tooltip |
 | 地图右键 | _on_map_right_click / _build_node_context_menu / _build_empty_context_menu / _edit_node_from_map / _edit_faction_from_map / _map_intel |
-| 菜单分发 | _on_menu_action（覆盖 quit / select_scenario / save_scenario / save_scenario_as / undo / redo / new_game / load_game / settings / view_zoom_* / view_cities / view_characters / view_troops / end_turn / help_about…） |
+| 菜单分发 | _on_menu_action（覆盖 quit / select_scenario / save_scenario / save_scenario_as / undo / redo / new_game / load_game / settings / **job_system** / view_zoom_* / view_cities / view_characters / view_troops / end_turn / help_about…） |
+| 官职体系窗口 | `_open_job_system_window()`：**单例**（`self._job_win`，已存在则 lift + focus）；无剧本 → `showinfo` 提示（§5.26） |
 | 游戏流程 | _end_turn（编辑模式直接 return）/ _open_settings（单例复用 _settings_win）/ _on_settings_applied / _confirm_and_new_game |
 | 编辑会话 | open_edit_dialog（置 _modal_open + wait_window）/ on_edit_executed / _redraw_map / _refresh_title / _sync_undo_redo_state / _load_raw_scenario |
 | 保存关闭 | _on_close / _confirm_discard / _on_save_scenario / _on_save_as / _save_to_path / _on_undo / _on_redo / _on_select_scenario / run |
@@ -1188,18 +1219,18 @@ def _edit_faction_from_map(self, faction_id):
 
 - 左侧信息区：条目来自 `game_state.get_display_items()`，存 `self.items: key -> (value_lbl, value_var)`；`_hover` 换底色；`_open_info_window` / `_close_info_window` 弹 620×460 占位窗。
 - 刷新机制：`_REFRESH_INTERVAL_MS = 200`，自递归 `after` 全量 `value_var.set(...)`。
-- 菜单（全部 tearoff=0）：
-  - 文件：选择剧本 / 保存(Ctrl+S) / 另存为(Ctrl+Shift+S) / 退出
-  - 编辑：撤销(Ctrl+Z) / 重做(Ctrl+Shift+Z)
+- 菜单（全部 tearoff=0），共 5 个：**文件 / 情报 / 游戏 / 查看 / 帮助**
+  - 文件：选择剧本 / 保存(Ctrl+S) / 另存为(Ctrl+Shift+S) / **撤销(Ctrl+Z)** / **重做(Ctrl+Shift+Z)** / 退出
+  - 情报：**官职体系…** → `on_action("job_system")`
   - 游戏：新游戏 / 读取存档 / 保存存档 / 游戏设置 / 退出
-  - 势力：内政▸ 军事▸ 外交▸ / 结束本回合
-  - 命令：移动 / 攻击 / 计略 / 待机
   - 查看：地图缩放（放大/缩小/复位）/ 城市列表 / 人物列表 / 部队列表
   - 帮助：操作说明 / 关于
   - 右侧绿色「进行 ▶」按钮 → `on_action("end_turn")`
-- `_add_edit_command`：登记 (menu, index) 到 `_edit_entries`；覆盖文件菜单 3 项 + 编辑菜单 2 项，共 5 项。
+  - ★ 撤销 / 重做位于**文件**菜单（原独立「编辑」菜单已撤；「势力」「命令」两个占位菜单也已移除）。
+- `_add_edit_command(menu, **kw)`：登记 (menu, index) 到 `_edit_entries` 并**返回该 entry**；覆盖文件菜单 5 项（选择剧本 / 保存 / 另存为 / 撤销 / 重做）。
+- `_undo_entry` / `_redo_entry`：由 `_build_file_menu` 单独持有，供 `set_edit_state` 定位。
 - `set_edit_enabled(enabled)`：按 APP_MODE 一次性全启 / 全禁 `_edit_entries`。
-- `set_edit_state(can_undo, can_redo)`：仅对编辑菜单 index 0/1 置灰，且与 `_edit_enabled` 相与。
+- `set_edit_state(can_undo, can_redo)`：对 `_undo_entry` / `_redo_entry` 两个 entry 分别置灰，且与 `_edit_enabled` 相与（**不再**按下标硬编码）。
 - `set_game_mode(enabled)`：控制「进行」按钮 state。
 - 动作统一走 `_emit(action)` → `on_action(action)`。
 
@@ -1264,23 +1295,28 @@ tk.Toplevel，940×660、minsize 760×480、center_on_parent、grab_set 模态�
 
 ```python
 class CharacterInfoWindow(tk.Toplevel):
-    """人物情报窗口：头像 + 五维雷达图 + 关系 + 生平（占位）。"""
+    """人物情报窗口 / 编辑人物窗口（判据 = session 是否为 None）。"""
     MAX_W = 200
     MAX_H = 200
 
-    def __init__(self, master, character, world=None, font_family="TkDefaultFont"):
+    def __init__(self, master, character, world=None, font_family="TkDefaultFont",
+                 session=None, on_saved=None):
         # master 仍传 panel（保留 transient 关系）
         # self._top = master.winfo_toplevel()    ← 居中基准 / 跳转窗口 master
-        # 官职行：world.officials_of_character(id)，多个用「、」连接；无则不显示
-        # title = f"{character.display_name()} — 人物情报"
+        # session 有值 → 编辑形态；None → 只读形态
+        # 只读：官职行（world.officials_of_character）→ 头像 + 雷达图 → 关系 → 生平
+        # 编辑：基础（左头像 + 右字段）→ 五维 → 归属 → 外官 → 关系 → 生平 + 底部保存/取消
+        # title = f"{character.display_name()} — 人物情报 / 编辑人物"
         #       未登场（appeared=False）→ 追加「（未登场）」后缀
         # 宽固定 600，高自适应（resizable(False, True)）；最小高 640
-        # 四区：标题 / 上区（头像 + 雷达图）/ 关系 / 生平占位
         # update_idletasks → center_on_parent(self, self._top, 600, max(req_h, 640))
         # Escape 关闭
 
-    def _build_ui(self):                    # 内容装入滚动容器 + 四区布局
-    def _build_scroll_host(self):           # ★ Canvas + 纵向滚动条，返回内容 Frame
+    def _build_ui(self):                    # 内容装入滚动容器 + 分区布局
+    def _build_scroll_host(self):           # ★ Canvas + 横/竖滚动条（按内容自动出现）
+    def _build_editor(self, parent):        # ★ 编辑形态：CollapsibleSection 分组
+    def _collect_changes(self):             # 编辑控件 → (old, new)，只含真正变化的字段
+    def _save(self):                        # ★ 君主守卫 → CharacterEditCommand → on_saved
     def _on_wheel(self, event):             # 滚轮滚动
     def _group_body(self, wrap, title):     # 关系 / 生平：编辑形态用 CollapsibleSection
     def _build_portrait(self, parent):      # 头像框
@@ -1305,7 +1341,7 @@ class CharacterInfoWindow(tk.Toplevel):
 
 **头像加载要点：**
 
-- self._photo 保引用：Tk 不持 PhotoImage 引用，不存 → GC 后显示空白（§8.3 第 25 条）。
+- self._photo 保引用：Tk 不持 PhotoImage 引用，不存 → GC 后显示空白（§8.3 第 23 条）。
 - Pillow 缺失降级：`try: from PIL import Image, ImageTk` 失败 → `_PIL_OK = False` → Label 提示「未安装 Pillow」。
 - thumbnail 而非 resize：保比例，只缩不放。
 - RGB 转换：`Image.open(path).convert("RGB")`。
@@ -1324,29 +1360,34 @@ class CharacterInfoWindow(tk.Toplevel):
 **关系区（8 字段全画）：**
 
 - 顺序：父 / 母 / 配偶（同三列等宽）→ 义兄弟 / 亲爱 / 厌恶（各一行）→ 血缘 + 世代（同一行）。
-- 三列等宽用 `grid + columnconfigure(uniform="rel")`，不用 pack expand（§8.3 第 29 条）。
+- 三列等宽用 `grid + columnconfigure(uniform="rel")`，不用 pack expand（§8.3 第 27 条）。
 - 姓名带表字（display_name），**不带势力**。
 - 可点：蓝字 `#1F6FBF` + `cursor="hand2"` → 新开窗口。
-- 查不到的人 → 灰色 `#999999` "—" 不可点（§8.3 第 33 条）。
+- 查不到的人 → 灰色 `#999999` "—" 不可点（§8.3 第 31 条）。
 - 血缘是字符串标签不可点；世代是数字。
 
 **编辑形态（MODE_EDIT，`session` 有值）：**
 
-- 标题「XXX — 编辑人物」；头部按 `CollapsibleSection` 分四组：**基础**（姓名 / 字 / 性别下拉「男·女」/ 已登场，
-  **横向一行**）、**五维**（雷达图 + 轴标签）、**归属**（势力下拉 + 所属 / 所在按钮 → `pick_node` 据点单选窗）、
+- 标题「XXX — 编辑人物」；按 `CollapsibleSection` 分组：**基础**（左栏头像 + 右栏
+  姓名 / 字 / 性别下拉「男·女」/ 登场勾选 / **出生年**输入 / **年龄**只读）、**五维**（雷达图 + 轴标签）、
+  **归属**（势力**可搜索下拉** + 所属按钮，同一行 → `pick_node` 据点单选窗）、
   **外官（N）**（逐行列官名 + 行政区 id，带「编辑外官」按钮）。
+- **年龄是只读派生值**：随「出生年」输入实时刷新（`world.year − 出生年`）；出生年为空或非整数 → "—"，
+  负数也显示 "—"。年龄**不提交**，保存时提交出生年。
 - **五维没有独立输入框**：数值只存在 `self._stats`，点雷达图轴标签 → `simpledialog.askinteger`
   （int，0–100）→ 改 `self._stats` → `_redraw_radar()`；**不写 World**，保存时随其它字段一起提交。
 - 关系区 / 生平区在编辑形态下也套 `CollapsibleSection`（默认展开）；只读形态保持「标题 + 正文」平铺。
+- 「保存 / 取消」在滚动容器**最底部**（保存 / 取消按钮 + 状态消息行）。
 - 「保存」统一收集变化 → `CharacterEditCommand`；君主守卫（必须保持登场 / 需先解散势力）在保存前拦截。
 - 「编辑外官」的 `open_dialog` 必须等弹窗关闭（`self.wait_window(dlg)`），否则读到的 `dlg.ok` 恒为 False。
 
 **窗口：**
 
 - 宽固定 600，高自适应（`resizable(False, True)`）；最小高 640。
-- **内容装在 Canvas + 纵向滚动条里**（`_scroll_canvas` / `SCROLL_H = WIN_MIN_H − 80`），滚轮绑在 Toplevel 上
-  （Tk 的 bindtags 让子控件的滚轮事件冒泡到 toplevel，指针停在任意子控件上都能滚）。
-- 居中基准 = 游戏主窗口（§8.3 第 32 条）。
+- **内容装在 Canvas 里**（`_scroll_canvas` / `SCROLL_H = WIN_MIN_H − 80`），纵向 / 横向滚动条按「内容 vs 视口」
+  自动出现（grid + `grid_remove`）；滚轮绑在 Toplevel 上（Tk 的 bindtags 让子控件的滚轮事件冒泡到 toplevel，
+  指针停在任意子控件上都能滚）。
+- 居中基准 = 游戏主窗口（§8.3 第 30 条）。
 - **不做单例**：重复右键会开多个窗口。
 
 **world 参数：** 可选（默认 None）；None 时关系区全部显示 "—"，雷达图用主题灰。由 CharacterPanel._open_info_window 传入。
@@ -1355,16 +1396,17 @@ class CharacterInfoWindow(tk.Toplevel):
 
 | 文件 | 内容 |
 |---|---|
-| field_spec.py | Field NamedTuple（key / label / kind / default / options / min / max / editable / hint / display_fn）+ **FieldGroup**（title / fields / desc / info，弹窗分组用） |
+| field_spec.py | Field NamedTuple（key / label / kind / default / options / min / max / editable / hint / display_fn）+ **FieldGroup**（title / fields / desc / info / layout / left_keys / left_info_titles / side_image / side_caption，弹窗分组用） |
 | edit_dialog.py | EditDialog：通用数据驱动弹窗，`get_changed() -> (new_values, old_values)`；
-  三个可选形态：`info_sections=((标题, 文本), …)` 在字段上方渲染只读信息块、`readonly=True` 全部字段按只读渲染且按钮只剩「关闭」—— 这就是「编辑XX / XX情报」同一个窗的实现方式、
-  **`sections=(FieldGroup, …)` 分组 + `scroll=True` 纵向滚动**。分组只影响布局（`self.fields` 由分组拍平），
-  联动靠 `on_change(key, value, dialog)` 回调 + `set_field_enabled/set_field_value/field_value`（弹窗本身不认业务） |
-| node_fields.py | NODE_FIELDS，10 项 + **NODE_SECTIONS**（基本情况 / 归属与资源）+ `node_sections(fields, info)` |
+  可选形态：`info_sections=((标题, 文本), …)` 在字段上方渲染只读信息块（支持 `[[c:id\|名]]` / `[[f:…]]` / `[[n:…]]` 链接，点击回调 `on_link_click(kind, entity_id)`）、
+  `readonly=True` 全部字段按只读渲染且按钮只剩「关闭」—— 这就是「编辑XX / XX情报」同一个窗的实现方式、
+  **`sections=(FieldGroup, …)` 分组 + `scroll=True` 滚动**（横/竖滚动条按内容自动出现）。分组只影响布局（`self.fields` 由分组拍平），
+  联动靠 `on_change(key, value, dialog)` 回调 + `set_field_enabled/set_field_value/field_value`（弹窗本身不认业务）。窗口可缩放（`resizable(True, True)` + `minsize`） |
+| node_fields.py | NODE_FIELDS，10 项 + **NODE_SECTIONS**（据点属性 / 基本情况）+ `NODE_LEFT_KEYS` + `node_sections(fields, info)` |
 | faction_fields.py | FACTION_FIELDS，11 项（含 independent / overlord_id / vassal_value / 只读 display_color）
-  + **FACTION_SECTIONS**（基本情况 / 可编辑信息 / 独立·附庸）；`faction_fields(world, faction)` 运行期补宗主选项与显示色，`overlord_options()` 只列独立势力 |
-| node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥；弹窗分组 + 滚动） |
-| faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool`（分组弹窗 + 独立/附庸联动，`_make_linkage(fields)`） |
+  + `faction_sections(fields, info, side_image, side_caption)`（基本情况 / 可编辑信息 / 独立·附庸，由 `_basic_section` / `_editable_section` / `_vassal_section` 构造）；`faction_fields(world, faction)` 运行期补宗主选项与显示色，`overlord_options()` 只列独立势力 |
+| node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥；分组弹窗 + 滚动 + `_make_link_handler` 实体链接） |
+| faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool`（分组弹窗 + 独立/附庸联动 `_make_linkage(fields)`；`_make_link_handler` 实体链接） |
 | move_to_node.py | `move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`；另导出 `pick_node(parent, world, title)` 通用据点选择窗（详见 §5.23） |
 | pick_list.py | `PickList`：GenericListPanel 的裁剪副本（`SELECT_MODE=browse` / 无分组 / 无右键 / 禁用 Ctrl+A），列与取值由构造参数给 |
 | faction_lifecycle.py | `create_faction(...)` / `delete_faction(...)` + 两个弹窗；`plan_delete()` / `build_create_commands()` / `build_delete_commands()` 纯逻辑（★ `plan_delete()` 顺带算出 `vassal_ids`，删宗主时名下附庸自动独立） |
@@ -1522,7 +1564,7 @@ class FactionRow:
         )
 ```
 
-类体内必须显式绑定 `COLUMNS = COLUMNS`（§8.3 第 27 条）：
+类体内必须显式绑定 `COLUMNS = COLUMNS`（§8.3 第 25 条）：
 
 ```python
 class FactionPanel(GenericListPanel):
@@ -1590,9 +1632,11 @@ def _edit(self, row):
 
 **troop_panel.py** — PANEL_KEY = "troop"，**空壳**：`fetch_rows()` 恒返回 []；无 GROUP_DIMS、无右键菜单覆写（继承基类）。行模型 TroopRow（name / general / troops / morale / state）；COLUMNS：主将 80 / 兵力 70 / 士气 60 / 状态 80；NAME_COLUMN = 部队。
 
-### 5.24 game/ui/widgets/collapsible.py / window_utils.py
+### 5.24 game/ui/widgets/collapsible.py / searchable_combo.py / window_utils.py
 
 **CollapsibleSection** — `CollapsibleSection(master, title, desc="", on_reset=None, expanded=False, font_family=...)`；属性 `body`（内容容器）；方法 `toggle()` / `set_expanded(flag)`（pack/pack_forget body 并切换 ▶/▼）。on_reset 非空时右侧出现「↺ 恢复本组默认」，回调签名 `on_reset(self)`。
+
+**SearchableCombobox** — `ttk.Combobox` 子类，`SearchableCombobox(master, values, **kw)`。输入时按子串过滤选项并自动展开（`ttk::combobox::Post`，避免抢焦点）；`<<ComboboxSelected>>` 恢复全量选项并记下当前值。方法 `set_values(values)` 替换选项集、`normalize()` 把当前文本纠正为合法选项（恰是某选项 → 保留；唯一匹配 → 补全；多匹配 / 无匹配 → 回退上次有效值）。调用方在收集值时触发 `normalize()`，**弹窗 destroy 前必须先 normalize**（需要控件尚存）。用在 EditDialog 的 choice 字段与人物窗口的势力下拉。
 
 **window_utils** — 两个函数：`maximize(window)`（依次试 state("zoomed") / attributes("-zoomed") / geometry 兜底）、`center_on_parent(child, parent, width, height)`（相对 parent 居中并夹在屏幕内）。
 
@@ -1600,7 +1644,7 @@ def _edit(self, row):
 
 | 文件 | 作用 |
 |---|---|
-| build_scenario_190.py | 生成 190 年默认剧本：`MONARCHS` 常量 + `TERRITORY_CITIES` / `TERRITORY_COUNTIES` / `TERRITORY_MAX_CITIES` 点名地盘 + `DONGZHUO_VASSALS` 附庸名单 + CORE 人物种子 + 网络投票扩展 + affinity 兜底 + 全量人物 appeared 预计算 + `derive_vassals()` 附庸推导（详见 §4.6） |
+| build_scenario_190.py | 生成 190 年默认剧本：`MONARCHS` 常量 + `TERRITORY_CITIES` / `TERRITORY_COUNTIES` / `TERRITORY_MAX_CITIES` 点名地盘 + `DONGZHUO_VASSALS` 附庸名单 + CORE 人物种子 + 网络投票扩展 + affinity 兜底 + 全量人物 appeared 预计算 + `derive_vassals()` 附庸推导 + `assign_military_titles()` 武官分配（详见 §4.6） |
 | 头像.py | 头像批量重命名 / 重名复制 / 对账。顶部三开关：APPLY / REMOVE_ORIGINAL / FORCE |
 | characters/314.py | 从 xlsx 生成 characters.json |
 | map/*.py | 地图预处理（县域边界生成 / 精简 / 道路生成 / 重叠与过小面积诊断） |
@@ -1616,6 +1660,34 @@ def _edit(self, row):
 | 目标已存在 | 跳过并报告（FORCE = False） |
 
 load_characters 兼容 `{id: {...}}` / `{"characters": {...}}` / `[...]` 三种结构。
+
+### 5.26 game/ui/job_system_window.py — JobSystemWindow
+
+`JobSystemWindow(master, world, font_family=...)`。构造时算一次 `compute_county_ranks(world.nodes.values())` 存 `_county_ranks`（郡 rank 查表基准）；尺寸 1000×720，对主窗口居中，Escape 关闭。**窗口本身不做单例**，由 `MainWindow._open_job_system_window` 保证。
+
+**顶部控制栏：** `按人物 / 按官职` 单选 + 「单元格显示位阶」勾选（仅模式一可用）+「显示全部外官（含无人担任）」勾选（仅模式二可用）。切模式会清空排序状态。搜索框 `KeyRelease` 即刷新（模式一匹配人名，模式二匹配官职名或担任者姓名）。
+
+**模式一「按人物」（默认）—— `_refresh_person_mode()`**
+
+- 数据 = `world.characters` 里 `appeared` 且**有外官或有武官**的人（`_person_has_job`）。
+- 列：`#0 姓名 / 外官 / 武官 / 身份 / 所属势力 / 所在 / 位阶`。
+- 分组 = 所属势力名（「在野」排最后）；组内**君主恒置顶**，再按排序列。
+- 位阶 = `min(外官 rank, 武官 rank)`；两者皆无 → "—"。
+
+**模式二「按官职」—— `_refresh_job_mode()`**
+
+- 数据来自 `_collect_job_rows()` 的聚合表 `(类型, 州, 郡, 官职, rank) -> [人名]`：
+  - **武官**：`military_title.all_titles()` 全部列出（无州郡）；
+  - **外官**：默认只列**有人担任**的（遍历 `world.officials`）；勾「显示全部外官」再补上全部州 / 郡 / 县的官名（无人 → 人物列 "—"）。
+- 列：`#0 类型 / 州 / 郡 / 官职 / 位阶 / 人物`。
+- 分组 = 类型（**武官 → 外官**）→ 州 → 郡；武官无州郡子组，直接平铺。
+- 外官 rank：6 位 id 取据点 level 走 `city_rank_by_level`，否则 `official_rank_of_title(name, rid, _county_ranks)`。
+
+**排序 / 双击**
+
+- 点列头 `_on_heading_click(key)` 排序，再点同列反向；`#0` 或未排序时走默认键（模式一：势力内按 id；模式二：rank 升序 → 官职字典序）。
+- 双击数据行（组头忽略）：模式一 → 开该人物情报窗；模式二 → 单人直接开，多人弹 `Listbox` 选择窗（**按姓名反查** `world.characters`）。
+- 全程**只读**：位阶由现有数据派生，窗口不写任何字段。
 
 ---
 
@@ -1642,7 +1714,7 @@ main.main()
          └─ _load_default_scenario() → _load_scenario(path)
 ```
 
-顺序约束：setup_logging() 必须在 MainWindow() 之前，否则构造期间的日志丢失（§8.3 第 48 条）。
+顺序约束：setup_logging() 必须在 MainWindow() 之前，否则构造期间的日志丢失（§8.3 第 46 条）。
 
 ### 6.2 地图 + 剧本加载流程
 
@@ -1765,6 +1837,9 @@ main.py ── config.logging_setup（setup_logging / sys hook / LOG_ENABLED）
                        │                            ├─ Canvas（雷达图，无 Pillow）
                        │                            ├─ ui.window_utils.center_on_parent
                        │                            └─ core.world.character（关系区解析）
+                       ├─ ui.job_system_window ──── core.military_title
+                       │                        └─ core.official_title（rank 计算）
+                       │   「情报」菜单 → MainWindow._open_job_system_window（单例）
                        └─ ui.side_panel ──── panels.faction_panel ──┐
                                           ├─ panels.node_panel ─────┤
                                           │   └─ dialogs.node_edit ─┤─ dialogs.edit_dialog
@@ -1780,7 +1855,7 @@ tools.build_scenario_190  ──── scenarios/default.json
 tools.头像                 ──── assets/portrait/*
 tools.characters.314      ──── assets/characters.json
 
-编辑链路：面板/地图右键 → dialogs.{node_edit,faction_edit} → EditDialog（数据驱动）→ Command → EditSession.execute → 面板刷新 + 地图重绘 + 标题刷新。 UI 层不得直接改 World，一切经 Command（§8.3 第 38 条）。
+编辑链路：面板/地图右键 → dialogs.{node_edit,faction_edit} → EditDialog（数据驱动）→ Command → EditSession.execute → 面板刷新 + 地图重绘 + 标题刷新。 UI 层不得直接改 World，一切经 Command（§8.3 第 36 条）。
 
 人物情报链路：人物面板右键「人物情报」→ CharacterInfoWindow(panel, ch, world, ...) → 主窗口居中 → 四区（头像/雷达图/关系/生平）。点关系人 → _open_character → 新 CharacterInfoWindow(self._top, ch, world=self.world, ...)。雷达图纯 Canvas；头像走 Pillow；关系区查 world.character。
 
@@ -1863,6 +1938,14 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 登场判定分界 | year − birth_year ≥ 16 | 另有「已分配势力 → true」优先 |
 | 190 剧本势力 / 人物 / 据点 | 54 / 1049 / 616 | 定稿 |
 | 190 剧本外官 | 53 条（州 13 / 郡 35 / 县 5） | 一区一官；汉阳郡两名太守取其一 |
+| 190 剧本武官 | 221 人 | 军司马 107 / 军假司马 47 / 军曲候 25 / 假候 19 / 队率 5 / 屯长 4 + 君主史实武官 |
+| 位阶 rank 范围 | 1–32 | 数字越小越尊贵；{1:大将军 … 32:什长} |
+| 武官唯一性分界 | military_title.UNIQUE_MAX_RANK = 26 | rank < 26 的官名**势力内唯一**；≥ 26（军司马及以下）不限量 |
+| 郡级 rank 阈值 | 85 / 60 / 45 / 28 → rank 16/17/18/19/20 | 郡分数 = Σ(11 − 县 level)，从高到低命中即止 |
+| 郡级 rank 固定特例 | 0707 河南尹 = 14；0703 京兆尹 = 15 | 脱离分数查表 |
+| 州级 rank | 司隶校尉 10 / 州牧 11 / 州刺史 12 | 郡级属国都尉 = 21 |
+| 县级 rank | CITY_RANK_BY_LEVEL：level 1→23 … 10→32 | 城 / 关隘 / 渡口一视同仁 |
+| MU_STATES | {"02", "08", "11", "12"} | 用「州牧」而非「州刺史」的州 id；**两处各存一份**（`tools/build_scenario_190.py` / `ui/job_system_window.py`），改一处必须同改 |
 | Character._DEFAULT_STAT | 50 | 五维缺省值 |
 | 选中描边 | #00C8FF / 2px | renderer.SELECT_TAG |
 | hover 描边 | #00BFFF / 2px | renderer.HOVER_TAG |
@@ -1948,6 +2031,8 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 人物面板状态持久化 | 不支持 |
 | Character.location 运行时变更 | 未实现（字段已存，无逻辑） |
 | Character.node 归属变更 | 未实现 |
+| 武官编辑 / 唯一性校验 | 只有常量表 + `is_title_free` / `is_title_free_global` 接口，无 UI 入口（§5.26 窗口只读） |
+| 同名武官引发的势力对立 | 只写进注释约定，无任何逻辑实现（`core/military_title.py`） |
 | 人物面板势力分组顺序可调 | 未实现（目前仅玩家置顶 + 其余字典序） |
 | hover 近邻兜底显示势力 | 未实现（见 §8.3 第 17 条） |
 | 势力色块间距可调 | 未实现（受 ttk 主题控制，不可直接调） |
@@ -2070,6 +2155,14 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 55. ★ 运行时改附庸关系只走 `FactionEditCommand`（级联包 `CompositeCommand`）：独立 → 附庸时原有附庸改指新宗主的级联由 `core/edit_commands.py::build_vassal_commands()` 给出，UI 只负责把弹窗的 `old_values / new_values` 交给它。**不要**在弹窗里直接改别的 Faction。
 56. ★ 势力面板分组走框架的 `GROUP_DIMS` + GroupBar，**不要**退回 `CUSTOM_GROUPING`：组头 / 行的配色按**组名**匹配（`_GROUP_TAGS` / `_ROW_TAGS`），`row_priority` 只在选了 `overlord` 维度时返回排序键。新增分组维度只需往 `GROUP_DIMS` 加一项 + 给 `FactionRow` 加取值属性。
 
+**弹窗与控件**
+
+57. ★ info 块实体链接的 grab 必须「先放后抢」：`EditDialog._on_link` 在调 `on_link_click(kind, entity_id)` 前 `grab_release()`，回调返回后 `grab_set()` 抢回。回调里开的只读窗以 `parent.winfo_toplevel()`（**主窗口**）为 master 并 `wait_window` 等其关闭 —— grab 未释放时新窗拿不到焦点、点不动；不抢回则本弹窗失去模态。标记格式固定 `[[c:id|名]]` / `[[f:id|名]]` / `[[n:id|名]]`（kind 取 c/f/n），由 `edit_dialog._parse_link_text` 统一解析，**不要**在业务模块里另写正则。链接目标不存在（`world.characters/factions/nodes` 查不到）→ 静默返回，不建窗、不报错。
+
+58. ★ 可搜索下拉必须在控件销毁**之前** `normalize()`：`SearchableCombobox.normalize()` 读写的文本属于控件自身，`EditDialog._ok()` 里必须在 `destroy()` 前遍历 `self._widgets` 逐个 normalize；人物窗口在 `_collect_changes` 里先 normalize 再取值。晚于 destroy → `TclError`，且非法输入会被当合法值提交。规则：恰是某选项 → 保留；唯一匹配 → 补全；多匹配 / 无匹配 → 回退上次有效值。全量选项与过滤后选项分开存（`_all_values` vs 当前 `values`），下拉展开后必须还原全量。
+
+59. ★ 只读文本一律用**只读 Entry / Text**，不用 Label：用户需要鼠标拖选 + Ctrl+C 复制（生僻字打不出来）。EditDialog 的 readonly 字段走 `_readonly_entry`（`state="readonly"`，非 `disabled`），info 块走 `tk.Text`（`<Key>` 只放行 Ctrl+C / Ctrl+A，其余 `"break"`）。**不要**为了「简洁」改回 Label —— 改名只是显示，改不回可复制能力。
+
 ### 8.4 建议的下一步
 
 - ★ **Troop 数据模型（phase2 前置）**：
@@ -2080,6 +2173,9 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 - ★ **部队面板落地**：TroopPanel 目前只 fetch_rows 返回 []；与人物面板同构接入
 - ★ **附庸值 100 / 0 的运行时语义**：100 = 融入宗主（并吞势力、据点与人物易主），0 = 自动独立。当前只存储不消费（加载时 clamp 到 1–99），实现时必须走 CompositeCommand 保证 undo
 - 实现「出征 / 调动」：改 Character.location，不动 node（与「移动到据点」的编制变更区分开 —— 当时需要重新评估「人物移动时是否改所在」，见 §8.3 第 50 条）
+- ★ **武官编辑落地**：编辑人物窗口加「武官」下拉（`military_title.all_titles()`），保存走 `CharacterEditCommand`；
+  校验用 `is_title_free(world, title, faction_id, exclude_cid)` 拦「势力内重复」。
+  **注意**：`military_title` 现在不进 `to_dict` / 不参与 diff（§3.3），要能编辑必须先补齐序列化三处（写 / 读 / 显示，§8.3 第 43 条口径）
 - 人物情报窗口单例化（同一人物只开一个窗口，重复右键聚焦已开窗口）
 - 人物情报窗口生平数据源（拼装式编年？静态文本？）
 - 人物情报窗口雷达图 hover / 数值 tooltip / 点击轴突出
@@ -2161,23 +2257,37 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 
 | kind | 控件 | 读值 | 校验 |
 |---|---|---|---|
-| readonly | Label（`display_fn(value, world) -> str`） | 不收集 | 无 |
-| int | Entry + StringVar | `int(strip)` | min/max 越界在按钮栏红字报错 |
+| readonly | **只读 Entry**（`display_fn(value, world) -> str`，可拖选 + Ctrl+C） | 不收集 | 无 |
+| int | Entry + StringVar | `int(strip)` | 输入期 `validate` 拦截非数字与越界；min/max 越界另在按钮栏红字报错 |
 | str | Entry | 原字符串 | 无 |
 | bool | Checkbutton(BooleanVar) | bool | 无 |
-| choice | ttk.Combobox（readonly），options = [(value, label)] | label → value 反查 | 无 |
+| choice | **SearchableCombobox**，options = [(value, label)] | label → value 反查 | 提交前 `normalize()` 纠正非法输入 |
 | color | 色块 Label + hex Entry + colorchooser | hex 字符串 | 仅接受 `#` + 6 位，否则忽略 |
 
-`EditDialog(master, fields, entity, world=None, title="编辑")`：
+`EditDialog(master, fields, entity, world=None, title="编辑", …, on_link_click=None)`：
 
-- transient 到 `master.winfo_toplevel()`，相对主窗口居中，`grab_set`。
-- `_build_field` 是唯一的 kind 分支树（readonly → bool → choice → color → 其余 int/str）。
+- transient 到 `master.winfo_toplevel()`，相对主窗口居中，`grab_set`；`resizable(True, True)` + `minsize(360, 240)`。
+- 控件创建走 `_make_field_widget(parent, f, value) -> (place, var, state)`（**未布局**），只读分支除外；
+  `_build_field` / `_render_inline` 各自决定摆放方式。
 - `get_changed() -> (new_values, old_values)`：只返回 `old != v` 的字段；`ok` 标志表示用户点了确定。
 - 取消 / Esc / 关闭窗口 → `_cancel()`（ok = False）。
+- 横向 / 纵向滚动条按「内容 vs 视口」自动出现（grid + `grid_remove`，`_wrap` 重入保护）。
+
+**分组布局（`FieldGroup.layout`）：**
+
+| layout | 排版 |
+|---|---|
+| `rows`（默认） | 标签在左、控件在右，一行一个字段 |
+| `two_cols` | 左右两栏：`left_keys` 的字段进左栏（其余右栏），`left_info_titles` 的 info 块进左栏；左栏顶部可挂 `side_image` + `side_caption` |
+| `inline` | 所有字段排成一行（标签 + 控件横向依次排列） |
+
+**info 块（只读信息块）：** 用 `tk.Text` 渲染（可拖选 / Ctrl+C，高度按显示行数自适应），文本里的
+`[[c:id|名字]]` / `[[f:id|名字]]` / `[[n:id|名字]]` 渲染为蓝字可点链接 → `on_link_click(kind, entity_id)`。
+点击时弹窗先 `grab_release()`、回调返回后 `grab_set()` 抢回（否则新开的窗抢不到焦点）。
 
 ### 9.5 字段表
 
-**NODE_FIELDS（10 项；分 2 组：基本情况 = id/name/coords/type/level/is_capital，归属与资源 = owner/troops/gold/food）**
+**NODE_FIELDS（10 项；分 2 组：据点属性 = 全部 10 项，`two_cols`，左栏 = id/name/coords/owner；基本情况 = 只有只读信息块，无字段）**
 
 | key | 标签 | kind | 约束 |
 |---|---|---|---|
@@ -2209,8 +2319,10 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 | overlord_id | 宗主势力 | choice | 选项 = 未选择 + 全部**独立**势力（排除自己），运行期由 `faction_fields(world, faction)` 补 |
 | vassal_value | 附庸值 | int | 1 – 99 |
 
-**FACTION_SECTIONS（3 组）：** 基本情况（id + 只读信息块，desc 提示「若要修改，请到对应编辑窗体中修改」）/
-可编辑信息（name…troops）/ 独立·附庸（independent / overlord_id / vassal_value）。
+**`faction_sections(fields, info, side_image, side_caption)`（3 组）：**
+基本情况（`two_cols`，左栏 = 君主头像 + 头像下说明「名字（id）／所属／所在」；右栏 = id + 据点 / 人物 / 外官 info）/
+可编辑信息（`two_cols`，左栏 = name / color / display_color / prestige，右栏 = stance / gold / food / troops）/
+独立·附庸（`inline` 一行：independent / overlord_id / vassal_value）。
 
 **独立 / 附庸联动（`faction_edit._make_linkage`，经 `EditDialog(on_change=…)` 注入）：**
 
@@ -2238,8 +2350,13 @@ Field(key, label, kind, default=None, options=(), min=None, max=None,
 **附庸无宗主 → `showwarning` 并整体取消返回 False** →
 `cmds = build_vassal_commands(world, faction, old_values, new_values)` → 1 条直接 execute，多条包 `CompositeCommand(cmds, "编辑势力")`。
 
-**势力编辑弹窗分组（§9.4 的 `sections=FieldGroup`）：** 三层布局只影响排版，`EditDialog.fields` 由分组拍平，
-取值 / 校验 / `get_changed` 仍按整张字段表走 —— 所以分组与字段表**不能各自维护一份**，都用 `faction_fields()` 的返回值。
+**弹窗分组（§9.4 的 `sections=FieldGroup`）：** 三种 layout 只影响排版，`EditDialog.fields` 由分组拍平，
+取值 / 校验 / `get_changed` 仍按整张字段表走 —— 所以分组与字段表**不能各自维护一份**，都用各自 `*_fields()` 的返回值。
+分组由 `node_fields.node_sections()` / `faction_fields.faction_sections()` 构造。
+
+**info 块里的实体链接：** `faction_info_sections` / `node_info_sections` 产出的文本带 `[[c:…]]` / `[[f:…]]` / `[[n:…]]`
+标记；弹窗点击时走各自的 `_make_link_handler(parent, world)` —— 以 `parent.winfo_toplevel()`（**主窗口**）为 master
+开只读窗并 `wait_window` 等其关闭。
 
 **调用方：**
 

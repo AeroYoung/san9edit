@@ -27,7 +27,8 @@ from game.config.settings_manager import SettingsManager
 from game.ui.settings_window import SettingsWindow
 from game.core.scenario import ScenarioLoader
 from game.ui.map_controller import MapController
-
+from game.ui.job_system_window import JobSystemWindow
+        
 logger = logging.getLogger(__name__)
 
 
@@ -569,6 +570,8 @@ class MainWindow:
             messagebox.showinfo(
                 "关于", f"{C.APP_TITLE}\n\n回合制策略游戏原型\n版本 0.1"
             )
+        elif action == "job_system":
+            self._open_job_system_window()
         else:
             self.status_bar.set_message(f"[菜单] {action}")
 
@@ -636,6 +639,23 @@ class MainWindow:
                                "确定要开始新游戏吗？当前进度不会保存。"):
             self.status_bar.set_message("新游戏（尚未实现）")
 
+    def _open_job_system_window(self):
+        """官职体系窗口：单例复用。"""
+        world = getattr(self, "_world", None)
+        if world is None:
+            messagebox.showinfo("官职体系", "尚未加载剧本。")
+            return
+        win = getattr(self, "_job_win", None)
+        if win is not None and win.winfo_exists():
+            win.lift()
+            win.focus_set()
+            return
+        
+        self._job_win = JobSystemWindow(
+            self.root, world,
+            font_family=getattr(self, "font_family", "TkDefaultFont"))
+
+
     # ==========================================================
     # 剧本编辑：会话 / 弹窗 / 保存
     # ==========================================================
@@ -690,7 +710,6 @@ class MainWindow:
                 self.edit_session.can_redo(),
             )
         self._refresh_title()
-
 
     def _load_raw_scenario(self, path):
         import json

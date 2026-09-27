@@ -8,10 +8,18 @@
     - 50 家势力：13 州级（州刺史 / 州牧 / 司隶校尉）+ 37 郡级（太守 / 相 / 令）
     - officials 段：以行政区 id（州 2 位 / 郡 4 位 / 县 6 位）为键，
       值为 {"name": 官名, "character_id": 人物 id, "rank": "州" / "郡" / "县"}
-    - 官名规则见 game/core/official_title.py，本脚本只负责选人与校验
+
+武官体系（荣誉头衔，与行政区外官独立）：
+    - 常量表见 game/core/military_title.py（32 rank / 84 个官名）
+    - rank < 26 的官名全剧本唯一；rank ≥ 26（军司马及以下）不限量
+    - 分两阶段：
+        1. 君主（有势力的）按史实 / 演义分配（MILITARY_TITLES_190_MONARCHS）
+        2. 非君主、非外官、appeared、武力 > 政治 且 武力 > 智力的人，
+           按武力值分档（MIGHT_TIERS），全部是 rank ≥ 26 的官名
+    - 排除名单（史书 / 演义中以文臣形象出现）：MIGHT_EXCLUDE
 
 地盘原则（需求 §3.6）：
-    - 郡级先占满本郡；县级占治所一县；州级再吃州内一个空郡（势力范围别铺太大）
+    - 郡级先占满本郡；县级占治所一县；州级再吃州内一个空郡
     - 治所所在郡已被占 → 退到州内第一个空郡 → 再退到治所单县
     - 一县只能属于一个势力（Node.owner 单值）
 
@@ -31,8 +39,6 @@ YEAR = 190
 
 # ============================================================
 # 50 家势力（需求 §7 定稿名单）
-#   (君主名, 官职, 治所县 id, 等级, 颜色)
-#   势力 id = 君主的人物 id，由 resolve_monarchs() 从 characters.json 反查
 # ============================================================
 MONARCHS = [
     # ---------------- 州级 13 ----------------
@@ -55,8 +61,6 @@ MONARCHS = [
     ("袁术",     "南阳太守", "040701", "郡", "#D0A040"),
     ("孙坚",     "长沙太守", "040401", "郡", "#C83030"),
     ("黄祖",     "江夏太守", "040601", "郡", "#4FA0C0"),
-    # 刘备：平原令 → 平原太守（需求 §3.6），等级随官名升为郡级，
-    # 控制区域 = 平原郡全郡（含高唐、漯阴）
     ("刘备",     "平原太守", "060101", "郡", "#3B8B3B"),
     ("公孙瓒",   "涿郡太守", "120304", "郡", "#C8C8C8"),
     ("公孙度",   "辽东太守", "120901", "郡", "#6B8B8B"),
@@ -91,51 +95,34 @@ MONARCHS = [
     ("张羡",     "零陵太守", "040201", "郡", "#A07060"),
 ]
 
-# §7 名单里 characters.json 没有的人物 → 近似替代（需求 §7 注：缺失则替代并记日志）
 SUBSTITUTES = {
-    "焦和":     "0710",   # 田楷（青州齐国相）
-    "陈温":     "0211",   # 许贡（扬州吴郡豪族）
-    "韦端":     "0867",   # 杨秋（凉州军阀）
-    "张津":     "0285",   # 吴巨（交州苍梧）
-    "张扬":     "0661",   # 张杨（§7「张扬」为异写）
-    "赵韪":     "0241",   # 吴懿（益州巴郡）
-    "耿鄙":     "0895",   # 李堪（凉州关中十部）
-    "边章":     "0969",   # 梁兴（凉州关中十部）
-    "北宫伯玉": "0474",   # 成宜（凉州关中十部）
+    "焦和":     "0710",
+    "陈温":     "0211",
+    "韦端":     "0867",
+    "张津":     "0285",
+    "张扬":     "0661",
+    "赵韪":     "0241",
+    "耿鄙":     "0895",
+    "边章":     "0969",
+    "北宫伯玉": "0474",
 }
 
-# 不设势力的郡（夷洲 / 琉球孤悬海外，任何势力都不占）
 NO_CLAIM_COUNTIES = {"1003"}
 
-# 点名地盘（据点=县名清单）：优先于按等级自动划地（需求 §3.6：刘备只占平原郡三县）
 TERRITORY_CITIES = {
     "刘备": ("平原", "漯阴", "高唐"),
 }
 
-# 州牧 / 州刺史：用「牧」的州 id（其余一律「刺史」；司州固定「司隶校尉」）
 MU_STATES = {"02", "08", "11", "12"}
 
-# §7 定稿官名与规则生成不一致时的覆盖（郡名「左冯翊」按定稿记作「冯翊太守」）
 TITLE_OVERRIDES = {"0702": "冯翊太守"}
 
-# 地盘覆盖：显式指定郡（董卓据三辅）；限制县数（李傕 / 郭汜只保留治所，不占整郡）
 TERRITORY_COUNTIES = {"董卓": ("0707", "0703", "0705")}
 TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}
 
-# ============================================================
-# 附庸关系（需求 §3.5）
-#   - 州级（牧 / 刺史 / 司隶校尉）→ 独立
-#   - 郡级且所在州官名为「牧 / 司隶校尉」→ 附庸，附庸值 10
-#   - 郡级且所在州官名为「刺史」→ 独立
-#   - 曹操 / 袁绍 / 刘备 → 强制独立（覆盖自动规则）
-#   - 董卓指定名单 → 附庸，附庸值 85，宗主 = 董卓
-#   - 其余 → 独立
-# ============================================================
 DONGZHUO_VASSAL_VALUE = 85
 FORCED_INDEPENDENT = ("曹操", "袁绍", "刘备")
 
-# 董卓指定附庸名单：君主名 -> 据点（县）名清单
-# ★ 「郭氾」即 README / characters.json 里的「郭汜」（异写）
 DONGZHUO_VASSALS = {
     "段煨": ("华阴", "桃林", "湖县", "黾池", "弘农", "陕县"),
     "徐荣": ("荥阳", "成皋"),
@@ -145,15 +132,138 @@ DONGZHUO_VASSALS = {
     "郭汜": ("蒲坂",),
     "张济": ("商县", "武关"),
 }
-# 名单里 MONARCHS 没有的君主 → 新建势力（等级按县级；用户确认：先不给外官）
 DONGZHUO_NEW_MONARCHS = ("段煨", "徐荣", "胡轸", "牛辅")
 
-# 4 位主角色锁定（README §4.5），不参与自动配色
 LOCKED_COLORS = {"刘备": "#3B8B3B", "袁绍": "#E8C500",
                  "曹操": "#2928EF", "孙坚": "#C83030"}
-CITY_ADJ_DEG = 0.8          # 两势力的县点近于此距离（度）视为相邻 → 配色互斥
-MIN_HUE_GAP = 40            # 相邻势力色相差至少这么多度
-MIN_VAL_GAP = 0.19          # 或者明度差至少这么多（深红 vs 亮红也算区分）
+CITY_ADJ_DEG = 0.8
+MIN_HUE_GAP = 40
+MIN_VAL_GAP = 0.19
+
+
+# ============================================================
+# 武官分配
+#
+# 阶段 1（MILITARY_TITLES_190_MONARCHS）：君主们的史实 / 演义武官（Rank ≤ 25）
+# 阶段 2（MIGHT_TIERS）：非君主、非外官、appeared、武力>政&智 的人，
+#                        按武力分档（全部 Rank ≥ 26，不限量）
+# ============================================================
+MILITARY_TITLES_190_MONARCHS = {
+    "董卓":   "前将军",       # R5
+    "袁绍":   "车骑将军",     # R3
+    "袁术":   "后将军",       # R8
+    "曹操":   "奋武将军",     # R16
+    "孙坚":   "破虏将军",     # R16
+    "公孙瓒": "骑都尉",       # R22
+    "李傕":   "步兵校尉",     # R23
+    "郭汜":   "越骑校尉",     # R23
+    "张济":   "射声校尉",     # R23
+    "段煨":   "北中郎将",     # R20
+    "徐荣":   "南中郎将",     # R20
+    "胡轸":   "东中郎将",     # R20
+    "牛辅":   "西中郎将",     # R20
+}
+
+MIGHT_TIERS = (
+    (70, "军司马"),      # 武力 ≥ 71
+    (65, "军假司马"),    # 武力 66–70
+    (60, "军曲候"),      # 武力 61–65
+    (55, "假候"),        # 武力 56–60
+    (50, "屯长"),        # 武力 51–55
+    (40, "队率"),        # 武力 41–50
+    (30, "什长"),        # 武力 31–40
+)
+
+# 排除：史书 / 演义中以文臣形象出现，不按武将分档
+MIGHT_EXCLUDE = {"陈纪", "金旋", "韩玄"}
+
+
+def might_tier(might):
+    """武力值 → 武官官名；未达最低档 → None。"""
+    for threshold, title in MIGHT_TIERS:
+        if might > threshold:
+            return title
+    return None
+
+
+def assign_military_titles(factions, characters, all_chars, officials, by_name):
+    """两阶段分配武官；直接修改 characters[cid]["military_title"]。
+
+    返回 {cid: title}。
+    """
+    from game.core.military_title import rank_of
+
+    assigned = {}
+
+    # ---- 阶段 1：君主史实 / 演义武官 ----
+    used_unique = set()
+    for name, title in MILITARY_TITLES_190_MONARCHS.items():
+        r = rank_of(title)
+        if r is None:
+            print(f"[武官] 官名不在表中：{name} → {title}")
+            continue
+        ids = by_name.get(name) or []
+        if not ids:
+            print(f"[武官] 人物不存在：{name}（{title}）")
+            continue
+        cid = sorted(ids)[0]
+        if cid not in characters:
+            print(f"[武官] 人物不在剧本：{name}（{cid}）")
+            continue
+        if r < 26 and title in used_unique:
+            print(f"[武官] 唯一性冲突：{name} → {title}")
+            continue
+        assigned[cid] = title
+        characters[cid]["military_title"] = title
+        if r < 26:
+            used_unique.add(title)
+
+    # ---- 阶段 2：武力分档 ----
+    ruler_ids = set(factions.keys())
+    official_ids = {item.get("character_id") for item in officials.values()
+                    if item.get("character_id")}
+
+    for cid in sorted(characters.keys()):
+        if cid in assigned:
+            continue
+        ch = characters[cid]
+        if not ch.get("appeared"):
+            continue
+        if cid in ruler_ids:
+            continue
+        if cid in official_ids:
+            continue
+        base = all_chars.get(cid) or {}
+        if base.get("name") in MIGHT_EXCLUDE:
+            continue
+        might = base.get("might", 0) or 0
+        intel = base.get("intelligence", 0) or 0
+        pol = base.get("politics", 0) or 0
+        if not (might > pol and might > intel):
+            continue
+        title = might_tier(might)
+        if title is None:
+            continue
+        assigned[cid] = title
+        characters[cid]["military_title"] = title
+
+    # ---- 统计 ----
+    tier_order = ("军司马", "军假司马", "军曲候", "假候",
+                  "屯长", "队率", "什长")
+    tier_count = {}
+    for title in assigned.values():
+        tier_count[title] = tier_count.get(title, 0) + 1
+    parts = []
+    # 先输出 Rank ≤ 25 的（君主史实武官）
+    for title in MILITARY_TITLES_190_MONARCHS.values():
+        if title in tier_count:
+            parts.append(f"{title} {tier_count[title]}")
+    # 再按分档顺序输出
+    for title in tier_order:
+        if title in tier_count:
+            parts.append(f"{title} {tier_count[title]}")
+    print(f"[武官] 共 {len(assigned)} 人：" + " / ".join(parts))
+    return assigned
 
 
 # ============================================================
@@ -162,11 +272,11 @@ MIN_VAL_GAP = 0.19          # 或者明度差至少这么多（深红 vs 亮红�
 def build_map_index():
     raw = json.loads((ASSETS / "map.geojson").read_text(encoding="utf-8"))
     idx = {
-        "state_name": {},        # "07" -> 司州
-        "county_name": {},       # "0707" -> 河南尹
-        "county_to_cities": {},  # "0707" -> [县 id...]
-        "city": {},              # "070701" -> {name, type, level, county}
-        "city_by_name": {},      # "华阴" -> ["070307", ...]（按 id 升序）
+        "state_name": {},
+        "county_name": {},
+        "county_to_cities": {},
+        "city": {},
+        "city_by_name": {},
     }
     for state in raw.get("states", []):
         idx["state_name"][state["id"]] = state.get("name", "")
@@ -194,7 +304,6 @@ def build_map_index():
 
 
 def resolve_city_names(names, map_idx, who=""):
-    """县名清单 → 县 id 清单（重名取 id 最小的一个，并打日志）。"""
     ids = []
     for name in names:
         found = map_idx["city_by_name"].get(name) or []
@@ -208,7 +317,6 @@ def resolve_city_names(names, map_idx, who=""):
 
 
 def build_character_index():
-    """名 -> 人物 id（重名取 id 最小的一个，并记入日志）。"""
     raw = json.loads((ASSETS / "characters.json").read_text(encoding="utf-8"))
     by_name = {}
     for cid, c in (raw.get("characters") or {}).items():
@@ -220,7 +328,6 @@ def build_character_index():
 # 势力：选人 + 地盘
 # ============================================================
 def resolve_monarchs(by_name, all_chars):
-    """MONARCHS 常量 → 带人物 id 的势力清单（缺失则用 SUBSTITUTES 替代）。"""
     factions = {}
     for name, title, capital, rank, color in MONARCHS:
         ids = by_name.get(name) or []
@@ -234,7 +341,6 @@ def resolve_monarchs(by_name, all_chars):
         if len(ids) > 1:
             print(f"[重名] {name} → {ids}，取 {ids[0]}")
         cid = sorted(ids)[0]
-        # 用了替代者 → 势力名随真实君主，避免出现「势力名 ≠ 君主」的错位
         display = all_chars[cid]["name"] if name in SUBSTITUTES else name
         factions[cid] = {
             "id": cid,
@@ -249,13 +355,10 @@ def resolve_monarchs(by_name, all_chars):
 
 
 def pick_territory(spec, map_idx, owner):
-    """按层级给一家势力选地盘（§3.6）。owner = {县 id: 势力 id}（已被占的）。"""
     cap = spec["capital"]
     county_id = map_idx["city"].get(cap, {}).get("county")
     state_id = cap[:2]
 
-    # ★ 点名地盘（刘备）与董卓名单：据点清单是显式指定，直接返回全量
-    #   （董卓名单的抢占由 _claim 负责）
     listed = (TERRITORY_CITIES.get(spec["spec_name"])
               or DONGZHUO_VASSALS.get(spec["spec_name"]))
     if listed:
@@ -265,17 +368,15 @@ def pick_territory(spec, map_idx, owner):
         return [c for c in cities if c not in owner]
 
     if county_id in NO_CLAIM_COUNTIES:
-        return []                     # 所属郡不许占（如夷洲）
+        return []
 
     def limited(cities):
-        """县数上限（TERRITORY_MAX_CITIES）：治所优先，其余按 id 序。"""
         limit = TERRITORY_MAX_CITIES.get(spec["spec_name"])
         if not limit or len(cities) <= limit:
             return cities
-        ordered = ([cap] if cap in cities else [])             + [c for c in cities if c != cap]
+        ordered = ([cap] if cap in cities else []) + [c for c in cities if c != cap]
         return ordered[:limit]
 
-    # 显式指定郡（如董卓据河南尹 + 京兆尹 + 弘农）
     counties = TERRITORY_COUNTIES.get(spec["spec_name"])
     if counties:
         cities = []
@@ -286,13 +387,11 @@ def pick_territory(spec, map_idx, owner):
         if cities:
             return limited(cities)
 
-    # 县级（刘备）：治所一县 → 本郡空县
     if spec["rank"] == "县":
         if cap not in owner:
             return [cap]
         return limited(free(map_idx["county_to_cities"].get(county_id, [])))
 
-    # 郡级 / 州级：本郡 → 州内空郡 → 治所单县
     cities = free(map_idx["county_to_cities"].get(county_id, []))
     if cities:
         return limited(cities)
@@ -306,11 +405,7 @@ def pick_territory(spec, map_idx, owner):
 
 
 def assign_territories(factions, map_idx):
-    """郡级 → 县级 → 州级 依次占地（一县只属一家）。
-
-    董卓名单的据点**抢占**：已属别人的县直接从原主手里拿走（用户确认的口径）。
-    """
-    owner = {}                       # 县 id -> 势力 id
+    owner = {}
     by_id = {spec["id"]: spec for spec in factions.values()}
 
     def _claim(spec, cities):
@@ -334,7 +429,6 @@ def assign_territories(factions, map_idx):
                 print(f"[警告] {spec['name']}{title} 没分到地盘")
             spec["cities"] = _claim(spec, cities)
 
-    # 治所若在自己地盘内就用它，否则用地盘首县（抢占后要重算）
     for spec in factions.values():
         cap = spec["capital"]
         cities = spec["cities"]
@@ -344,7 +438,7 @@ def assign_territories(factions, map_idx):
 
 
 # ============================================================
-# 配色：按相邻关系贪心染色（需求 §7 相邻势力颜色要能区分）
+# 配色：按相邻关系贪心染色
 # ============================================================
 def _hsv_hex(hue, sat, val):
     import colorsys
@@ -359,12 +453,7 @@ def _hsv_of(hex_color):
     return h * 360.0, s, v
 
 
-def _hue_of(hex_color):
-    return _hsv_of(hex_color)[0]
-
-
 def _distinct(c1, c2):
-    """两色是否够区分：色相差 ≥ MIN_HUE_GAP，或明度差 ≥ MIN_VAL_GAP。"""
     h1, _, v1 = _hsv_of(c1)
     h2, _, v2 = _hsv_of(c2)
     dh = abs(h1 - h2)
@@ -373,7 +462,6 @@ def _distinct(c1, c2):
 
 
 def _palette():
-    """色相网格（30° 一档）× 三档明度，档间错开 10°。"""
     cols = []
     for tier, val in enumerate((0.88, 0.68, 0.48)):
         sat = (0.80, 0.72, 0.85)[tier]
@@ -384,12 +472,8 @@ def _palette():
 
 
 def assign_colors(factions, map_idx):
-    """县点相近的势力视为相邻 → 贪心染色；同色不得出现在相邻势力，
-    并在可行色里挑**当前用得最少**的，避免整张图挤在少数几个颜色上。
-    4 位主角色保持锁定色。"""
     specs = sorted(factions.values(), key=lambda item: item["id"])
 
-    # 1. 每家势力的县点坐标 + 包围盒（粗筛用）
     points, boxes = {}, {}
     for spec in specs:
         pts = [map_idx["city"][c]["coords"] for c in spec["cities"]
@@ -400,7 +484,6 @@ def assign_colors(factions, map_idx):
                                if pts else None)
 
     def _near(a_name, b_name):
-        """任一对县点距离 < CITY_ADJ_DEG 即视为相邻（先做包围盒粗筛）。"""
         a, b = boxes[a_name], boxes[b_name]
         if a is None or b is None:
             return False
@@ -411,7 +494,6 @@ def assign_colors(factions, map_idx):
         return any((x[0] - y[0]) ** 2 + (x[1] - y[1]) ** 2 < limit
                    for x in points[a_name] for y in points[b_name])
 
-    # 2. 邻接图
     neighbors = {spec["name"]: set() for spec in specs}
     for i, a in enumerate(specs):
         for b in specs[i + 1:]:
@@ -419,7 +501,6 @@ def assign_colors(factions, map_idx):
                 neighbors[a["name"]].add(b["name"])
                 neighbors[b["name"]].add(a["name"])
 
-    # 3. 贪心染色：度数大的先染；可行色里挑用得最少的
     palette = _palette()
     colors = dict(LOCKED_COLORS)
     usage = {}
@@ -446,14 +527,9 @@ def assign_colors(factions, map_idx):
 
 
 # ============================================================
-# 官方官名（规则来自 core/official_title.py）
+# 官方官名
 # ============================================================
 def official_from_territory(spec, map_idx):
-    """按**实际占据的据点**定外官（董卓名单里的附庸用）。
-
-    规则：占据的据点里含某郡的郡治 → 该郡太守；否则 → 第一个「城」的县令。
-    返回 (region_id, 官名)；无据点 → (None, "")。
-    """
     import sys
     sys.path.insert(0, str(ROOT))
     from game.core.official_title import make_title
@@ -474,14 +550,12 @@ def official_from_territory(spec, map_idx):
             mu_states=MU_STATES,
         )
 
-    # 1) 含郡治 → 该郡太守
     for cid in cities:
         info = map_idx["city"].get(cid) or {}
         if info.get("is_capital"):
             county_id = info["county"]
             return county_id, _title(county_id, cid)
 
-    # 2) 否则 → 治所（第一个「城」，退回首项）的县令
     seat = next((c for c in cities
                  if (map_idx["city"].get(c) or {}).get("type") == "城"),
                 cities[0])
@@ -489,14 +563,12 @@ def official_from_territory(spec, map_idx):
 
 
 def build_officials(factions, map_idx):
-    """势力清单 → officials 段（以行政区 id 为键）。"""
     import sys
     sys.path.insert(0, str(ROOT))
     from game.core.official_title import make_title, rank_of
 
     officials = {}
     for spec in sorted(factions.values(), key=lambda s: s["id"]):
-        # ★ 董卓名单里的附庸：外官按其**实际占据的据点**定（郡治 → 太守，否则县令）
         if spec["spec_name"] in DONGZHUO_VASSALS:
             region_id, name = official_from_territory(spec, map_idx)
             if region_id is None:
@@ -545,10 +617,9 @@ def build_officials(factions, map_idx):
 
 
 # ============================================================
-# 附庸关系推导（需求 §3.5）
+# 附庸关系推导
 # ============================================================
 def add_dongzhuo_vassals(factions, by_name, map_idx):
-    """董卓名单里 MONARCHS 没有的君主 → 新建同构势力条目（不设外官）。"""
     for name in DONGZHUO_NEW_MONARCHS:
         if any(spec["spec_name"] == name for spec in factions.values()):
             continue
@@ -565,17 +636,16 @@ def add_dongzhuo_vassals(factions, by_name, map_idx):
             "id": cid,
             "name": name,
             "spec_name": name,
-            "title": "",              # 外官由 official_from_territory 按占据据点现算
+            "title": "",
             "capital": cities[0],
             "rank": "县",
-            "color": "#888888",       # 占位，随后 assign_colors 统一分配
+            "color": "#888888",
         }
         print(f"[新建] 董卓附庸 {name}（{cid}）据 {len(cities)} 县："
               + "、".join(map_idx["city"][c]["name"] for c in cities))
 
 
 def state_official_post(officials, state_id):
-    """该州外官的裸职务：牧 / 刺史 / 司隶校尉；无外官或不认识 → None。"""
     item = officials.get(state_id)
     if not item:
         return None
@@ -590,7 +660,6 @@ def state_official_post(officials, state_id):
 
 
 def derive_vassals(factions, officials):
-    """按 §3.5 推导 independent / overlord_id / vassal_value，并打印清单。"""
     specs = sorted(factions.values(), key=lambda s: s["id"])
     dongzhuo = next((s for s in specs if s["spec_name"] == "董卓"), None)
     for spec in specs:
@@ -598,7 +667,6 @@ def derive_vassals(factions, officials):
         spec["overlord_id"] = None
         spec["vassal_value"] = 0
 
-    # 1) 郡级：所在州的州官是「牧 / 司隶校尉」→ 附庸 10（宗主 = 该州势力）
     for spec in specs:
         if spec["rank"] != "郡":
             continue
@@ -610,7 +678,6 @@ def derive_vassals(factions, officials):
         spec["overlord_id"] = item.get("character_id")
         spec["vassal_value"] = 10
 
-    # 2) 曹操 / 袁绍 / 刘备 强制独立（覆盖自动规则）
     for name in FORCED_INDEPENDENT:
         for spec in specs:
             if spec["spec_name"] == name:
@@ -618,7 +685,6 @@ def derive_vassals(factions, officials):
                 spec["overlord_id"] = None
                 spec["vassal_value"] = 0
 
-    # 3) 董卓指定名单（覆盖以上所有规则）
     for name in DONGZHUO_VASSALS:
         spec = next((s for s in specs if s["spec_name"] == name), None)
         if spec is None:
@@ -628,7 +694,6 @@ def derive_vassals(factions, officials):
         spec["overlord_id"] = dongzhuo["id"] if dongzhuo else None
         spec["vassal_value"] = DONGZHUO_VASSAL_VALUE
 
-    # 4) 清单（需求 §7.8：脚本运行后终端输出附庸关系供确认）
     print(f"[附庸] 附庸 {sum(1 for s in specs if not s['independent'])} 家 / "
           f"独立 {sum(1 for s in specs if s['independent'])} 家")
     for spec in specs:
@@ -641,7 +706,7 @@ def derive_vassals(factions, officials):
 
 
 # ============================================================
-# 人物分配（君主起步 → 投票扩展 → affinity 兜底）
+# 人物分配
 # ============================================================
 def eligible(ch, year):
     if ch is None:
@@ -658,16 +723,6 @@ def eligible(ch, year):
 
 
 def compute_appeared(cid, ch, fid, year):
-    """登场判定（生成期一次算死，写进剧本）。判定顺序即优先级：
-
-        穿越人物（id >= 1001）     → False
-        已被分配到势力              → True
-        birth_year 缺失             → False
-        year - birth_year >= 16     → True
-        其余                        → False
-
-    ★ death_year 不参与判定（历史人物长寿化 / 穿越设定）。
-    """
     if int(cid) >= 1001:
         return False
     if fid:
@@ -679,15 +734,25 @@ def compute_appeared(cid, ch, fid, year):
 
 
 def expand_all(core_by_faction, all_chars, year):
-    """君主起步 → 网络投票迭代扩展 → affinity 兜底。"""
-    assigned = {fid: {cid} for fid, cid in core_by_faction.items()
-                if eligible(all_chars.get(cid), year)}
+    """君主起步 → 网络投票迭代扩展 → affinity 兜底。
+
+    ★ 君主无条件进入自己的势力（跳过 eligible 判定）：丁原 / 张纯等在
+      剧本起始年已 death_year 的人物，若按常规则被剔除，会出现「有势力
+      条目、无君主」的断链。
+    """
+    
+    assigned = {}
+    for fid, cid in core_by_faction.items():
+        ch = all_chars.get(cid)
+        if ch is None:
+            continue
+        assigned[fid] = {cid}
+
     owner = {}
     for fid, ids in assigned.items():
         for i in ids:
             owner[i] = fid
 
-    # --- 阶段 1：网络投票扩展 ---
     changed = True
     while changed:
         changed = False
@@ -716,7 +781,6 @@ def expand_all(core_by_faction, all_chars, year):
             owner[cid] = best
             changed = True
 
-    # --- 阶段 2：affinity 兜底 ---
     def circ_dist(a, b):
         d = abs(a - b) % 150
         return min(d, 150 - d)
@@ -753,16 +817,16 @@ def main():
 
     # 1. 势力 + 地盘
     factions = resolve_monarchs(by_name, all_chars)
-    add_dongzhuo_vassals(factions, by_name, map_idx)              # 董卓名单新建
+    add_dongzhuo_vassals(factions, by_name, map_idx)
     assign_territories(factions, map_idx)
     assign_colors(factions, map_idx)
 
-    # 2. 人物分配（君主为种子）
+    # 2. 人物分配
     hist_chars = {cid: c for cid, c in all_chars.items() if int(cid) <= 1000}
     core = {fid: fid for fid in factions}
     assigned, leftover = expand_all(core, hist_chars, YEAR)
 
-    # 3. 据点：势力地盘内的县
+    # 3. 据点
     nodes = {}
     for spec in factions.values():
         cap = spec["effective_capital"]
@@ -774,7 +838,7 @@ def main():
                 nodes[cid] = {"owner": spec["id"], "troops": 2000,
                               "gold": 200, "food": 3000}
 
-    # 4. 人物覆盖：全量写，每人 5 字段
+    # 4. 人物覆盖
     owner = {}
     capital_of = {}
     for spec in factions.values():
@@ -792,13 +856,18 @@ def main():
             "node":     capital,
             "location": capital,
             "role":     ("君主" if cid == fid else "一般") if fid else None,
+            "military_title": None,        # ★ 先占位，由 assign_military_titles 填
         }
 
-    # 5. 外官（董卓新建附庸不设外官）
+    # 5. 外官
     officials = build_officials(factions, map_idx)
 
-    # 5.5 附庸关系推导（需求 §3.5）
+    # 5.5 附庸关系
     derive_vassals(factions, officials)
+
+    # 5.6 武官分配（君主史实 + 武力分档）
+    assign_military_titles(factions, characters, all_chars_sorted,
+                           officials, by_name)
 
     # 6. 组装
     out = {
@@ -808,14 +877,12 @@ def main():
         "desc": "190年正月，关东诸侯起兵讨董；五十家州牧郡守各据一方。",
         "start": {"year": 190, "month": 1, "xun": 1},
         "player_faction": "0521",
-        # ★ 不写 character_id_range：全量人物由 appeared 区分登场与否
         "factions": {
             spec["id"]: {
                 "name": spec["name"],
                 "color": spec["color"],
                 "prestige": 1000,
                 "stance": 0,
-                # ★ 需求 §3.1：所有势力都写这三个字段
                 "independent": bool(spec["independent"]),
                 "overlord_id": spec["overlord_id"],
                 "vassal_value": int(spec["vassal_value"]),

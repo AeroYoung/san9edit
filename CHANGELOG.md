@@ -168,3 +168,48 @@
 - 新增编辑入口时附庸关系可能被改坏：独立势力改为附庸后其原有附庸的宗主改为新宗主，否则下次加载会被判损坏移除（`core/edit_commands.py`、`dialogs/faction_edit.py`）
 - 删除宗主势力时名下附庸未处理：现随删除级联自动独立，一次 undo 可退（`dialogs/faction_lifecycle.py`）
 - 剧本生成中董卓名单据点被其他势力先占：改为名单优先抢占，并重算 `effective_capital`（`tools/build_scenario_190.py`）
+
+---
+
+## 2026-09-27 · 弹窗布局与可搜索下拉
+
+### Added
+- 可搜索下拉 `SearchableCombobox`：输入实时过滤 + `normalize()` 把非法输入纠正为合法选项（`ui/widgets/searchable_combo.py`）
+- 弹窗分组布局 `FieldGroup.layout`（rows / two_cols / inline）+ `left_keys` / `left_info_titles` / `side_image` / `side_caption`（`dialogs/field_spec.py`）
+- 弹窗 info 块的实体链接标记 `[[c:…]]` / `[[f:…]]` / `[[n:…]]` 与 `on_link_click` 回调，人物 / 势力 / 据点可互相跳转（`dialogs/edit_dialog.py`、`dialogs/faction_edit.py`、`dialogs/node_edit.py`）
+- 人物编辑窗口新增「出生年」可编辑字段 + 只读「年龄」派生显示（`ui/character_info_window.py`）
+
+### Changed
+- 弹窗只读字段改为可拖选复制的只读 Entry；info 块改用 `tk.Text` 渲染（可拖选 / Ctrl+C，高度自适应）（`dialogs/edit_dialog.py`）
+- 弹窗窗口改为可缩放，横向 / 纵向滚动条按内容与视口大小自动出现（`dialogs/edit_dialog.py`、`ui/character_info_window.py`）
+- choice 字段改用可搜索下拉并在提交前 `normalize()`；int 字段加输入期校验（`dialogs/edit_dialog.py`）
+- 编辑势力弹窗改为「基本情况（两栏 + 君主头像）/ 可编辑信息（两栏）/ 独立·附庸（一行）」布局（`dialogs/faction_fields.py`、`dialogs/faction_edit.py`）
+- 编辑据点弹窗改为「据点属性（两栏）/ 基本情况（只读）」两组（`dialogs/node_fields.py`）
+- 人物编辑窗口：基础组改为左头像 + 右字段，势力下拉改可搜索，保存 / 取消移到窗口底部（`ui/character_info_window.py`）
+- README 同步：§0 / §2 / §5.20 / §5.21 / §5.24 / §8.3（新增永久约束 57–59）/ §9.4 / §9.5 / §9.6
+
+### Removed
+- `FACTION_SECTIONS` 常量，改由 `faction_sections()` 构造（`dialogs/faction_fields.py`）
+
+### Fixed
+- README §8.3 交叉引用编号错位：正文外的 13 处「§8.3 第 N 条」统一修正回来（涉及 §3.2 / §3.6 / §5.3 / §5.6 / §5.20 / §5.22 / §6.5 / §7.1）
+
+---
+
+## 2026-09-27 · 官职体系（外官位阶 + 武官）
+
+### Added
+- 武官官名体系 `core/military_title.py`：32 rank / 84 官名常量表 + `rank_of` / `all_titles` / `is_unique` / `is_title_free` / `is_title_free_global` / `title_label`
+- 外官位阶 rank 1–32：州级固定、郡级按县 level 分数分等（`county_score` / `county_rank` / `compute_county_ranks`）、县级按 level 映射、`official_rank_of_title`（`core/official_title.py`）
+- `Character.military_title` 字段：加载可读，**不进 to_dict / 不参与 diff**（`core/character.py`）
+- 官职体系窗口：按人物 / 按官职双模式 + 搜索 + 列头排序 + 位阶开关 + 全部外官开关 + 双击开人物情报（`ui/job_system_window.py`）
+- `MainWindow._open_job_system_window()`（单例）+ `job_system` 动作分发（`ui/main_window.py`）
+- 190 剧本武官分配 `assign_military_titles()`：君主史实武官 + 武力分档两阶段（`tools/build_scenario_190.py`、`scenarios/default.json`）
+
+### Changed
+- 顶部菜单重排为 文件 / 情报 / 游戏 / 查看 / 帮助：撤销 / 重做移入「文件」，删除「编辑」「势力」「命令」三个菜单（`ui/top_bar.py`）
+- `TopBar._add_edit_command` 改为返回 (menu, index)；`set_edit_state` 按 `_undo_entry` / `_redo_entry` 定位，不再硬编码下标（`ui/top_bar.py`）
+- README 同步：§0 / §1 / §2 / §3.3 / §4.6 / §5.15 / §5.16 / §5.25 / §5.26（新增小节）/ §6.5 / §7.3 / §8.1 / §8.4
+
+### Fixed
+- README §1 完成度清单的 190 剧本数字过期（势力 50 → 54、据点 611 → 616、外官 49 → 53），与 §4.5 对齐

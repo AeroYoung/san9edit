@@ -16,6 +16,11 @@ id 为四位数字字符串（"0001"–"1049"），全局唯一。
     所在（location） 人当前在哪个据点，6 位据点 id。
                      剧本初始 = 所属；运行时随出征 / 调动 / 流亡变化。
     两者都是据点 id，不是城池名。
+
+武官（military_title）：
+    荣誉头衔，独立于行政区外官；常量表见 core/military_title.py。
+    本轮只做骨架（加载能读、内存有字段），不进 to_dict / 不参与 diff，
+    保存时靠 ScenarioWriter 的 deepcopy(raw) 天然保留剧本里的原值。
 """
 
 _DEFAULT_STAT = 50   # 五维缺省值
@@ -77,7 +82,9 @@ class Character:
         node=None,                # 所属：编制上隶属的据点 id（六位），None = 无所属
         location=None,            # 所在：人物当前所在地的据点 id（六位）
                                   #       初始 = 所属；运行时随出征 / 调动变化，不改所属
-        role=None,                # 身份：「君主」/「一般」/「太守」等  # todo 君主、出仕、在野
+        role=None,                # 身份：「君主」/「一般」/「太守」等
+        military_title=None,      # 武官（荣誉头衔）；见 core/military_title.py
+
     ):
         # ---------------- 标识 ----------------
         self.id = cid                       # 人物 id，四位字符串，如 "0147"
@@ -123,6 +130,7 @@ class Character:
         self.node = node                     # 所属（据点 id）
         self.location = location             # 所在（据点 id）
         self.role = role                     # 身份
+        self.military_title = military_title # 武官（荣誉头衔）；本轮骨架
 
     # ============================================================
     # 语义方法
@@ -162,7 +170,7 @@ class Character:
     # ============================================================
     @classmethod
     def from_dict(cls, cid, d):
-        """从 characters.json 里的一条 dict 构造。"""
+        """从 characters.json / 剧本里的一条 dict 构造。"""
         return cls(
             cid=cid,
             name=d.get("name", cid),                          # 姓名
@@ -195,10 +203,16 @@ class Character:
             node=d.get("node"),                               # 所属
             location=d.get("location"),                       # 所在
             role=d.get("role"),                               # 身份
+            military_title=d.get("military_title"),           # 武官（老剧本无 → None）
         )
 
     def to_dict(self):
-        """转回 dict（存档 / 调试用）。"""
+        """转回 dict（存档 / 调试用）。
+
+        ★ 本轮不含 military_title：不进序列化，不参与 diff，不写回剧本。
+          保存时剧本里原有的 military_title 由 ScenarioWriter 的 deepcopy(raw)
+          天然保留。
+        """
         return {
             "name": self.name,                                # 姓名
             "family_name": self.family_name,                  # 字
@@ -237,6 +251,8 @@ class Character:
 
         - 只覆盖 data 中明确出现的 key
         - 本对象没有的 key 忽略（防脏数据）
+        - military_title 已加入 __init__，因此 hasattr 为 True：
+          剧本里显式写了 military_title 时会被加载进内存（本次改动目标之一）
         """
         for key, value in data.items():
             if hasattr(self, key):

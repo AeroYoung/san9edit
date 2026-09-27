@@ -31,20 +31,6 @@ FACTION_FIELDS = (
     Field("vassal_value", "附庸值",   "int", min=1, max=99),
 )
 
-# 分组：(标题, 字段 key 元组, 组说明)。第一条的只读信息块由运行期补。
-FACTION_SECTIONS = (
-    ("基本情况",
-     ("id",),
-     "（只读；若要修改，请到对应编辑窗体中修改）"),
-    ("可编辑信息",
-     ("name", "color", "display_color", "prestige", "stance",
-      "gold", "food", "troops"),
-     "（金钱 / 军粮 / 兵力是派生值，只读）"),
-    ("独立/附庸",
-     ("independent", "overlord_id", "vassal_value"),
-     "（独立时宗主与附庸值自动归零；附庸值越大越听从宗主）"),
-)
-
 
 def overlord_options(world, faction=None):
     """(value, label)：未选择 + 全部**独立**势力（排除自己）。"""
@@ -79,15 +65,51 @@ def faction_fields(world=None, faction=None):
     )
 
 
-def faction_sections(fields, info=()):
-    """字段表 → 分组（FieldGroup 元组）；只读信息块并入「基本情况」组。"""
+def _basic_section(fields, info, side_image, side_caption):
+    """基本情况：左栏 = 头像 + 君主信息；右栏 = 据点 / 人物 / 外官 / 编号。"""
     by_key = {f.key: f for f in fields}
-    groups = []
-    for index, (title, keys, desc) in enumerate(FACTION_SECTIONS):
-        groups.append(FieldGroup(
-            title=title,
-            fields=tuple(by_key[k] for k in keys if k in by_key),
-            desc=desc,
-            info=tuple(info) if index == 0 else (),
-        ))
-    return tuple(groups)
+    return FieldGroup(
+        title="基本情况",
+        fields=(by_key["id"],) if "id" in by_key else (),
+        info=tuple(info),
+        layout="two_cols",
+        left_keys=(),                    # 左栏不放字段
+        left_info_titles=("君主",),      # 只有「君主」info 进左栏
+        side_image=side_image,
+        side_caption=side_caption,
+    )
+
+
+def _editable_section(fields):
+    """可编辑信息：左栏 4 项，右栏 4 项。"""
+    keys = ("name", "color", "display_color",
+            "prestige", "stance", "gold", "food", "troops")
+    by_key = {f.key: f for f in fields}
+    return FieldGroup(
+        title="可编辑信息",
+        fields=tuple(by_key[k] for k in keys if k in by_key),
+        desc="（金钱 / 军粮 / 兵力是派生值，只读）",
+        layout="two_cols",
+        left_keys=("name", "color", "display_color", "prestige"),
+    )
+
+
+def _vassal_section(fields):
+    """独立/附庸：三个控件排成一行。"""
+    keys = ("independent", "overlord_id", "vassal_value")
+    by_key = {f.key: f for f in fields}
+    return FieldGroup(
+        title="独立/附庸",
+        fields=tuple(by_key[k] for k in keys if k in by_key),
+        desc="（独立时宗主与附庸值自动归零；附庸值越大越听从宗主）",
+        layout="inline",
+    )
+
+
+def faction_sections(fields, info=(), side_image=None, side_caption=None):
+    """字段表 → 分组（FieldGroup 元组）。头像嵌入「基本情况」组左栏。"""
+    return (
+        _basic_section(fields, info, side_image, side_caption),
+        _editable_section(fields),
+        _vassal_section(fields),
+    )
