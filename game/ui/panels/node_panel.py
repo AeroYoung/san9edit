@@ -24,7 +24,7 @@ class NodeRow:
     owner_id: Optional[str]
     owner_name: str
     is_capital: bool = False
-    governor_name: str = "—"     # 预留
+    governor_name: str = "—"     # ★ 县外官姓名（无则「—」）
     person_count: int = 0        # ★ 所属人物数（未登场不计），由 fetch_rows 聚合传入
 
     @property
@@ -49,14 +49,24 @@ class NodeRow:
             owner_id=node.owner,
             owner_name=owner_name,
             is_capital=node.is_capital,
+            governor_name=cls._governor_name(node, world),
             person_count=person_count,
         )
+
+    @staticmethod
+    def _governor_name(node, world):
+        """主官 = 该**县**外官（6 位键）；州 / 郡外官进分组标题（需求 §4）。"""
+        item = world.official_of(node.id) if world else None
+        if item is None:
+            return "—"
+        ch = world.character(item.get("character_id"))
+        return ch.name if ch is not None else (item.get("name") or "—")
 
 
 COLUMNS = (
     Column("state",    "州",   52, "center", lambda r: r.state_name),
     Column("county",   "郡",   62, "center", lambda r: r.county_name),
-    Column("level",    "规模", 42, "center", lambda r: r.level, sort_numeric=True),
+    Column("level",    "等级", 42, "center", lambda r: r.level, sort_numeric=True),
     Column("type",     "类型", 46, "center", lambda r: r.display_type),
     Column("owner",    "势力", 64, "center", lambda r: r.owner_name),
     Column("governor", "主官", 56, "center", lambda r: r.governor_name),
@@ -93,6 +103,23 @@ class NodePanel(GenericListPanel):
 
     def row_key(self, row):
         return row.node_id
+
+    def group_subtitle(self, dim_key, group_name, rows):
+        """州 / 郡分组标题追加外官「官名-姓名」（需求 §2 G5）。
+
+        县外官不进分组标题，它们显示在「主官」列（§4）。
+        """
+        if not rows:
+            return ""
+        world = getattr(self.game_state, "world", None)
+        if world is None:
+            return ""
+        node_id = rows[0].node_id
+        if dim_key == "state":
+            return world.official_label(node_id[:2])
+        if dim_key == "county":
+            return world.official_label(node_id[:4])
+        return ""
 
     def context_menu_items(self, ctx):
         row = ctx.right_click_row

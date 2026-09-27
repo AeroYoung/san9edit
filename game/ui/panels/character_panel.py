@@ -35,6 +35,7 @@ class CharacterRow:
     politics: int
     charisma: int
     coords: Optional[tuple]
+    official_text: str = ""      # ★ 外官官职（多个用「、」连接；无 → 空）
 
     @property
     def display_name(self):
@@ -75,13 +76,24 @@ class CharacterRow:
             politics=ch.politics,
             charisma=ch.charisma,
             coords=coords,
+            official_text=cls._official_text(ch, world),
         )
+
+    @staticmethod
+    def _official_text(ch, world):
+        """该人物的全部外官官名（按行政区 id 排序，用「、」连接）；无 → 空串。"""
+        if world is None:
+            return ""
+        return "、".join(o.get("name", "")
+                         for o in world.officials_of_character(ch.id))
 
 
 COLUMNS = (
     Column("faction", "势力", 60, "center", lambda r: r.faction_name),
     Column("node",    "所在", 76, "center", lambda r: r.node_name),
     Column("role",    "身份", 48, "center", lambda r: r.role or "—"),
+    # 官职：外官官名（无 → 留空）。声明序在「身份」后
+    Column("official", "官职", 76, "center", lambda r: r.official_text),
     Column("lead",    "统",   34, "center", lambda r: r.leadership,   sort_numeric=True),
     Column("might",   "武",   34, "center", lambda r: r.might,        sort_numeric=True),
     Column("int",     "智",   34, "center", lambda r: r.intelligence, sort_numeric=True),

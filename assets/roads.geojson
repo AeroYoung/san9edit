@@ -3330,64 +3330,6 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "居庸关—居庸",
-        "road_type": "固定道",
-        "from_id": "120406",
-        "from_name": "居庸关",
-        "from_type": "关隘",
-        "from_level": 5,
-        "from_county": "广阳郡",
-        "from_county_id": "1204",
-        "from_state": "幽州",
-        "from_state_id": "12",
-        "to_id": "120205",
-        "to_name": "居庸",
-        "to_type": "关隘",
-        "to_level": 5,
-        "to_county": "上谷郡",
-        "to_county_id": "1202",
-        "to_state": "幽州",
-        "to_state_id": "12",
-        "mountain_pass": "居庸",
-        "mountain_pass_id": "120205",
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": null,
-        "mountains_crossed": [
-          "太行山脉"
-        ],
-        "waters_crossed": [],
-        "length_km": 21.99,
-        "length_deg": 0.2065,
-        "point_count": 2,
-        "difficulty": 1.6,
-        "effective_length_km": 35.19,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.3,
-          "water_bonus": 0.0,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            116.0418035,
-            40.2428899
-          ],
-          [
-            115.9488122,
-            40.4273048
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "name": "蓟县—安乐",
         "road_type": "固定道",
         "from_id": "120401",
@@ -21691,64 +21633,6 @@
     {
       "type": "Feature",
       "properties": {
-        "name": "沮阳—居庸",
-        "road_type": "郡内道",
-        "from_id": "120203",
-        "from_name": "沮阳",
-        "from_type": "城",
-        "from_level": 4,
-        "from_county": "上谷郡",
-        "from_county_id": "1202",
-        "from_state": "幽州",
-        "from_state_id": "12",
-        "to_id": "120205",
-        "to_name": "居庸",
-        "to_type": "关隘",
-        "to_level": 5,
-        "to_county": "上谷郡",
-        "to_county_id": "1202",
-        "to_state": "幽州",
-        "to_state_id": "12",
-        "mountain_pass": "居庸",
-        "mountain_pass_id": "120205",
-        "ferry": null,
-        "ferry_id": null,
-        "bridge": null,
-        "mountains_crossed": [
-          "太行山脉"
-        ],
-        "waters_crossed": [],
-        "length_km": 28.11,
-        "length_deg": 0.3019,
-        "point_count": 2,
-        "difficulty": 1.6,
-        "effective_length_km": 44.98,
-        "diff_detail": {
-          "base": 1.3,
-          "mountain_bonus": 0.3,
-          "water_bonus": 0.0,
-          "region": null,
-          "region_adj": 0.0
-        },
-        "note": ""
-      },
-      "geometry": {
-        "type": "LineString",
-        "coordinates": [
-          [
-            115.6933549,
-            40.2664684
-          ],
-          [
-            115.9488122,
-            40.4273048
-          ]
-        ]
-      }
-    },
-    {
-      "type": "Feature",
-      "properties": {
         "name": "阳翟—密县",
         "road_type": "州间道",
         "from_id": "130101",
@@ -22094,6 +21978,64 @@
           [
             106.6931525,
             33.1462445
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "沮阳—居庸关",
+        "road_type": "郡间道",
+        "from_id": "120203",
+        "from_name": "沮阳",
+        "from_type": "城",
+        "from_level": 4,
+        "from_county": "上谷郡",
+        "from_county_id": "1202",
+        "from_state": "幽州",
+        "from_state_id": "12",
+        "to_id": "120406",
+        "to_name": "居庸关",
+        "to_type": "关隘",
+        "to_level": 5,
+        "to_county": "广阳郡",
+        "to_county_id": "1204",
+        "to_state": "幽州",
+        "to_state_id": "12",
+        "mountain_pass": "居庸关",
+        "mountain_pass_id": "120406",
+        "ferry": null,
+        "ferry_id": null,
+        "bridge": null,
+        "mountains_crossed": [
+          "太行山脉"
+        ],
+        "waters_crossed": [],
+        "length_km": 29.72,
+        "length_deg": 0.3492,
+        "point_count": 2,
+        "difficulty": 1.6,
+        "effective_length_km": 47.55,
+        "diff_detail": {
+          "base": 1.3,
+          "mountain_bonus": 0.3,
+          "water_bonus": 0.0,
+          "region": null,
+          "region_adj": 0.0
+        },
+        "note": ""
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            115.6933549,
+            40.2664684
+          ],
+          [
+            116.0418035,
+            40.2428899
           ]
         ]
       }

@@ -31,6 +31,9 @@ class World:
         self.factions = {}      # id -> Faction
         self.characters = {}    # id -> Character
         self.nodes = {}         # id -> Node
+        # 外官：行政区 id(2/4/6 位) -> {"name", "character_id", "rank"}
+        # 由 ScenarioLoader 从剧本 officials 段填；老剧本没有该段 → 空 dict
+        self.officials = {}
         # 州 / 郡 名字表（由 ScenarioLoader 从 GeoData 填）
         self.state_names = {}     # "01"   -> "并州"
         self.county_names = {}    # "0101" -> "上党郡"
@@ -79,6 +82,44 @@ class World:
         """
         return Counter(c.node for c in self.characters.values()
                        if c.node and c.appeared)
+
+    # ---------- 外官 ----------
+    def official_of(self, region_id):
+        """该行政区的外官条目；无外官 → None。
+
+        条目形如 {"name": "荆州刺史", "character_id": "0953", "rank": "州"}。
+        行政区 id：州 2 位 / 郡 4 位 / 县 6 位，三层共用一个 dict。
+        """
+        if not region_id:
+            return None
+        return self.officials.get(region_id)
+
+    def officials_of_character(self, character_id):
+        """该人物担任的全部外官（按行政区 id 排序，州 → 郡 → 县）。
+
+        同一人物可担任多个外官，返回列表；无 → 空列表。
+        每项在当前条目上加 "region_id"。
+        """
+        if not character_id:
+            return []
+        found = [dict(item, region_id=rid)
+                 for rid, item in self.officials.items()
+                 if item.get("character_id") == character_id]
+        found.sort(key=lambda item: item["region_id"])
+        return found
+
+    def official_label(self, region_id):
+        """「官名-姓名」；无外官 / 人物查不到 → ""。
+
+        分组标题用（如「荆州刺史-刘表」），不掺「无」「—」之类的占位符。
+        """
+        item = self.official_of(region_id)
+        if item is None:
+            return ""
+        ch = self.character(item.get("character_id"))
+        if ch is None:
+            return item.get("name", "")
+        return f"{item.get('name', '')}-{ch.name}"
 
     def node(self, nid):
         return self.nodes.get(nid)

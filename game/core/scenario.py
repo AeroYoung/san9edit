@@ -62,6 +62,7 @@ class ScenarioLoader:
         cls._build_nodes_from_geo(world, geo_data)
         cls._build_region_names(world, geo_data)
         cls._apply_node_overrides(world, raw.get("nodes") or {})
+        cls._apply_officials(world, raw.get("officials") or {})
 
         world.bind_factions()   # ★ 注入 nodes 引用（供 Faction.gold/food property）
 
@@ -139,6 +140,42 @@ class ScenarioLoader:
     # ============================================================
     # 以下三个方法保持不变（原样照抄）
     # ============================================================
+    # ============================================================
+    # 外官（省级 / 郡级 / 县级混放在同一 dict）
+    # ============================================================
+    @staticmethod
+    def _apply_officials(world, officials):
+        """读剧本 officials 段（需求 §3.1 / §4）。
+
+        - 人物不在 World.characters → warning 并跳过该条（不新建人物）
+        - 行政区 id 不在 GeoData → warning 但**保留**该条（UI 按 id 显示）
+        - 老剧本无该段 → 空 dict，UI 一律显示空 /「—」
+        """
+        for rid, item in officials.items():
+            cid = item.get("character_id")
+            if cid and world.character(cid) is None:
+                logger.warning("外官 %s 的人物 %s 不在剧本中，已跳过", rid, cid)
+                continue
+            if not ScenarioLoader._known_region(world, rid):
+                logger.warning("外官 %s 不在 GeoData 中，仍保留该条", rid)
+            world.officials[rid] = {
+                "name": item.get("name", ""),
+                "character_id": cid,
+                "rank": item.get("rank", ""),
+            }
+        logger.debug("外官加载：%d 条", len(world.officials))
+
+    @staticmethod
+    def _known_region(world, rid):
+        """行政区 id 是否在 GeoData 里（州 / 郡 / 县 三档）。"""
+        if not rid:
+            return False
+        if len(rid) == 2:
+            return rid in world.state_names
+        if len(rid) == 4:
+            return rid in world.county_names
+        return rid in world.nodes
+
     @staticmethod
     def _build_region_names(world, geo_data):
         if geo_data is None:

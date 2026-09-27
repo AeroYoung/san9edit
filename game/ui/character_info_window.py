@@ -114,7 +114,18 @@ class CharacterInfoWindow(tk.Toplevel):
             self, text=self.character.display_name(),
             bg=THEME["panel_bg"], fg="#222222",
             font=(self.font_family, FONT_SIZES["panel_title"] + 4, "bold"),
-        ).pack(pady=(14, 6))
+        ).pack(pady=(14, 2))
+
+        # 官职（外官；无则不显示这一行）——多个按行政区顺序用「、」连接
+        officials = (self.world.officials_of_character(self.character.id)
+                     if self.world is not None else [])
+        if officials:
+            tk.Label(
+                self,
+                text="官职：" + "、".join(o.get("name", "") for o in officials),
+                bg=THEME["panel_bg"], fg=BODY_FG,
+                font=(self.font_family, FONT_SIZES["panel_body"]),
+            ).pack(pady=(0, 6))
 
         # 上区：头像 + 雷达图
         top = tk.Frame(self, bg=THEME["panel_bg"])

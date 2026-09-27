@@ -28,6 +28,7 @@
 | hover 高亮层 | renderer._hover_info / HOVER_TAG | 悬停县高亮，受 MAP_INTERACTION 5 开关控制 |
 | 反向定位 | GenericListPanel.scroll_to_row(key) | 地图 → 列表：切 Tab + 滚动 + 选中 + 展开组 |
 | 据点人物数 | World.count_characters_by_node | ★ 按所属 node 聚合，未登场不计（§3.5） |
+| 外官 | World.officials / core/official_title.py | ★ 行政区 id(2/4/6 位) → 官名 + 人物；一区一官，一人可多职 |
 | 势力兵力 | Faction.troops | ★ 派生值：名下据点 troops 求和 + 所属部队求和（部队项恒 0，§3.2） |
 | 势力兵力口径 | —— | ★ Σ node.troops (owner=本势力) + Σ troop.troops（Troop 未建模，见 §8.4） |
 | 面板列配置 | style.PANEL_COLUMNS | 每面板 {order:[], hidden:[]}，见 §5.22 |
@@ -167,7 +168,7 @@
 | 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报窗口（Pillow 头像 + 五维雷达图 + 关系）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + undo/redo + 增量保存）；全流程日志 |
 | 运行环境 | Python 3 + 标准库 tkinter + Pillow（第三方，仅人物情报窗口的头像用；雷达图/关系区纯 Canvas/Widget） |
 | 数据来源 | assets/map.geojson：13 州 / 106 郡 / **1152 县**；roads.geojson；water.geojson；mountains.geojson（未接入）；characters.json：1049 人；assets/portrait/：739 张头像 |
-| 剧本来源 | scenarios/default.json（190 年 · 十八路诸侯；52 势力 / 1049 人物全覆盖（登场 469）/ 555 据点） |
+| 剧本来源 | scenarios/default.json（190 年 · 州郡外官；50 势力 / 1049 人物全覆盖 / 626 据点 / 49 条外官） |
 | 用户数据 | userdata/settings.json；userdata/logs/ |
 
 **当前完成度（粗粒度）：**
@@ -175,7 +176,7 @@
 - ✅ 地图 / 渲染：州郡县三级边界 + 道路 + 水域 + 图层显隐 + 县名避让；县面势力染色（唯一着色图层，不吃 LOD）；县点选 + hover 高亮（5 开关）；地图 ⇄ 列表双向定位；精确反查州 · 郡 · 县 · 势力
 - ✅ 面板：4 面板共享 panels/list/ 框架（列 / 排序 / 嵌套分组 / 搜索 / 多选 / 右键菜单）+ 列顺序与显隐可配置；势力色块；兵力 / 据点数 / 人物数三列现算（兵力是派生值不落盘，人物数未登场不计）；据点面板「主官」列与据点情报三项右键仍是占位
 - ✅ 人物情报窗口：Pillow 头像 + Canvas 五维雷达图 + 关系区（8 字段，可点击跳转）+ 生平占位
-- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（52 势力 / 1049 人物 / 555 据点）+ 三层加载 + character_id_range 仅老剧本兼容
+- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（50 势力 / 1049 人物 / 611 据点 / 49 条外官）+ 三层加载 + character_id_range 仅老剧本兼容
 - ✅ 剧本编辑：APP_MODE 编译期切换 + 据点 / 势力编辑（共用流程 + 郡治互斥）+ 人物登场开关 + undo/redo + 增量保存 + 未保存提示；编辑入口统一标识（edit=True / set_edit_enabled）
 - ✅ 设置窗口：主题 / 地图样式 / 图层 / 面板列 多 Tab
 - ✅ 日志：会话文件 + session id + sys/tk 异常钩子 + LOG_ENABLED 编译期总开关
@@ -201,11 +202,15 @@ san9edit/
 │   ├── water.geojson                  河流 / 湖泊
 │   └── mountains.geojson              山地（已下载，未接入渲染）
 ├── scenarios/
-│   └── default.json                   190 剧本（52 势力 / 1049 人物 / 555 据点）
+│   └── default.json                   190 剧本（50 势力 / 1049 人物 / 611 据点 / 49 条外官）
 ├── tests/                             单元测试
 │   ├── test_composite_command.py      CompositeCommand 顺序 / 逆序语义
 │   ├── test_scenario_writer.py        serialize / diff / save 增量写回
-│   └── test_character_appeared.py     appeared 加载兼容 / 登场开关 / dirty
+│   ├── test_character_appeared.py     appeared 加载兼容 / 登场开关 / dirty
+│   ├── test_list_grouping.py          组头计数 / 固定组序 / 行优先排序 / 登场列排序
+│   ├── test_list_reconcile.py         就地刷新（含子分组消失的回归）
+│   ├── test_move_to_node.py           移动到据点：单人规则 / 命令生成
+│   └── test_official.py               官名规则 / officials 加载与查询
 ├── tools/                             离线脚本（不参与运行时，保持 print 输出）
 │   ├── build_scenario_190.py          生成 190 年默认剧本（FACTIONS 常量 + 人物分配）
 │   ├── 头像.py                        头像批量重命名 / 复制 / 对账（顶部 APPLY 开关）
@@ -233,7 +238,8 @@ san9edit/
     │   ├── faction.py                 Faction：势力（stance 相对玩家）+ gold/food/troops 派生
     │   ├── character.py               Character：人物（31 字段，node / location 分离）
     │   ├── node.py                    Node：县 = 据点（静态 + 动态 owner/troops/gold/food）
-    │   ├── scenario.py                剧本加载（三层人物 + character_id_range + 应用登场状态）
+    │   ├── scenario.py                剧本加载（三层人物 + character_id_range + 应用登场状态 + 外官）
+    │   ├── official_title.py          ★ 外官官名生成（州 / 郡 / 县，纯函数无依赖）
     │   ├── territory.py               郡级势力统计（保留，暂不消费）
     │   ├── edit_session.py            ★ Command / CompositeCommand / EditSession
     │   ├── edit_commands.py           ★ NodeEditCommand / FactionEditCommand / CharacterEditCommand
@@ -440,6 +446,12 @@ def troops(self):
 ★ characters 收**全量**人物（1049 人）——但「算不算某个势力 / 据点的人」要过 appeared 这一关：
 未登场人物虽然留在 World.characters（可编辑），却**不计入**势力 / 据点的人物数（§查询与聚合）。
 
+**外官 officials**（行政区 → 官名 + 人物）：
+
+- 容器：`{region_id: {"name", "character_id", "rank"}}`，region_id 2 / 4 / 6 位混放。
+- 与 Character 无关：**不加** `Character.official` 字段，也不进 `characters` 段（外官以 region 为键）。
+- 本轮只读不写：不入 serialize / diff；UI 三处展示（据点「主官」列、州郡分组标题、人物「官职」列 + 情报窗口）。
+
 **查询：**
 
 ```python
@@ -453,6 +465,9 @@ def character(self, cid):   return self.characters.get(cid) if cid else None
 def nodes_of(self, faction_id):      # 该势力拥有的据点列表
 def characters_of(self, faction_id): # 该势力的人物列表（★ 未登场不计）
 def characters_at(self, node_id):    # 该据点的人物列表（★ 按所属 node，未登场不计）
+def official_of(self, region_id):    # 行政区 id(2/4/6 位) → 外官条目 dict | None
+def officials_of_character(self, cid):  # 人物 id → 外官条目列表（按 region_id 排序）
+def official_label(self, region_id): # 「官名-姓名」（无 → ""），供分组标题用
 ```
 
 ★ **人物查询一律过 appeared**：`characters_of` / `characters_at` / `count_characters_by_faction` /
@@ -606,9 +621,10 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
   "desc": "190年，十八路诸侯讨董……",
   "start": { "year": 190, "month": 1, "xun": 1 },
   "player_faction": "0521",
-  "factions": { "…52 家…" },
+  "factions": { "…50 家…" },
   "characters": { "…1049 条，写 5 字段（appeared/faction/node/location/role），按 id 排序…" },
-  "nodes": { "…555 条…" }
+  "nodes": { "…626 条…" },
+  "officials": { "…49 条，键为行政区 id…" }
 }
 ```
 
@@ -620,11 +636,17 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 | factions | name / color / prestige / stance（不写 gold / food / troops） |
 | characters | appeared / faction / node / location / role（全量 1049 人） |
 | nodes | owner / troops / gold / food；个别条目额外带 is_capital / level |
+| officials | name（已拼好的完整官名）/ character_id / rank（`州` / `郡` / `县`） |
 
-- 三段均为 **dict（键 = id）而非数组**：factions 键 4 位势力 id、characters 键 4 位人物 id、nodes 键 6 位据点 id。
-- nodes 只有 555 条 < map.geojson 的 1152 县 —— 剧本只覆盖有主的据点，其余县由 GeoData 建出来后保持无主。
+- 各段均为 **dict（键 = id）而非数组**：factions 键 4 位势力 id、characters 键 4 位人物 id、nodes 键 6 位据点 id、officials 键 2 / 4 / 6 位行政区 id（三层混放同一 dict）。
+- nodes 只有 626 条 < map.geojson 的 1152 县 —— 剧本只覆盖有主的据点，其余县由 GeoData 建出来后保持无主。
 - nodes 的 is_capital / level 是**可选字段**，解析端必须容错（`_apply_node_overrides` 用 `in` 判断）。
 - characters 的 appeared 也是**可选字段**：不写 → 默认 true（老剧本兼容）。
+- officials 段整体**可选**：老剧本没有 → `World.officials` 为空 dict，UI 一律显示空 /「—」。
+- officials 改 World 的口径与编辑无关：本轮**不入 serialize / diff**（不可编辑），`save` 的 `deepcopy(raw)` 天然保留该段。
+
+**officials 一区一官**：键唯一 → 一个行政区只能有一个外官；同一人物可担任多个外官（以 region 为键天然支持）。
+键的层级即 rank：2 位 = 州、4 位 = 郡、6 位 = 县。
 
 **登场判定（生成期一次算死，写进剧本，见 tools/build_scenario_190.py::compute_appeared）**
 
@@ -640,29 +662,53 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 - ★ `death_year` **不参与判定**。
 - 未登场人物的 faction / node / location / role 一律 null；「设为登场」后仍是「在野」，归属由完整人物编辑补。
 
-### 4.5 190 剧本势力（52 家）
+### 4.5 190 剧本势力（50 家）
 
-- 键 = 4 位势力 id = 君主的人物 id；字段 name / color / prestige / stance（初始 prestige 1000、stance 相对玩家的关系值）。
-- 完整清单（含 capital / territories / max_cities）见 tools/build_scenario_190.py 的 `FACTIONS` 常量，生成结果落在 scenarios/default.json。
+- 键 = 4 位势力 id = 君主的人物 id；字段 name / color / prestige / stance（初始 prestige 1000、stance 恒 0）。
+- 完整清单见 tools/build_scenario_190.py 的 `MONARCHS` 常量（13 州级 + 37 郡级），生成结果落在 scenarios/default.json。
 - 四位主角色锁定：刘备 #3B8B3B 暗绿 / 袁绍 #E8C500 亮黄 / 曹操 #2928EF 蓝 / 孙坚 #C83030 红。
 
-### 4.6 势力地盘表达（build_scenario_190.py）
+### 4.6 势力与地盘表达（build_scenario_190.py）
 
-```python
-FACTIONS = {
-    "0521": {
-        "name": "曹操", "color": "#2928EF", "stance": 0,
-        "capital": "130301",
-        "territories": [...],  # 4 位 = 整郡；6 位 = 单县
-        "max_cities": 14,      # 限制该势力总县数（按 level 优先大城市）
-    },
-}
+`MONARCHS` 每项是 `(君主名, 官职, 治所县 id, 等级, 颜色)`；势力 id 由脚本从 characters.json **按名反查**。
+
+★ 势力名一律用**该君主本人在 characters.json 里的姓名**：§7 名单里查不到的人物走 `SUBSTITUTES`
+近似替代（如「焦和」→ 田楷 0710、「赵韪」→ 吴懿 0241），此时势力名随之改为替代者姓名，
+不会出现「势力名叫赵韪、君主却是吴懿」的错位（官职名仍是原定稿，如「巴郡太守」）。
+
+地盘不是手写的，由 `assign_territories()` 按等级分三轮划：
+
+```text
+郡级 → 县级 → 州级
+  每个势力：治所所在郡（未占） → 州内第一个空郡 → 治所单县
 ```
 
-人物分配：CORE 手写种子 + 网络投票扩展 + affinity 兜底（只给 id ≤ 1000 的历史人物分势力；穿越人物不参与）。
+- 一县只属一家（`Node.owner` 单值）；郡级先占满本郡，州级只吃一个郡（势力范围不铺大）。
+- 势力范围不必等于行政区全境：治所被占时落在别的郡（`effective_capital` = 地盘首县）。
+- 注意：州级势力若治所所在郡已被郡级占走，会退到州内第一个空郡。
+
+两处常量可点名改地盘（都在脚本顶部）：
+
+```python
+TERRITORY_COUNTIES  = {"董卓": ("0707", "0703", "0705")}  # 点名要哪几个郡（河南尹 + 京兆尹 + 弘农）
+TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}              # 上限县数（治所优先），不占整郡
+```
+
+**配色**（`assign_colors()`）：两势力的**县点**距离 < `CITY_ADJ_DEG`(0.8°) 视为相邻（先做包围盒粗筛）
+→ 贪心染色，相邻势力必须满足「色相差 ≥ `MIN_HUE_GAP`(40°) 或明度差 ≥ `MIN_VAL_GAP`(0.19)」；
+调色板 = 12 色相 × 3 明度档。选色时在可行色里挑**当前用得最少**的，避免整张图挤在少数几色上。
+4 位主角色（刘备 / 袁绍 / 曹操 / 孙坚）用 `LOCKED_COLORS` 锁定，不参与自动配色。
+
+**不设势力的郡**：`NO_CLAIM_COUNTIES = {"1003"}`（夷洲 / 琉球孤悬海外，任何势力都不占）。
+
+人物分配：CORE 只有各势力君主，靠网络投票（义兄弟 / 父母配偶 / liked）扩展 + affinity 兜底
+（只给 id ≤ 1000 的历史人物分势力；穿越人物不参与）。
 
 登场预计算：分配完势力后逐人算 appeared（规则见 §4.4）——有势力的一律 true，其余按生年规则；穿越人物一律 false。
 未登场人物仍写进 characters 段（faction / node / location / role 一律 null），编辑器里可查可改。
+
+外官生成：君主即该行政区的唯一外官（`build_officials()`）。官名由 core/official_title.py 的规则生成，
+与 `MONARCHS` 里的定稿名不一致时按定稿记并打日志（当前仅「左冯翊 → 冯翊太守」一条走 `TITLE_OVERRIDES`）。
 
 ### 4.7 头像资产
 
@@ -880,8 +926,11 @@ GameState：回合 / 日期 / 玩家势力 / 资源的信息栏数据源。
 6. _apply_node_overrides(world, raw["nodes"])
      动态 owner / troops / gold / food；静态可覆盖 type / level / is_capital
      （int / bool 强转；不读 name / coords；节点不在 geo 中则静默跳过）
-7. world.bind_factions()      ★ 必须在 node overrides 之后（§8.3 第 39 条）
-8. logger.info("剧本加载完成：%s", world.summary())
+7. _apply_officials(world, raw["officials"])
+     外官段（§4.4）：人物不在 World.characters → warning + 跳过该条；
+     行政区 id 不在 GeoData → warning 但仍保留；老剧本无该段 → 空 dict
+8. world.bind_factions()      ★ 必须在 node overrides 之后（§8.3 第 39 条）
+9. logger.info("剧本加载完成：%s", world.summary())
 ```
 
 ### 5.11 game/core/faction.py / node.py / character.py
@@ -1143,6 +1192,7 @@ class CharacterInfoWindow(tk.Toplevel):
     def __init__(self, master, character, world=None, font_family="TkDefaultFont"):
         # master 仍传 panel（保留 transient 关系）
         # self._top = master.winfo_toplevel()    ← 居中基准 / 跳转窗口 master
+        # 官职行：world.officials_of_character(id)，多个用「、」连接；无则不显示
         # title = f"{character.display_name()} — 人物情报"
         #       未登场（appeared=False）→ 追加「（未登场）」后缀
         # 宽固定 600，高自适应（resizable(False, True)）；最小高 640
@@ -1224,11 +1274,25 @@ class CharacterInfoWindow(tk.Toplevel):
 - 构建 UI：搜索框 + 分组条 + Treeview + 滚动条（_build_ui，Treeview 部分抽在 _build_tree_in）。
 - 调度：排序（_on_heading_click）、分组（_build_groups）、搜索（_apply_search，多词 AND，过滤在分组前）。
 - 右键：_on_right_click 拼 MenuContext → context_menu_items 配置 → build_menu(edit_enabled=) 弹出。
-- 多选：`selectmode="extended"` + Ctrl+A 全选。
+- 多选：`selectmode=self.SELECT_MODE`（默认 `"extended"`）+ Ctrl+A 全选；子类可设 `SELECT_MODE = "browse"` 强制单选，并覆盖 `_on_select_all` 返回 `"break"` 把 Ctrl+A 也禁掉。
 - 双向定位：scroll_to_row（展开祖先 + 滚动 + 选中，_syncing 防递归）、locate_on_map（默认 node_id / coords）。
 - 列配置：_resolve_columns()（读 style.PANEL_COLUMNS[PANEL_KEY] → (可见列 tuple, NAME_COLUMN)；order 未列的 key 追加末尾；hidden 过滤；NAME_COLUMN 锁定必显；无 PANEL_KEY 退化为原 COLUMNS）/ reload_columns()（重解析 + 重建 Treeview + refresh；若排序键已被隐藏则清除排序状态）。
 - 编辑会话：`edit_session` 类属性 + _open_dialog / _notify_edit。
+
+**分组 / 行 / 刷新（子类覆盖的钩子）**
+
+| 钩子 | 默认 | 作用 |
+|---|---|---|
+| `GROUP_TITLE_COUNT` | True | 组头显示「组名（N）」叶子行数 |
+| `group_subtitle(dim_key, 组名, rows)` | `""` | 组头后缀 → 渲染成「组名（N）· 后缀」（据点面板挂州 / 郡外官） |
+| `row_priority(group_keys)` | None | 叶子行优先排序键（人物面板「君主置顶 + 登场在前」），在用户列排序之后做稳定排序 |
+| `row_tags(row)` | `()` | 行级 tag（人物面板未登场深灰），与组给的 `row_tag` 合并 |
+| `KEEP_VIEW_ON_EDIT` | False | True → 编辑后的 `refresh(keep_view=True)` 走**就地刷新** |
+
 - 三处 `self.COLUMNS` → `self._visible_columns`：_match_one / _column_index / _insert_row。
+- **就地刷新**（`_reconcile()`）：按结构 key 复用 item —— 组 = 组标题路径元组、行 = `("row", row_key)`；`_item_keys` 存 item → key。只对位置变化的项调 `tree.move`，滚动位置按「原可见区顶部第一个未变化条目」还原（用可见序号 ÷ 可见条目数 + `yview_moveto`，**Treeview 没有 `yview(item)`**），选中项与展开状态天然保留；异常时退回整表重建，避免登记表写脏后每次刷新都报错。
+- `_fit_name_column()`：组标题画在 #0 列，按最长组标题自动加宽 #0（上限 `GROUP_COLUMN_MAX = 360`），标题变短时收回名称列基宽；ttk.Treeview 没有 `-font`，量宽度用的字体按 `group` tag 规格自建（默认族 + 9pt 粗体）。
+- 刷新入口：`refresh()` = 整表重建，`refresh(keep_view=True)` = 就地刷新（仅 `KEEP_VIEW_ON_EDIT` 的面板采用）；`_notify_edit(keep_view=)` → SidePanel.on_panel_edit → refresh_all(keep_view=)。
 
 ### 5.23 game/ui/panels/{node,character,faction,troop}_panel.py
 
@@ -1236,14 +1300,21 @@ class CharacterInfoWindow(tk.Toplevel):
 
 - 行模型 NodeRow：node_id / name / type / level / coords / state_name / county_name / owner_id / owner_name / is_capital / person_count（另预留 governor_name）。display_type = 郡治 或 type。
 - `fetch_rows` 循环外调一次 `world.count_characters_by_node()`，把人数传给 `NodeRow.from_node(..., person_count=)`；聚合不缓存，每次 refresh 现算（登场开关 / undo / redo 后自动跟着变）。
-- COLUMNS：州 52 / 郡 62 / 规模 42 / 类型 46 / 势力 64 / 主官 56 / 人物 42；NAME_COLUMN = 县（110，左对齐）。
+- COLUMNS：州 52 / 郡 62 / **等级** 42 / 类型 46 / 势力 64 / 主官 56 / 人物 42；NAME_COLUMN = 县（110，左对齐）。
+- 「主官」列 = 该**县**外官（`World.official_of(node.id)` 的 6 位键）姓名，无则「—」；州 / 郡外官不进此列。
+- `group_subtitle()`：按州 / 郡分组时给组头追加外官「官名-姓名」（`World.official_label(id[:2])` / `(id[:4])`）。
+- ★ 组标题画在 #0 列，长标题（如「司州（125）· 司隶校尉-董卓」）会被列宽截断 → 框架的 `_fit_name_column()`
+  按最长组标题自动加宽 #0（上限 `GROUP_COLUMN_MAX = 360`）；标题变短（老剧本无外官）时自动收回名称列基宽。
+  ttk.Treeview 没有 `-font` 选项，量宽度用的字体按 `group` tag 的规格自己造（默认族 + 9pt 粗体）。
 - GROUP_DIMS：faction(势力) / state(州) / county(郡) / type(类型)。
 - 右键：行名（禁用）/ 编辑（单选，edit=True）/ 据点情报 / 人物情报 / 势力情报 / 定位到地图 / 全部展开折叠。情报三项目前只写日志。
 
 **character_panel.py** — PANEL_KEY = "character"，DEFAULT_GROUP = ("faction",)
 
 - 行模型 CharacterRow：id / name / family_name / sex / faction_id / faction_name / node_id / node_name / role / **appeared** / 五维 / coords。
-- COLUMNS：势力 60 / 所在 76 / 身份 48 / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
+- COLUMNS：势力 60 / 所在 76 / 身份 48 / **官职 76** / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34 / 登场 50；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
+- 「官职」列 = `world.officials_of_character(id)` 的官名，多个按行政区顺序用「、」连接，无外官**留空**（不是「—」）。
+- ★ 用户在设置窗口存过列顺序时，新列按 §8.3 第 26 条**追加在末尾**，不会插进「身份」后 —— 想改位置去「面板列」tab 上移。
 - GROUP_DIMS：faction(势力，默认) / node(所在) / role(身份) / sex(性别) / **appear(登场 → 已登场 / 未登场)**。默认分组维持 ("faction",)，不强制先按登场分。
 - `priority_name()`：返回玩家势力名，用于分组置顶（只对最外层生效）。
 - 右键：人物情报 / 复制编号 / **设为登场·设为未登场** / **移动到据点** / 定位到据点 / 全部展开折叠。
@@ -1441,7 +1512,7 @@ _load_scenario(path)                                 编辑模式下额外做 �
 
 ```text
 tools/build_scenario_190.py
- ├─ FACTIONS 常量（52 家：name / color / stance / capital / territories / max_cities）
+ ├─ MONARCHS 常量（50 家：君主名 / 官职 / 治所 / 等级 / 颜色）
  ├─ territories 展开：4 位 = 整郡，6 位 = 单县；按 level 优先取大城市，受 max_cities 限制
  ├─ 人物分配：CORE 手写种子 + 网络投票扩展 + affinity 兜底（只分 id ≤ 1000 的历史人物）
  ├─ appeared 预计算：compute_appeared（规则见 §4.4），全量 1049 人都写
@@ -1624,7 +1695,8 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | character_id_range 不写 | [1, 9999] | 全部加载 |
 | Character.appeared 默认 | True | 老剧本无该字段 → 全部登场 |
 | 登场判定分界 | year − birth_year ≥ 16 | 另有「已分配势力 → true」优先 |
-| 190 剧本势力 / 人物 / 登场 / 据点 | 52 / 1049 / 469 / 555 | 定稿 |
+| 190 剧本势力 / 人物 / 据点 | 50 / 1049 / 626 | 定稿 |
+| 190 剧本外官 | 49 条（州 13 / 郡 35 / 县 1） | 一区一官；汉阳郡两名太守取其一 |
 | Character._DEFAULT_STAT | 50 | 五维缺省值 |
 | 选中描边 | #00C8FF / 2px | renderer.SELECT_TAG |
 | hover 描边 | #00BFFF / 2px | renderer.HOVER_TAG |
@@ -1699,7 +1771,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | dash 可调 | 不支持 |
 | 郡面分级调色 | 字段全保留但不消费 |
 | 字体可在 UI 里改 | 只支持更换候选字体，不支持任意路径 |
-| 据点面板「主官」列 | 占位 |
+| 据点面板「主官」列 | 已接入（县外官，无则「—」） |
 | 据点面板右键三项 | 占位（据点情报 / 人物情报 / 势力情报），只写日志 |
 | 据点面板字体 / 字号可调 | 不支持 |
 | 据点面板列宽 / 分组 / 排序持久化 | 不支持 |
@@ -1743,7 +1815,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 人物生平 / 传记文本 | 无数据源，人物情报窗口生平区只占位 |
 | 重名人物 | characters.json 的 _ambiguous_names 有 5 组，头像按「同名复制多份」处理 |
 | 悬空引用 | _missing_refs 当前为 0，但加载时仍需容错 |
-| 据点主官 | 无字段；据点面板「主官」列占位（人数列已由 count_characters_by_node 接上） |
+| 据点主官 | 无独立字段，由 officials 段 6 位键反查（人数列走 count_characters_by_node） |
 | 县的人口 / 兵役 / 特产等内政数据 | 无 |
 | 势力间外交关系矩阵 | 无，只有 stance（相对玩家的单一值） |
 | 山地数据 | mountains.geojson 已下载但未接入 GeoData |
@@ -2056,6 +2128,10 @@ class CharacterEditCommand(Command):
 | tests/test_composite_command.py | CompositeCommand 的顺序 / 逆序语义 |
 | tests/test_scenario_writer.py | serialize / diff / save 的增量写回 |
 | tests/test_character_appeared.py | appeared 全量加载 / 老剧本兼容 / 开关命令 + dirty / 归属字段保留 |
+| tests/test_list_grouping.py | 组头计数 / 固定组序 / 行优先排序 / 登场列排序 |
+| tests/test_list_reconcile.py | 就地刷新（含子分组消失的回归） |
+| tests/test_move_to_node.py | 移动到据点：单人规则 / 命令生成 |
+| tests/test_official.py | 官名规则 / officials 加载与查询 / 不进 serialize |
 
 ---
 

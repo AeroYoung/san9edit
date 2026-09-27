@@ -41,3 +41,31 @@
 ### Changed
 - 移动会同时改 `node` / `location`，`faction` 跟随目标据点 owner（`ui/dialogs/move_to_node.py`）
 - README 同步：§5.21 / §5.23 / §6.4 / §8.3 第 50 条 / §8.4 / §10.2
+
+---
+
+## 2026-09-26 · 外官系统与 190 剧本重制
+
+### Added
+- 官名生成模块 `core/official_title.py`（州 / 郡 / 县规则，纯函数无依赖）
+- `World.officials` 容器 + `official_of` / `officials_of_character` / `official_label`（`core/world.py`）
+- 剧本 `officials` 段与加载 `_apply_officials`（`core/scenario.py`、`scenarios/default.json`）
+- 据点面板「主官」列接县外官、州 / 郡分组标题追加「官名-姓名」（`node_panel`）
+- 人物面板「官职」列 + 人物情报窗口官职行（`character_panel`、`character_info_window`）
+- 列表框架 `SELECT_MODE`、`Group.subtitle` + `subtitle_fn` 钩子、`_fit_name_column()` 按组标题自适应 #0 列宽（`panels/list/`）
+- 单元测试 `tests/test_official.py`
+
+### Changed
+- 剧本生成脚本重制：50 家 `MONARCHS` 名单 + 自动划地盘（郡级先占满本郡 / 州级只吃一郡）+ 官名生成校验 + 县点邻接配色（`tools/build_scenario_190.py`）
+- 势力名一律取君主本人姓名（`tools/build_scenario_190.py`）
+- 据点面板列头「规模」改为「等级」（`node_panel`）
+- README 同步：§0 / §1 / §2 / §3.5 / §4.4 / §4.5 / §4.6 / §5.10 / §5.20 / §5.22 / §5.23 / §7.3 / §8.1 / §10.3
+
+### Removed
+- 势力 刘璋、刘琦、刘勋；扬州刺史改由许贡担任（`tools/build_scenario_190.py`）
+- 夷洲（琉球）不再有任何势力占据（`tools/build_scenario_190.py`）
+
+### Fixed
+- 势力名与君主不一致的错位（如「赵韪」势力君主实为吴懿）（`tools/build_scenario_190.py`）
+- 相邻势力配色过近：改为县点邻接判定 + 用色均衡（`tools/build_scenario_190.py`）
+- 据点面板州 / 郡分组标题被 #0 列宽截断（`panels/list/panel.py`）

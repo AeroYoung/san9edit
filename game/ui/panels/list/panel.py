@@ -38,6 +38,7 @@ class GenericListPanel(ttk.Frame):
     GROUP_TITLE_COUNT: bool = True   # True → 组头显示「组名（N）」叶子行数
     KEEP_VIEW_ON_EDIT: bool = False  # True → 编辑后的 refresh(keep_view=True) 走就地更新
     SELECT_MODE: str = "extended"    # Treeview 选择模式（"browse" = 强制单选）
+    GROUP_COLUMN_MAX: int = 360      # #0 列按组标题自适应的上限（像素）
     edit_session = None              # ★ 由 SidePanel.set_edit_session 注入
 
     def __init__(self, master, game_state, map_controller=None):
@@ -192,6 +193,7 @@ class GenericListPanel(ttk.Frame):
             priority_name=self.priority_name(),
             row_priority=self.row_priority(group_keys),
             title_count=self.GROUP_TITLE_COUNT,
+            subtitle_fn=self.group_subtitle,
         )
 
     # ==========================================================
@@ -234,6 +236,7 @@ class GenericListPanel(ttk.Frame):
                 self._insert_row("", r)
         else:
             self._insert_group_nodes("", groups)
+        self._fit_name_column()
 
     def _insert_group_nodes(self, parent, groups, parent_key=()):
         for g in groups:
@@ -246,6 +249,43 @@ class GenericListPanel(ttk.Frame):
             else:
                 for r in g.children:
                     self._insert_row(gid, r, row_tag=g.row_tag)
+
+    def _fit_name_column(self):
+        """组标题画在 #0 列，长标题（如「荆州（102）· 荆州刺史-刘表」）会被截断 →
+        按最长组标题把 #0 列加宽（上限 GROUP_COLUMN_MAX）。
+
+        只量组头，不动数据行的名称列宽；组标题变短（如老剧本没有外官）时自动收回。
+        """
+        if self.NAME_COLUMN is None:
+            return
+        width = self.NAME_COLUMN.width
+        font = self._group_header_font()
+        if font is not None:
+            stack = list(self.tree.get_children(""))
+            seen = 0
+            while stack and seen < 200:
+                item = stack.pop()
+                seen += 1
+                if item not in self._item_rows:      # 组头
+                    text = self.tree.item(item, "text") or ""
+                    width = max(width, font.measure(text) + 26)
+                stack.extend(self.tree.get_children(item))
+        self.tree.column("#0", width=min(width, self.GROUP_COLUMN_MAX))
+
+    def _group_header_font(self):
+        """组头字体（与 "group" tag 的 ("", 9, "bold") 对齐）；取不到 → None。
+
+        ttk.Treeview 没有 -font 选项，字体只能自己按 tag 里写的规格造：
+        默认族 + 9pt 粗体。
+        """
+        try:
+            import tkinter.font as tkfont
+            font = tkfont.nametofont("TkDefaultFont").copy()
+            font.configure(size=9, weight="bold")
+            return font
+        except Exception:
+            logger.debug("组头字体取不到，跳过 #0 列自适应", exc_info=True)
+            return None
 
     def _row_tags(self, row, row_tag=None):
         """行 tag = 组给的 row_tag + 面板自定义 tag（row_tags 钩子）。"""
@@ -336,6 +376,7 @@ class GenericListPanel(ttk.Frame):
                 self._row_items[spec["key"][1]] = item
 
         self._restore_view(anchor_key, existing, yview)
+        self._fit_name_column()
         logger.debug("就地刷新 %s：%d 条", type(self).__name__, len(target))
         return True
 
@@ -652,6 +693,10 @@ class GenericListPanel(ttk.Frame):
     def row_tags(self, row):
         """该行额外的 Treeview tag（如未登场整行着色）。子类覆盖。"""
         return ()
+
+    def group_subtitle(self, dim_key, group_name, rows):
+        """组头后缀（如据点面板的州 / 郡外官「荆州刺史-刘表」）。子类覆盖。"""
+        return ""
 
     def row_key(self, row):
         return getattr(row, "id", None) or getattr(row, "name", None)
