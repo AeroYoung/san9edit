@@ -29,9 +29,14 @@
 """
 
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+from game.config.rules import MU_STATES   # noqa: E402  （★ 可调常量统一在 game/config/rules.py）
+
 ASSETS = ROOT / "assets"
 SCEN = ROOT / "scenarios"
 YEAR = 190
@@ -112,8 +117,6 @@ NO_CLAIM_COUNTIES = {"1003"}
 TERRITORY_CITIES = {
     "刘备": ("平原", "漯阴", "高唐"),
 }
-
-MU_STATES = {"02", "08", "11", "12"}
 
 TITLE_OVERRIDES = {"0702": "冯翊太守"}
 

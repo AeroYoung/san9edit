@@ -21,9 +21,11 @@ id 为四位数字字符串（"0001"–"1049"），全局唯一。
     荣誉头衔，独立于行政区外官；常量表见 core/military_title.py。
     本轮只做骨架（加载能读、内存有字段），不进 to_dict / 不参与 diff，
     保存时靠 ScenarioWriter 的 deepcopy(raw) 天然保留剧本里的原值。
+
+五维缺省值等可调常量见 game/config/rules.py。
 """
 
-_DEFAULT_STAT = 50   # 五维缺省值
+from game.config.rules import DEFAULT_STAT
 
 
 def _safe_int(v, default=0):
@@ -51,11 +53,11 @@ class Character:
         sex="男",                 # 性别：「男」/「女」
         portrait=0,               # 头像编号（用于加载人物立绘）
         # ---------- 五维 ----------
-        leadership=_DEFAULT_STAT,   # 统率：带兵打仗的能力
-        might=_DEFAULT_STAT,        # 武力：个人武艺 / 单挑能力
-        intelligence=_DEFAULT_STAT, # 智力：谋略 / 计策能力
-        politics=_DEFAULT_STAT,     # 政治：内政 / 外交能力
-        charisma=_DEFAULT_STAT,     # 魅力：人格魅力 / 招揽人心
+        leadership=DEFAULT_STAT,   # 统率：带兵打仗的能力
+        might=DEFAULT_STAT,        # 武力：个人武艺 / 单挑能力
+        intelligence=DEFAULT_STAT, # 智力：谋略 / 计策能力
+        politics=DEFAULT_STAT,     # 政治：内政 / 外交能力
+        charisma=DEFAULT_STAT,     # 魅力：人格魅力 / 招揽人心
         # ---------- 时间 ----------
         appear_year=0,            # 登场年：首次出现在游戏中的年份
         birth_year=0,             # 出生年：历史出生年份
@@ -94,11 +96,11 @@ class Character:
         self.portrait = _safe_int(portrait, 0)   # 头像编号
 
         # ---------------- 五维 ----------------
-        self.leadership = _safe_int(leadership, _DEFAULT_STAT)       # 统率
-        self.might = _safe_int(might, _DEFAULT_STAT)                 # 武力
-        self.intelligence = _safe_int(intelligence, _DEFAULT_STAT)   # 智力
-        self.politics = _safe_int(politics, _DEFAULT_STAT)           # 政治
-        self.charisma = _safe_int(charisma, _DEFAULT_STAT)           # 魅力
+        self.leadership = _safe_int(leadership, DEFAULT_STAT)       # 统率
+        self.might = _safe_int(might, DEFAULT_STAT)                 # 武力
+        self.intelligence = _safe_int(intelligence, DEFAULT_STAT)   # 智力
+        self.politics = _safe_int(politics, DEFAULT_STAT)           # 政治
+        self.charisma = _safe_int(charisma, DEFAULT_STAT)           # 魅力
 
         # ---------------- 时间 ----------------
         self.appear_year = _safe_int(appear_year, 0)   # 登场年
@@ -177,11 +179,11 @@ class Character:
             family_name=d.get("family_name", ""),             # 字
             sex=d.get("sex", "男"),                           # 性别
             portrait=d.get("portrait", 0),                    # 头像编号
-            leadership=d.get("leadership", _DEFAULT_STAT),    # 统率
-            might=d.get("might", _DEFAULT_STAT),              # 武力
-            intelligence=d.get("intelligence", _DEFAULT_STAT),# 智力
-            politics=d.get("politics", _DEFAULT_STAT),        # 政治
-            charisma=d.get("charisma", _DEFAULT_STAT),        # 魅力
+            leadership=d.get("leadership", DEFAULT_STAT),    # 统率
+            might=d.get("might", DEFAULT_STAT),              # 武力
+            intelligence=d.get("intelligence", DEFAULT_STAT),# 智力
+            politics=d.get("politics", DEFAULT_STAT),        # 政治
+            charisma=d.get("charisma", DEFAULT_STAT),        # 魅力
             appear_year=d.get("appear_year", 0),              # 登场年
             birth_year=d.get("birth_year", 0),                # 出生年
             death_year=d.get("death_year", 0),                # 死亡年

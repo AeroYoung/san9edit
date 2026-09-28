@@ -29,7 +29,7 @@
 | 反向定位 | GenericListPanel.scroll_to_row(key) | 地图 → 列表：切 Tab + 滚动 + 选中 + 展开组 |
 | 据点人物数 | World.count_characters_by_node | ★ 按所属 node 聚合，未登场不计（§3.5） |
 | 外官 | World.officials / core/official_title.py | ★ 行政区 id(2/4/6 位) → 官名 + 人物；一区一官，一人可多职 |
-| 位阶 rank | official_title.RANK_* / military_title.rank_of | ★ 1–32，数字越小越尊贵；「官职体系」窗口按它排序（§5.26） |
+| 位阶 rank | rules.RANK_* / military_title.rank_of | ★ 1–32，数字越小越尊贵；「官职体系」窗口按它排序（§5.26） |
 | 武官 | Character.military_title / core/military_title.py | ★ **荣誉头衔**，与行政区外官独立；一人最多一个；rank < 26 势力内唯一（§3.3） |
 | 官职体系窗口 | ui/job_system_window.py::JobSystemWindow | ★ 「情报」菜单打开的人物 / 官职双模式总览（§5.26） |
 | 势力兵力 | Faction.troops | ★ 派生值：名下据点 troops 求和 + 所属部队求和（部队项恒 0，§3.2） |
@@ -246,6 +246,12 @@ san9edit/
 └── game/                              运行时主包
     ├── config/                        配置层（无业务逻辑）
     │   ├── constants.py               路径常量 + 窗口常量 + APP_MODE + LOG_ENABLED
+    │   ├── rules.py                   ★ 游戏运行策略常量（唯一调参入口，纯数据、不 import game.*）
+    │   │                              武官官名表 MILITARY_TITLES / 唯一性分界 UNIQUE_MAX_RANK
+    │   │                              / 外官位阶 RANK_* + 郡金字塔 COUNTY_RANK_THRESHOLDS
+    │   │                              / 县级 CITY_RANK_BY_LEVEL / 州牧州 MU_STATES
+    │   │                              / 五维缺省 DEFAULT_STAT / 附庸值 VASSAL_VALUE_*
+    │   │                              / 势力显示色 DONGZHUO_* + HUE_STEP / MAX_HUE_SHIFT
     │   ├── style.py                   主题 THEME / 字号 FONT_SIZES / 地图样式 MAP_STYLE
     │   │                              / 分级显隐 CITY_LEVEL_MIN_SCALE / 图层 LAYER_VISIBILITY
     │   │                              / hover 开关 MAP_INTERACTION / 面板列 PANEL_COLUMNS
@@ -260,8 +266,8 @@ san9edit/
     │   ├── character.py               Character：人物（31 字段，node / location 分离）
     │   ├── node.py                    Node：县 = 据点（静态 + 动态 owner/troops/gold/food）
     │   ├── scenario.py                剧本加载（三层人物 + character_id_range + 应用登场状态 + 外官）
-    │   ├── official_title.py          ★ 外官官名生成 + 位阶 rank（州 / 郡 / 县，纯函数无依赖）
-    │   ├── military_title.py          ★ 武官官名表（32 rank / 84 官名）+ 唯一性校验接口
+    │   ├── official_title.py          ★ 外官官名生成 + 位阶 rank（州 / 郡 / 县，纯函数）
+    │   ├── military_title.py          ★ 武官反查 + 唯一性校验接口（官名表在 config/rules.py）
     │   ├── territory.py               郡级势力统计（保留，暂不消费）
     │   ├── edit_session.py            ★ Command / CompositeCommand / EditSession
     │   ├── edit_commands.py           ★ NodeEditCommand / FactionEditCommand / CharacterEditCommand
@@ -444,7 +450,7 @@ def troops(self):
 ★ military_title 字段（武官）：
 
 - 含义 = 荣誉头衔，与行政区外官（`World.officials`）**互相独立**；一人最多一个。
-- 官名表与 rank 见 `core/military_title.py`（32 个 rank / 84 个官名）；rank < 26 的官名在同一势力内唯一。
+- 官名表与 rank 见 `config/rules.py`（32 个 rank / 84 个官名，反查与校验在 `core/military_title.py`）；rank < 26 的官名在同一势力内唯一。
 - **只加载、不落盘**：`from_dict` 读（老剧本无 → None），`to_dict` **不写**，不参与 EditSession 的 diff。
 - 保存时剧本里原有的 `military_title` 由 `ScenarioWriter` 的 `deepcopy(raw)` 天然保留（§9.3）。
 - 目前**只读**：编辑入口与唯一性校验（`is_title_free` / `is_title_free_global`）尚未接入 UI。
@@ -1940,12 +1946,12 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 190 剧本外官 | 53 条（州 13 / 郡 35 / 县 5） | 一区一官；汉阳郡两名太守取其一 |
 | 190 剧本武官 | 221 人 | 军司马 107 / 军假司马 47 / 军曲候 25 / 假候 19 / 队率 5 / 屯长 4 + 君主史实武官 |
 | 位阶 rank 范围 | 1–32 | 数字越小越尊贵；{1:大将军 … 32:什长} |
-| 武官唯一性分界 | military_title.UNIQUE_MAX_RANK = 26 | rank < 26 的官名**势力内唯一**；≥ 26（军司马及以下）不限量 |
+| 武官唯一性分界 | rules.UNIQUE_MAX_RANK = 26 | rank < 26 的官名**势力内唯一**；≥ 26（军司马及以下）不限量 |
 | 郡级 rank 阈值 | 85 / 60 / 45 / 28 → rank 16/17/18/19/20 | 郡分数 = Σ(11 − 县 level)，从高到低命中即止 |
 | 郡级 rank 固定特例 | 0707 河南尹 = 14；0703 京兆尹 = 15 | 脱离分数查表 |
 | 州级 rank | 司隶校尉 10 / 州牧 11 / 州刺史 12 | 郡级属国都尉 = 21 |
 | 县级 rank | CITY_RANK_BY_LEVEL：level 1→23 … 10→32 | 城 / 关隘 / 渡口一视同仁 |
-| MU_STATES | {"02", "08", "11", "12"} | 用「州牧」而非「州刺史」的州 id；**两处各存一份**（`tools/build_scenario_190.py` / `ui/job_system_window.py`），改一处必须同改 |
+| MU_STATES | rules.MU_STATES = {"02", "08", "11", "12"} | 用「州牧」而非「州刺史」的州 id；★ 唯一一份，剧本生成与「官职体系」窗口共用 |
 | Character._DEFAULT_STAT | 50 | 五维缺省值 |
 | 选中描边 | #00C8FF / 2px | renderer.SELECT_TAG |
 | hover 描边 | #00BFFF / 2px | renderer.HOVER_TAG |

@@ -17,10 +17,10 @@ gold / food / troops 为派生值（§6.1）：名下据点求和，不落盘、
     vassal_value  附庸值 1–99（越大越听从宗主）；独立势力恒为 0
 三者都是**可落盘字段**，to_dict 对所有势力都写、from_dict 容错。
 派生显示色见 core/faction_color.py（不写回 color）。
+附庸值范围等可调常量见 game/config/rules.py。
 """
 
-VASSAL_VALUE_MIN = 1
-VASSAL_VALUE_MAX = 99
+from game.config.rules import VASSAL_VALUE_MAX, VASSAL_VALUE_MIN
 
 
 class Faction:

@@ -22,11 +22,18 @@
 
 ★ level 方向：数字越小越重要（1 = 首都级，10 = 边远）。
 ★ 州牧 / 州刺史 不在本模块判定：调用方给 mu_states 常量表，运行时只按 name 后缀区分。
+★ 位阶 / 阈值等**可调策略常量**放在 game/config/rules.py，本模块只保留
+  与数据文件字面量一一对应的结构标签（RANK_* / CITY_TYPE_*）。
 """
 
-SI_STATE_ID = "07"          # 司州
-SI_TITLE = "司隶校尉"
+# ★ 可调策略常量统一从 game/config/rules.py 取
+from game.config.rules import (
+    CITY_LEVEL_LING, CITY_RANK_BY_LEVEL, COUNTY_RANK_FIXED,
+    COUNTY_RANK_THRESHOLDS, PASS_LEVEL_DUWEI, RANK_CI_SHI, RANK_MU,
+    RANK_SHUGUO_DUWEI, RANK_SILI, SI_STATE_ID, SI_TITLE,
+)
 
+# 以下是与 geo_data / 行政区 id 位数约定一致的结构标签，不是可调策略
 RANK_STATE = "州"
 RANK_COUNTY = "郡"
 RANK_CITY = "县"
@@ -34,9 +41,6 @@ RANK_CITY = "县"
 CITY_TYPE_CITY = "城"
 CITY_TYPE_PASS = "关隘"
 CITY_TYPE_FERRY = "渡口"
-
-CITY_LEVEL_LING = 9         # 城：level ≥ 此值用「长」，否则「令」
-PASS_LEVEL_DUWEI = 6        # 关隘：level ≥ 此值用「障尉」，否则「都尉」
 
 
 def strip_suffix(text, suffix):
@@ -109,38 +113,8 @@ def make_title(region_id, *, state_name=None, county_name=None, city_name=None,
     return ""
 
 # ============================================================
-# 外官 rank（1–32）
+# 外官 rank（1–32）：表与阈值见 game/config/rules.py 第二节
 # ============================================================
-# 州级：固定
-RANK_SILI = 10           # 司隶校尉
-RANK_MU = 11             # 州牧
-RANK_CI_SHI = 12         # 州刺史
-
-# 郡级：固定特例（脱离分数查表）
-COUNTY_RANK_FIXED = {
-    "0707": 14,          # 河南尹
-    "0703": 15,          # 京兆尹
-}
-RANK_SHUGUO_DUWEI = 21   # 属国都尉
-
-# ★ 郡级金字塔：按分数查表（分数越高越重要，从高到低匹配，命中即止）
-#   郡分数 = Σ(11 − 县.level)，县 level 1 贡献 10 分、level 10 贡献 1 分。
-#   想调金字塔结构，改这张表即可。
-COUNTY_RANK_THRESHOLDS = (
-    (85, 16),            # 一等郡：分数 ≥ 85
-    (60, 17),            # 二等郡：分数 ≥ 60
-    (45, 18),            # 三等郡：分数 ≥ 45
-    (28, 19),            # 四等郡：分数 ≥ 30
-    (0,  20),            # 五等郡：分数 <  30
-)
-
-# 县级：按县 level 直接映射（城 / 关隘 / 渡口一视同仁）
-CITY_RANK_BY_LEVEL = {
-    1: 23, 2: 24, 3: 25, 4: 26, 5: 27, 6: 28,
-    7: 29, 8: 30, 9: 31, 10: 32,
-}
-
-
 def county_score(cities):
     """郡分数 = Σ(11 − 县.level)。cities 是县对象（Node / dict）可迭代。"""
     total = 0
@@ -178,6 +152,11 @@ def city_rank_by_level(level):
     """县（城 / 关隘 / 渡口）rank：按 level 映射（23–32）。非法 level → None。"""
     return CITY_RANK_BY_LEVEL.get(level)
 
+# 固定特例的「官名 → 郡 id」：rank 值仍回查 rules.COUNTY_RANK_FIXED，
+# 改那边的数字这里自动跟着变（官名生成规则决定了两者的固定对应）。
+_FIXED_RANK_TITLE_TO_COUNTY = {"河南尹": "0707", "京兆尹": "0703"}
+
+
 def official_rank_of_title(title, region_id, county_ranks=None):
     """按官名 + 行政区 id 判定 rank。
 
@@ -194,10 +173,9 @@ def official_rank_of_title(title, region_id, county_ranks=None):
         return RANK_MU
     if title.endswith("刺史"):
         return RANK_CI_SHI
-    if title == "河南尹":
-        return 14
-    if title == "京兆尹":
-        return 15
+    fixed_county = _FIXED_RANK_TITLE_TO_COUNTY.get(title)
+    if fixed_county is not None:
+        return COUNTY_RANK_FIXED[fixed_county]
     if title.endswith("属国都尉"):
         return RANK_SHUGUO_DUWEI
     if title.endswith(("太守", "相")):

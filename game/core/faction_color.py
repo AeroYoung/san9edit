@@ -15,16 +15,15 @@
 | 同宗主多附庸 | 按附庸值降序分配色相偏移（首项 0°，其后 ±5°、±10°…） |
 
 vassal_value 越大越接近宗主色（权重 = vassal_value / 100）。
+
+★ 颜色取值与色相偏移参数是可调常量，放在 game/config/rules.py 第五节。
 """
 
 import colorsys
 
-DONGZHUO_NAME = "董卓"          # 按势力名识别（势力 id 由剧本决定，不写死）
-DONGZHUO_COLOR = "#5C4033"      # 深棕，董卓的固定显示色
-DEFAULT_COLOR = "#888888"       # 势力缺失 / 无色时的兜底
-
-HUE_STEP = 5.0                  # 同宗主相邻附庸的色相偏移步长（度）
-MAX_HUE_SHIFT = 30.0            # 色相偏移上限，避免偏出可辨认范围
+from game.config.rules import (
+    DEFAULT_COLOR, DONGZHUO_COLOR, DONGZHUO_NAME, HUE_STEP, MAX_HUE_SHIFT,
+)
 
 
 # ============================================================

@@ -87,11 +87,8 @@ def print_distribution(ranks, thresholds, fixed):
 
 
 def main():
-    from game.core.official_title import (
-        compute_county_ranks,
-        COUNTY_RANK_THRESHOLDS,
-        COUNTY_RANK_FIXED,
-    )
+    from game.config.rules import COUNTY_RANK_FIXED, COUNTY_RANK_THRESHOLDS
+    from game.core.official_title import compute_county_ranks
 
     counties = load_cities()
 

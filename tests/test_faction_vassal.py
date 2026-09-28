@@ -6,11 +6,10 @@
 
 import json
 
+from game.config.rules import DONGZHUO_COLOR
 from game.core.edit_commands import FactionEditCommand, build_vassal_commands
 from game.core.faction import Faction
-from game.core.faction_color import (
-    DONGZHUO_COLOR, faction_display_color,
-)
+from game.core.faction_color import faction_display_color
 from game.core.scenario import ScenarioLoader
 from game.core.scenario_writer import ScenarioWriter
 

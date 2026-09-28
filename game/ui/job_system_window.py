@@ -18,6 +18,7 @@ import tkinter as tk
 from collections import defaultdict
 from tkinter import ttk
 
+from game.config.rules import MU_STATES
 from game.config.style import THEME, FONT_SIZES
 from game.core import military_title
 from game.core.official_title import (
@@ -27,8 +28,6 @@ from game.core.official_title import (
 from game.ui.window_utils import center_on_parent
 
 logger = logging.getLogger(__name__)
-
-MU_STATES = {"02", "08", "11", "12"}
 
 WIN_W = 1000
 WIN_H = 720

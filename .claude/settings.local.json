@@ -99,7 +99,9 @@
       "Bash(PYTHONIOENCODING=utf-8 tail -32 CHANGELOG.md)",
       "Bash(git diff *)",
       "Bash(awk 'NR>=2010 && NR<=2090' README.md)",
-      "Bash(awk '/^@@/{h=$0; print \"----\"h; n=0; next} {n++; if\\(n<=4\\) print}')"
+      "Bash(awk '/^@@/{h=$0; print \"----\"h; n=0; next} {n++; if\\(n<=4\\) print}')",
+      "Bash(python tools/1.py)",
+      "Bash(python -m compileall -q game tools tests)"
     ]
   }
 }
