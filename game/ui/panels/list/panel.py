@@ -14,7 +14,7 @@ import logging
 import tkinter as tk
 from tkinter import ttk
 
-from .columns import Column
+from .columns import Column, arrange_column_keys
 from .model import Group
 from .group_bar import GroupBar
 from .search_bar import SearchBar
@@ -712,8 +712,9 @@ class GenericListPanel(ttk.Frame):
     def _resolve_columns(self):
         """读 style.PANEL_COLUMNS，返回 (可见列 tuple, name_column)。
 
-        规则：
-          - order 中的 key 优先排前面，未出现的按声明顺序追加
+        排列规则见 columns.arrange_column_keys（面板与设置窗口共用）：
+          - order 中的 key 按用户的先后排出
+          - order 中未出现的新列锚定在声明位置的附近（不是一律甩到末尾）
           - hidden 中的列被过滤（NAME_COLUMN 不参与）
           - order / hidden 里的未知 key 忽略
         子类没声明 PANEL_KEY 时，退化为直接返回类属性 COLUMNS。
@@ -728,17 +729,12 @@ class GenericListPanel(ttk.Frame):
             return self.COLUMNS, self.NAME_COLUMN
 
         cfg = (PANEL_COLUMNS or {}).get(panel_key) or {}
-        order = list(cfg.get("order") or [])
         hidden = set(cfg.get("hidden") or [])
 
         by_key = {c.key: c for c in self.COLUMNS}
-        arranged = [by_key[k] for k in order if k in by_key]
-        seen = set(order)
-        for c in self.COLUMNS:
-            if c.key not in seen:
-                arranged.append(c)
-
-        visible = tuple(c for c in arranged if c.key not in hidden)
+        ordered = arrange_column_keys([c.key for c in self.COLUMNS],
+                                      cfg.get("order") or ())
+        visible = tuple(by_key[k] for k in ordered if k not in hidden)
         return visible, self.NAME_COLUMN
 
     def reload_columns(self):

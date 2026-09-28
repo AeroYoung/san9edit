@@ -108,7 +108,7 @@ COLUMNS = (
     Column("nodes",    "据点", 55, "e", lambda r: str(r.node_count), sort_numeric=True),  # ★
     Column("chars",    "人物", 55, "e", lambda r: str(r.char_count), sort_numeric=True),  # ★
     Column("stance",   "关系", 50, "center", lambda r: r.stance_text),
-    # ★ 新增列按 §8.3 第 26 条追加在末尾：用户旧配置里没有它 → 自动排到末尾并显示
+    # ★ 新增列按 §8.3 第 26 条：用户旧配置里没有它 → 插在声明位置附近（此处「关系」后）并显示
     Column("vassal",   "独立/附庸", 80, "center", lambda r: r.vassal_text),
 )
 

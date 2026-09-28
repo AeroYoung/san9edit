@@ -13,6 +13,7 @@ from tkinter import ttk, colorchooser, messagebox
 from game.config import constants as C
 from game.config.style import THEME, FONT_SIZES
 from game.config import settings_schema as schema
+from game.ui.panels.list.columns import arrange_column_keys
 from game.ui.window_utils import center_on_parent
 from game.ui.widgets.collapsible import CollapsibleSection
 
@@ -290,7 +291,11 @@ class SettingsWindow(tk.Toplevel):
             self._build_panel_columns_ui(sec.body, key)
 
     def _init_panel_state(self, panel_key, declared_cols):
-        """从 settings.current 读 order / hidden，套到声明列上。"""
+        """从 settings.current 读 order / hidden，套到声明列上。
+
+        顺序走 arrange_column_keys（与面板 _resolve_columns 同一份规则），
+        列出的是**全部**列（含隐藏列，用 ○ 显示），不像面板那样过滤。
+        """
         try:
             cfg = self.settings.get(f"PANEL_COLUMNS.{panel_key}") or {}
         except KeyError:
@@ -298,14 +303,10 @@ class SettingsWindow(tk.Toplevel):
         order = list(cfg.get("order") or [])
         hidden = set(cfg.get("hidden") or [])
 
-        by_key = {k: t for k, t in declared_cols}
-        items = []
-        for k in order:
-            if k in by_key:
-                items.append((k, by_key.pop(k), k not in hidden))
-        for k, t in declared_cols:
-            if k in by_key:
-                items.append((k, t, k not in hidden))
+        title_by_key = dict(declared_cols)
+        items = [(k, title_by_key[k], k not in hidden)
+                 for k in arrange_column_keys([k for k, _t in declared_cols],
+                                              order)]
         self._panel_states[panel_key] = items
 
     def _build_panel_columns_ui(self, parent, panel_key):

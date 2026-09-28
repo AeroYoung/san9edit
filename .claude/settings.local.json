@@ -101,7 +101,10 @@
       "Bash(awk 'NR>=2010 && NR<=2090' README.md)",
       "Bash(awk '/^@@/{h=$0; print \"----\"h; n=0; next} {n++; if\\(n<=4\\) print}')",
       "Bash(python tools/1.py)",
-      "Bash(python -m compileall -q game tools tests)"
+      "Bash(python -m compileall -q game tools tests)",
+      "Bash(python -m compileall -q game/ui/panels/character_panel.py game/ui/character_info_window.py game/config/rules.py)",
+      "Bash(python -m pytest tests -q)",
+      "Bash(python -m compileall -q game/ui/settings_window.py game/ui/panels/list/panel.py game/ui/panels/list/columns.py game/ui/panels/faction_panel.py)"
     ]
   }
 }

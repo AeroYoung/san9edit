@@ -37,6 +37,7 @@
 | 面板列配置 | style.PANEL_COLUMNS | 每面板 {order:[], hidden:[]}，见 §5.22 |
 | 面板 key | GenericListPanel.PANEL_KEY | 面板在 PANEL_COLUMNS 里的键：node/character/faction/troop |
 | 列解析 | GenericListPanel._resolve_columns() | 读 PANEL_COLUMNS → 返回过滤重排后的可见列 |
+| 列排列规则 | columns.arrange_column_keys() | ★ 面板渲染与设置窗口 Listbox 共用的唯一实现，见 §8.3 第 26 条 |
 | 头像路径约定 | assets/portrait/{id}-{name}.{ext} | ★ 不再读 Character.portrait 字段 |
 | 头像加载 | CharacterInfoWindow._load_portrait | ★ Pillow 打开 + thumbnail + ImageTk.PhotoImage |
 | 人物情报窗口 | CharacterInfoWindow | ★ 右键人物 →「人物情报」弹出的 Toplevel |
@@ -914,7 +915,7 @@ min_scale / max_scale 单位是像素/度；低于 min 或达到 max 均隐藏�
 
 **MAP_INTERACTION（5 开关）**：highlight_hover_border / _fill / _faction_all / _region 默认 False，_tooltip 默认 True。
 
-**PANEL_COLUMNS（4 面板）**：node / character / faction / troop，结构统一 `{"order": [], "hidden": []}`。order 为空 = 沿用 COLUMNS 声明顺序；NAME_COLUMN(#0) 锁定必显；未出现在 order 中的新列自动追加到末尾并默认显示（§8.3 第 26 条）。
+**PANEL_COLUMNS（4 面板）**：node / character / faction / troop，结构统一 `{"order": [], "hidden": []}`。order 为空 = 沿用 COLUMNS 声明顺序；NAME_COLUMN(#0) 锁定必显；不在 order 中的新列按声明位置就近插入（**不是**追加到末尾）并默认显示（§8.3 第 26 条）。
 
 ### 5.4 game/config/settings_manager.py
 
@@ -1287,7 +1288,7 @@ tk.Toplevel，940×660、minsize 760×480、center_on_parent、grab_set 模态�
 | 方法 | 作用 |
 |---|---|
 | _populate_panel_columns() | 用 schema.get_panel_columns_meta() 为每个面板建 CollapsibleSection |
-| _init_panel_state(k, cols) | 读 settings 的 order/hidden，套到声明列上，得 [(key, title, visible), ...] |
+| _init_panel_state(k, cols) | 读 settings 的 order/hidden，用 columns.arrange_column_keys 套到声明列上，得 [(key, title, visible), ...]（列出**全部**列含隐藏列，不像面板那样过滤） |
 | _build_panel_columns_ui(parent, k) | Listbox + 上移 / 下移 / 显示隐藏 / 全部显示 四按钮（双击 = 切换显隐） |
 | _render_panel_listbox(k) | 重绘 Listbox（"●/○ 标题"）+ 同步 draft |
 | _panel_move(k, delta) | 上移 / 下移 |
@@ -1430,7 +1431,7 @@ class CharacterInfoWindow(tk.Toplevel):
 - 右键：_on_right_click 拼 MenuContext → context_menu_items 配置 → build_menu(edit_enabled=) 弹出。
 - 多选：`selectmode=self.SELECT_MODE`（默认 `"extended"`）+ Ctrl+A 全选；子类可设 `SELECT_MODE = "browse"` 强制单选，并覆盖 `_on_select_all` 返回 `"break"` 把 Ctrl+A 也禁掉。
 - 双向定位：scroll_to_row（展开祖先 + 滚动 + 选中，_syncing 防递归）、locate_on_map（默认 node_id / coords）。
-- 列配置：_resolve_columns()（读 style.PANEL_COLUMNS[PANEL_KEY] → (可见列 tuple, NAME_COLUMN)；order 未列的 key 追加末尾；hidden 过滤；NAME_COLUMN 锁定必显；无 PANEL_KEY 退化为原 COLUMNS）/ reload_columns()（重解析 + 重建 Treeview + refresh；若排序键已被隐藏则清除排序状态）。
+- 列配置：_resolve_columns()（读 style.PANEL_COLUMNS[PANEL_KEY] → (可见列 tuple, NAME_COLUMN)；顺序交给 columns.arrange_column_keys；hidden 过滤；NAME_COLUMN 锁定必显；无 PANEL_KEY 退化为原 COLUMNS）/ reload_columns()（重解析 + 重建 Treeview + refresh；若排序键已被隐藏则清除排序状态）。
 - 编辑会话：`edit_session` 类属性 + _open_dialog / _notify_edit。
 
 **分组 / 行 / 刷新（子类覆盖的钩子）**
@@ -1477,10 +1478,11 @@ class CharacterInfoWindow(tk.Toplevel):
 
 **character_panel.py** — PANEL_KEY = "character"，DEFAULT_GROUP = ("faction",)
 
-- 行模型 CharacterRow：id / name / family_name / sex / faction_id / faction_name / node_id / node_name / role / **appeared** / 五维 / coords。
-- COLUMNS：势力 60 / 所在 76 / 身份 48 / **官职 76** / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34 / 登场 50；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
+- 行模型 CharacterRow：id / name / family_name / sex / faction_id / faction_name / node_id / node_name / role / **appeared** / 五维 / coords / **soldiers_cap**。
+- COLUMNS：势力 60 / 所在 76 / 身份 48 / **官职 76** / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34 / **兵力上限 68** / 登场 50；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
 - 「官职」列 = `world.officials_of_character(id)` 的官名，多个按行政区顺序用「、」连接，无外官**留空**（不是「—」）。
-- ★ 用户在设置窗口存过列顺序时，新列按 §8.3 第 26 条**追加在末尾**，不会插进「身份」后 —— 想改位置去「面板列」tab 上移。
+- 「兵力上限」列 = `rules.max_number_soldiers(leadership)` 的**派生值**，不落盘、不可编辑（改统率自动跟着变）；数字排序。
+- ★ 用户在设置窗口存过列顺序时，新列按 §8.3 第 26 条**插在声明位置附近**（不是甩到末尾）——「官职」会落在「身份」后、「兵力上限」落在「登场」前，无需手动去「面板列」tab 上移。
 - GROUP_DIMS：faction(势力，默认) / node(所在) / role(身份) / sex(性别) / **appear(登场 → 已登场 / 未登场)**。默认分组维持 ("faction",)，不强制先按登场分。
 - `priority_name()`：返回玩家势力名，用于分组置顶（只对最外层生效）。
 - 右键：人物情报 / 复制编号 / **设为登场·设为未登场** / **移动到据点** / 定位到据点 / 全部展开折叠。
@@ -1612,7 +1614,7 @@ COLUMNS = (
     Column("nodes",    "据点", 55, "e", lambda r: str(r.node_count), sort_numeric=True),
     Column("chars",    "人物", 55, "e", lambda r: str(r.char_count), sort_numeric=True),
     Column("stance",   "关系", 50, "center", lambda r: r.stance_text),
-    Column("vassal",   "独立/附庸", 80, "center", lambda r: r.vassal_text),  # ★ 追加在末尾（§8.3 第 26 条）
+    Column("vassal",   "独立/附庸", 80, "center", lambda r: r.vassal_text),  # ★ 新增列（§8.3 第 26 条）
 )
 ```
 
@@ -2111,7 +2113,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 23. PhotoImage 必须保引用：FactionPanel._swatches 缓存、CharacterInfoWindow._photo 属性。Tk 不持 PhotoImage 引用，不存 → GC 后显示空白。每次 refresh / 每次开窗，先 clear() 再重建。
 24. 势力色块带黑边：先整块填 #000000，再在 (1, 1, size-1, size-1) 填势力色。想调边框粗细改 to 起点；想调颜色改 #000000。
 25. ★ 面板的 COLUMNS / NAME_COLUMN 等类属性必须显式绑定：框架读的是 `self.COLUMNS`（类属性），不是模块级变量。只要模块里有 `COLUMNS = (...)`，**类体内必须写 `COLUMNS = COLUMNS`**，否则 self.COLUMNS 取到基类默认 `()`，Treeview 只剩 #0 列。症状：面板只显示名称列 / 势力名一列，其它列全消失。NAME_COLUMN 之所以没暴露此坑：FactionPanel 在 __init__ 里设了**实例属性** self.NAME_COLUMN，绕过了类属性查找。将来重写 / 新增任何 panel，类体内必须显式绑定模块级配置到类属性。**不要**为了「省事」把模块级变量直接改名成类属性——分组复用（如 GROUP_DIMS 同时喂 GroupBar 和 build_tree）会失效。
-26. ★ 面板列配置必须兼容「用户旧配置 + 框架新列」：用户在设置窗口调整过列顺序后，PANEL_COLUMNS[k].order 被写进 userdata/settings.json；将来在 COLUMNS 里加新列，用户旧配置里没这个 key。_resolve_columns 的规则：order 中的 key 优先排前，**未出现的按声明顺序追加到末尾 + 默认显示**。**不要**把 order 当白名单（否则加列后用户看不到新列），**不要**在加载配置时把未知 key 报错（将来列被删除时同理）。
+26. ★ 面板列配置必须兼容「用户旧配置 + 框架新列」：用户在设置窗口调整过列顺序后，PANEL_COLUMNS[k].order 被写进 userdata/settings.json，那是**当时全部列**的一份快照；将来在 COLUMNS 里加新列，用户旧配置里没这个 key。排列规则由 `columns.arrange_column_keys(declared_keys, order)` 唯一实现（**面板 _resolve_columns 与设置窗口 _init_panel_state 共用，不要各写一份**）：order 中的 key 按用户在 order 里的先后排出；**order 中未出现的 key 锚定到「声明顺序里紧邻它前面那个已定列」之后**，前面没有锚点则排最前，多个新列锚在同一处时保持彼此的声明顺序。**不要**把 order 当白名单（否则加列后用户看不到新列），**不要**在加载配置时把未知 key 报错（将来列被删除时同理），**不要**把新列一律追加到末尾——「追加到末尾」曾导致用户存过列顺序后，后加的「官职」「兵力上限」被甩到最后，而它们该在「身份」后、「登场」前。注意这条只影响**位置**，不影响**显隐**：新列恒为默认显示。
 27. ★ 三列等宽用 grid + columnconfigure(uniform=)：父/母/配偶三列等宽不能用 pack 的 expand（内容长度会拉宽各自列），要用 `frame.columnconfigure(i, weight=1, uniform="rel")` + 子 widget `grid(sticky="w")`。uniform 的 key 可任取，同组共享即可。列表型关系（义兄弟/亲爱/厌恶）仍用 pack side="left"。
 28. ★ 雷达图用 Canvas 不用 Pillow：雷达图的中文轴标签（统/武/智/政/魅）用 Pillow 画需要 `ImageFont.truetype(font_path)`，要字体文件绝对路径；跨平台字体路径不同（Windows msyh.ttc / Linux Noto Sans CJK / macOS PingFang.ttc）→ 脆。tkinter Canvas 的 create_text 直接用字体名 → 中文天然可用。结论：**雷达图永远走 Canvas**；Pillow 只用于头像。将来的雷达图扩展（hover / tooltip / 点击轴突出）也走 Canvas 事件。
 29. ★ Canvas 尺寸固定，不问 winfo_width：CharacterInfoWindow.__init__ 里布局未完成，winfo_width 拿到的是 1。雷达图坐标全部用硬编码的 RADAR_SIZE = 340 计算。想改尺寸：改 RADAR_SIZE / RADIUS 两个常量，其它按比例自动跟随。

@@ -18,6 +18,7 @@ import tkinter as tk
 from tkinter import simpledialog, ttk
 
 from game.config import constants as C
+from game.config.rules import max_number_soldiers
 from game.config.style import THEME, FONT_SIZES
 from game.core.faction_color import faction_display_color
 from game.core.utils import darken_color, lighten_color
@@ -318,6 +319,14 @@ class CharacterInfoWindow(tk.Toplevel):
         self._birth_var.trace_add("write", _refresh_age)
         _refresh_age()
 
+        # 兵力上限（只读，与统率联动：改五维里的「统」即时重算）
+        self._soldiers_cap_var = tk.StringVar(value="—")
+        add_row(6, "兵力上限", tk.Label(
+            right, textvariable=self._soldiers_cap_var,
+            bg=THEME["panel_bg"], fg=BODY_FG,
+            font=(self.font_family, FONT_SIZES["panel_body"])))
+        self._refresh_soldiers_cap()
+
         # ---------------- 五维（雷达图居中） ----------------
         stats = section("五维")
         tk.Label(stats, text="（点击轴标签修改该维数值）",
@@ -585,6 +594,13 @@ class CharacterInfoWindow(tk.Toplevel):
             return
         self._stats[attr] = int(value)
         self._redraw_radar()
+        if attr == "leadership":
+            self._refresh_soldiers_cap()
+
+    def _refresh_soldiers_cap(self):
+        """兵力上限是统率的派生值（见 config/rules.py），此处只读展示。"""
+        cap = max_number_soldiers(self._stats.get("leadership", 0))
+        self._soldiers_cap_var.set(str(cap))
 
     def _axis_angles(self):
         return [-math.pi / 2 + i * (2 * math.pi / 5) for i in range(5)]

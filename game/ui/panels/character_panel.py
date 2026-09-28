@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from tkinter import messagebox
 from typing import Optional
 
+from game.config.rules import max_number_soldiers
+
 from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.context_menu import MenuItem
@@ -36,6 +38,7 @@ class CharacterRow:
     charisma: int
     coords: Optional[tuple]
     official_text: str = ""      # ★ 外官官职（多个用「、」连接；无 → 空）
+    soldiers_cap: int = 0        # ★ 兵力上限（由统率派生，见 config/rules.py）
 
     @property
     def display_name(self):
@@ -77,6 +80,7 @@ class CharacterRow:
             charisma=ch.charisma,
             coords=coords,
             official_text=cls._official_text(ch, world),
+            soldiers_cap=max_number_soldiers(ch.leadership),
         )
 
     @staticmethod
@@ -100,6 +104,9 @@ COLUMNS = (
     Column("pol",     "政",   34, "center", lambda r: r.politics,     sort_numeric=True),
     Column("cha",     "魅",   34, "center", lambda r: r.charisma,     sort_numeric=True),
     # 登场：显示 ✓/✗，排序按 bool（升序 = ✓ 在前）。声明序最后一位
+    # 兵力上限：由统率派生的只读值（见 config/rules.py）。声明序在「登场」前
+    Column("soldiers", "兵力上限", 68, "center",
+           lambda r: r.soldiers_cap, sort_numeric=True),
     Column("appeared", "登场", 50, "center",
            lambda r: "✓" if r.appeared else "✗",
            sort_numeric=True,

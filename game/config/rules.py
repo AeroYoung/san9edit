@@ -121,10 +121,21 @@ CITY_RANK_BY_LEVEL = {
 
 
 # ============================================================
-# 三、人物五维
+# 三、人物五维及其能力属性
 # ============================================================
 # 统率 / 武力 / 智力 / 政治 / 魅力 的缺省值（字段缺失或非法时兜底）
 DEFAULT_STAT = 50
+# --- 根据统率值计算人物的兵力上限---
+SOLDIERS_CAP_BASE_LEADERSHIP = 50      # 基准统率
+SOLDIERS_CAP_BASE_FORCE      = 1000    # 基准统率对应的兵力上限
+SOLDIERS_CAP_MIN_FORCE       = 200     # 兵力下限
+SOLDIERS_CAP_EXPONENT        = 2.2     # 曲线陡度
+def max_number_soldiers(leadership) -> int:
+    """按统率给出兵力上限。"""
+    L = max(1, min(100, int(leadership)))
+    return max(SOLDIERS_CAP_MIN_FORCE,
+               int(SOLDIERS_CAP_BASE_FORCE
+                   * (L / SOLDIERS_CAP_BASE_LEADERSHIP) ** SOLDIERS_CAP_EXPONENT))
 
 
 # ============================================================
