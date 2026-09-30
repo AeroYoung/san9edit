@@ -26,6 +26,11 @@ logger = logging.getLogger("battle.app")
 
 _CLICK_TOLERANCE_PX = 4   # 位移 ≤ 此值算「单击」，否则算「框选」
 
+def _mouse_on_ui(pos, panel, console, minimap):
+    """鼠标是否落在 UI 覆盖区（面板 / 控制台 / 小地图）。"""
+    return (panel.rect().collidepoint(pos)
+            or console.rect().collidepoint(pos)
+            or minimap.rect().collidepoint(pos))
 
 def run() -> int:
     """启动战斗窗口并跑主循环。返回进程退出码。"""
@@ -37,15 +42,10 @@ def run() -> int:
     finally:
         pygame.quit()
 
-
 # ------------------------------------------------------------
 def _main_loop() -> int:
-    win_w, win_h = _fit_to_desktop(config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
-    if (win_w, win_h) != (config.WINDOW_WIDTH, config.WINDOW_HEIGHT):
-        logger.info(
-            "窗口尺寸超出桌面可用区域：%s×%s → 收窄为 %s×%s",
-            config.WINDOW_WIDTH, config.WINDOW_HEIGHT, win_w, win_h,
-        )
+    win_w, win_h = _startup_size()
+    logger.info("启动窗口尺寸：%s×%s（桌面可用区域）", win_w, win_h)
 
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     pygame.display.set_caption(config.WINDOW_TITLE)
@@ -103,7 +103,14 @@ def _main_loop() -> int:
         selected.clear()
         selected.update(unit_ids)
 
-    panel = Panel(state, on_selection=apply_panel_selection)
+    def locate_on_map(unit):
+        """面板右键「定位到地图」：把相机中心移到该部队所在格。"""
+        wx, wy = hexgrid.axial_to_world(unit.q, unit.r, map_data.hex_size)
+        camera.center_on_world(wx, wy)
+        logger.debug("面板定位到地图：%s %s", unit.id, (unit.q, unit.r))
+
+    panel = Panel(state, on_selection=apply_panel_selection,
+                  on_locate=locate_on_map)
     minimap = Minimap(state, map_data)
     console = Console(state, on_toggle_play=toggle_play)
     panel.layout((viewport_w, viewport_h))
@@ -144,10 +151,13 @@ def _main_loop() -> int:
                     elif event.button in (2, 3):       # 中键 / 右键：平移
                         inter["panning"] = True
                         inter["anchor"] = event.pos
-                    elif event.button == 4:
-                        camera.zoom_at(config.ZOOM_STEP, *event.pos)
-                    elif event.button == 5:
-                        camera.zoom_at(1.0 / config.ZOOM_STEP, *event.pos)
+                    elif event.button in (4, 5):
+                        if _mouse_on_ui(event.pos, panel, console, minimap):
+                            pass    # 落在 UI 上：不缩放地图
+                        else:
+                            factor = (config.ZOOM_STEP if event.button == 4
+                                    else 1.0 / config.ZOOM_STEP)
+                            camera.zoom_at(factor, *event.pos)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1 and inter["box_start"] is not None:
@@ -169,8 +179,10 @@ def _main_loop() -> int:
 
                 elif event.type == pygame.MOUSEWHEEL:
                     mx, my = pygame.mouse.get_pos()
+                    if _mouse_on_ui((mx, my), panel, console, minimap):
+                        continue
                     factor = (config.ZOOM_STEP if event.y > 0
-                              else 1.0 / config.ZOOM_STEP)
+                            else 1.0 / config.ZOOM_STEP)
                     camera.zoom_at(factor, mx, my)
 
             screen.fill(config.COLOR_BG)
@@ -190,7 +202,6 @@ def _main_loop() -> int:
                 return 1
 
         clock.tick(config.FPS)
-
 
 # ------------------------------------------------------------
 def _finish_left_drag(start, end, camera, unit_layer, selected):
@@ -214,19 +225,16 @@ def _finish_left_drag(start, end, camera, unit_layer, selected):
     selected.update(u.id for u in hits)
     logger.debug("框选：命中 %s 支，当前选中 %s 支", len(hits), len(selected))
 
-
 def _rect_between(a, b):
     """由两点构造规范化的矩形（宽高非负）。"""
     x0, x1 = sorted((a[0], b[0]))
     y0, y1 = sorted((a[1], b[1]))
     return pygame.Rect(x0, y0, x1 - x0, y1 - y0)
 
-
 def _selected_units(state, selected):
     """选中集 → Unit 列表（按 id 升序）。"""
     return sorted((state.unit(uid) for uid in selected if state.unit(uid)),
                   key=lambda u: u.id)
-
 
 def _make_app_icon():
     """几何绘制的窗口图标：圆角底板 + 平顶六边形轮廓（不读外部文件）。"""
@@ -241,27 +249,24 @@ def _make_app_icon():
                         max(2, size // 12))
     return icon
 
+def _startup_size():
+    """启动窗口尺寸 = 桌面可用区域（最大化效果）。
 
-def _fit_to_desktop(width, height):
-    """把初始窗口尺寸夹进桌面可用区域。
-
-    `config` 里的 1600×1300 是设计尺寸；实际显示器常比它小（尤其开了 DPI 缩放），
-    窗口一旦高过工作区，窗口管理器只能把它挪出屏幕 —— 标题栏连同最小化 /
-    最大化 / 关闭三个按钮会一起跑到屏幕外。这里预留标题栏与任务栏的余量。
+    读不到桌面尺寸时退回 config 的设计尺寸。
+    减去的余量给标题栏 / 任务栏留位，避免标题栏被挤出屏幕。
     """
     try:
         sizes = pygame.display.get_desktop_sizes()
     except Exception:
         logger.warning("无法读取桌面分辨率，按配置尺寸建窗", exc_info=True)
-        return width, height
+        return config.WINDOW_WIDTH, config.WINDOW_HEIGHT
     if not sizes:
-        return width, height
+        return config.WINDOW_WIDTH, config.WINDOW_HEIGHT
 
     desktop_w, desktop_h = sizes[0]
     avail_w = max(320, desktop_w - 20)   # 左右边框余量
     avail_h = max(240, desktop_h - 90)   # 标题栏 + 任务栏余量
-    return min(width, avail_w), min(height, avail_h)
-
+    return avail_w, avail_h
 
 def _fatal_dialog(message):
     """尽力弹窗提示；无可用弹窗后端时退回终端输出。"""

@@ -1,161 +1,139 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""打包 battle/ 相关文件供需求分析（步骤02 UI 调整）。"""
+"""打包 battle 模块待评审代码 → markdown（自动分卷）。
+
+放在项目根目录，直接运行：
+    python pack_for_review.py
+"""
+from __future__ import annotations
 
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-MAX_SINGLE = 300 * 1024      # 单文档上限，超过则分卷
-VOL_TARGET = 90 * 1024       # 每卷目标大小
+OUT_STEM = "pack_review_battle"
+MAX_SINGLE = 300 * 1024      # 单文档上限
+VOL_TARGET = 90 * 1024       # 分卷目标
 
 CODE_FILES = [
+    "battle/render/symbol.py",
+    "battle/render/widgets.py",
+    "battle/render/unit_layer.py",
     "battle/config.py",
     "battle/balance.py",
     "battle/app.py",
-    "battle/render/panel.py",
-    "battle/render/console.py",
-    "battle/render/widgets.py",
-    "battle/render/camera.py",
-    "battle/render/unit_layer.py",
-    "battle/render/symbol.py",
-    "battle/render/hex_renderer.py",
-    "battle/core/unit.py",
-    "battle/core/unit_types.py",
-    "battle/core/battle_state.py",
-    "battle/core/hexgrid.py",
-    "battle/core/map_data.py",
-    "battle/docs/步骤02需求.md",
 ]
 
-JSON_FULL = [
-    "battle/assets/maps/default.json",
-]
-
-JSON_SLICED = [
-    ("battle/data/side_red.json", 3, 0),
-    ("battle/data/side_blue.json", 3, 0),
+JSON_SPECS = [
+    ("battle/data/side_red.json", "head3"),
+    ("battle/assets/maps/default.json", "meta"),
 ]
 
 
-def read_text(rel):
-    p = ROOT / rel
-    if not p.exists():
-        return None
+def slice_json(path: Path, mode: str) -> str:
     try:
-        return p.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return p.read_text(encoding="utf-8", errors="replace")
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return f"[解析失败] {exc}"
+
+    if mode == "meta":
+        if isinstance(raw, dict):
+            out = {k: v for k, v in raw.items() if k != "tiles"}
+            if "tiles" in raw:
+                out["_tiles_omitted"] = f"省略 {len(raw.get('tiles') or [])} 条"
+            return json.dumps(out, ensure_ascii=False, indent=2)
+        return json.dumps(raw, ensure_ascii=False, indent=2)[:2000]
+
+    if mode == "head3":
+        if isinstance(raw, dict):
+            units = raw.get("units")
+            if isinstance(units, list):
+                out = {k: v for k, v in raw.items() if k != "units"}
+                out["units"] = units[:3]
+                out["_units_total"] = len(units)
+                return json.dumps(out, ensure_ascii=False, indent=2)
+            return json.dumps(raw, ensure_ascii=False, indent=2)
+        if isinstance(raw, list):
+            return json.dumps(raw[:3], ensure_ascii=False, indent=2)
+        return json.dumps(raw, ensure_ascii=False, indent=2)
+
+    return json.dumps(raw, ensure_ascii=False, indent=2)
 
 
-def slice_json(path, head, tail):
-    """顶层元字段 + 指定段的 head 条 + tail 条。"""
-    p = ROOT / path
-    if not p.exists():
-        return None, "[缺] " + path
-    try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except Exception as e:
-        return None, "[读取失败] %s: %s" % (path, e)
-
-    if not isinstance(data, dict):
-        return data, None
-
-    out = {}
-    # 元字段（非 list 值直接保留）
-    for k, v in data.items():
-        if not isinstance(v, list):
-            out[k] = v
-
-    # list 段做截取
-    for k, v in data.items():
-        if not isinstance(v, list):
-            continue
-        seg = v[:head] if head else []
-        if tail and len(v) > head + tail:
-            seg = seg + ["……（省略 %d 条）……" % (len(v) - head - tail)] + v[-tail:]
-        out[k] = seg
-    return out, None
-
-
-def block(title, lang, text):
-    return "### %s\n\n```%s\n%s\n```\n\n" % (title, lang, text)
-
-
-def build_blocks():
-    blocks = []
-    missing = []
+def build_sections() -> list[tuple[str, str]]:
+    sections: list[tuple[str, str]] = []
 
     for rel in CODE_FILES:
-        txt = read_text(rel)
-        if txt is None:
-            missing.append(rel)
-            blocks.append(block(rel, "text", "[缺] " + rel))
-        else:
-            lang = "markdown" if rel.endswith(".md") else "python"
-            blocks.append(block(rel, lang, txt))
+        p = ROOT / rel
+        if not p.exists():
+            sections.append((rel, f"[缺] {rel}"))
+            continue
+        try:
+            text = p.read_text(encoding="utf-8")
+        except Exception as exc:
+            sections.append((rel, f"[读取失败] {exc}"))
+            continue
+        sections.append((rel, "```python\n" + text.rstrip() + "\n```"))
 
-    for rel in JSON_FULL:
-        txt = read_text(rel)
-        if txt is None:
-            missing.append(rel)
-            blocks.append(block(rel, "text", "[缺] " + rel))
-        else:
-            blocks.append(block(rel, "json", txt))
+    for rel, mode in JSON_SPECS:
+        p = ROOT / rel
+        if not p.exists():
+            sections.append((rel, f"[缺] {rel}"))
+            continue
+        sections.append((rel, "```json\n" + slice_json(p, mode).rstrip() + "\n```"))
 
-    for rel, head, tail in JSON_SLICED:
-        data, err = slice_json(rel, head, tail)
-        if err:
-            missing.append(rel)
-            blocks.append(block(rel, "text", err))
-        else:
-            note = "截取：元字段 + 首 %d 条" % head
-            body = "// %s\n" % note + json.dumps(data, ensure_ascii=False, indent=2)
-            blocks.append(block(rel, "json", body))
-
-    return blocks, missing
+    return sections
 
 
-def write_volumes(blocks):
+def write_docs(sections: list[tuple[str, str]]) -> list[Path]:
+    blocks = [f"### {rel}\n\n{body}\n" for rel, body in sections]
     total = sum(len(b.encode("utf-8")) for b in blocks)
+
     if total <= MAX_SINGLE:
-        out = ROOT / "pack_for_review.md"
-        out.write_text("".join(blocks), encoding="utf-8")
+        out = ROOT / f"{OUT_STEM}.txt"
+        header = "# battle 待评审打包\n\n"
+        out.write_text(header + "\n".join(blocks), encoding="utf-8")
         return [out]
 
-    volumes, cur, size = [], [], 0
+    vols: list[list[str]] = []
+    cur: list[str] = []
+    size = 0
     for b in blocks:
-        bs = len(b.encode("utf-8"))
-        if cur and size + bs > VOL_TARGET:
-            volumes.append(cur)
-            cur, size = [], 0
+        bsize = len(b.encode("utf-8"))
+        if cur and size + bsize > VOL_TARGET:
+            vols.append(cur)
+            cur = []
+            size = 0
         cur.append(b)
-        size += bs
+        size += bsize
     if cur:
-        volumes.append(cur)
+        vols.append(cur)
 
-    outs = []
-    for i, vol in enumerate(volumes, 1):
-        out = ROOT / ("pack_for_review_%02d.txt" % i)
-        out.write_text("".join(vol), encoding="utf-8")
+    outs: list[Path] = []
+    for i, vol in enumerate(vols, 1):
+        out = ROOT / f"{OUT_STEM}_{i:02d}.txt"
+        header = f"# battle 待评审打包（第 {i}/{len(vols)} 卷）\n\n"
+        out.write_text(header + "\n".join(vol), encoding="utf-8")
         outs.append(out)
     return outs
 
 
-def main():
-    blocks, missing = build_blocks()
-    outs = write_volumes(blocks)
+def main() -> None:
+    sections = build_sections()
+    outs = write_docs(sections)
 
-    print("=" * 52)
-    for o in outs:
-        print("输出：%s  (%.1f KB)" % (o.name, o.stat().st_size / 1024))
+    missing = [rel for rel, body in sections if body.startswith("[缺]")]
+    print("=" * 60)
+    print(f"输出文件数：{len(outs)}")
+    for out in outs:
+        size_kb = out.stat().st_size / 1024
+        print(f"  {out}  ({size_kb:.1f} KB)")
     if missing:
-        print("-" * 52)
-        print("缺失（已在正文标 [缺]）：")
-        for m in missing:
-            print("  " + m)
-    print("-" * 52)
-    print("请把上面文件内容贴回对话。")
-    print("=" * 52)
+        print("缺失文件：")
+        for rel in missing:
+            print(f"  [缺] {rel}")
+    print("=" * 60)
+    print("请把上面每个文件的内容整份贴回对话（分卷则逐卷贴）。")
 
 
 if __name__ == "__main__":

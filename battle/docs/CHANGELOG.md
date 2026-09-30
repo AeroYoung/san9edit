@@ -84,3 +84,19 @@
 ### Fixed
 - 窗口缩小时控制台按钮组溢出底板（高度按内容所需夹取，极矮时按内高等比收缩按钮）
 - 分组折叠标记 ▾ / ▸ 在系统 CJK 字体下渲染为方框：改用收录的 ▼ / ▲
+
+---
+
+## 2026-10-01 · 符号抗锯齿与面板交互微调
+
+### Added
+- 兵棋符号超采样抗锯齿：`config.SYMBOL_SUPERSAMPLE`（默认 3）/ `SYMBOL_SS_DOWNGRADE_PX`（96）/ `SYMBOL_SUPERSAMPLE_LARGE`（2），`render/symbol.py` 按倍数绘制后缩回原尺寸；选中高亮环同样走超采样并单独缓存（`_HIGHLIGHT_CACHE`）
+- 面板缩略符号专用线宽 `config.PANEL_SYMBOL_LINE_WIDTH`；`symbol.render_thumbnail()` 改为返回固定边长正方形，符号等比缩放后居中
+- 面板右键菜单：定位到地图 / 全部展开 / 全部折叠；`Panel` 新增 `on_locate` 回调，`app.py` 提供 `locate_on_map()`
+
+### Changed
+- `widgets.draw_text()` 新增 `antialias` 参数，文字可按需关掉抗锯齿
+- 地图符号上的兵种小字与兵力数字改为黑色、不描边、不抗锯齿
+- 面板底板 `PANEL_BG_COLOR` 的 alpha 由 220 提到 240
+- 滚轮与中 / 右键落在面板、控制台、小地图上时不再缩放 / 平移地图（`app.py::_mouse_on_ui`）
+- 启动窗口尺寸改为直接取桌面可用区域，不再与 `config` 的设计尺寸取较小值（`_fit_to_desktop` → `_startup_size`）

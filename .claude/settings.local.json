@@ -125,7 +125,9 @@
       "Bash(awk 'NR>=1900 && NR<=2560' README.md)",
       "Bash(grep -n '^```markdown$\\\\|^# `battle/docs' battle/docs/模块说明.md)",
       "Bash(rm -f battle/_p2_near.png battle/_p2_mid.png battle/_p2_far.png battle/data/_tmp_side.json)",
-      "Bash(ls battle/*.png battle/data/_tmp*.json)"
+      "Bash(ls battle/*.png battle/data/_tmp*.json)",
+      "Bash(grep -n \"UI 字号（\\\\`FONT_SIZE_\\\\*\\\\`\" battle/docs/模块说明.md)",
+      "Bash(echo \"  退出码 $?（124 = 连续运行中）\")"
     ]
   }
 }

@@ -41,7 +41,7 @@ _REGION_FILLS = {
     "hollow": (),
 }
 
-_TEXT_COLOR = (230, 230, 230)
+_TEXT_COLOR = (0, 0, 0)
 _BAR_BG = (60, 60, 60)
 _MORALE_COLOR = (120, 200, 120)
 _STAMINA_COLOR = (200, 170, 90)
@@ -101,6 +101,11 @@ def fill_polygons(shape, points, fill_mode):
 def _midpoint(a, b):
     return ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)
 
+def _ss_factor(size_px):
+    """按格边长选超采样倍数。"""
+    if size_px <= config.SYMBOL_SS_DOWNGRADE_PX:
+        return int(config.SYMBOL_SUPERSAMPLE)
+    return int(config.SYMBOL_SUPERSAMPLE_LARGE)
 
 # ============================================================
 # 绘制：符号本体
@@ -126,8 +131,13 @@ def draw_symbol(surface, center, type_def, side, size_px):
                          int(round(center[1])) - oy))
 
 
-def _render_symbol(shape, fill_mode, side, size_px):
+
+def _render_symbol(shape, fill_mode, side, size_px, line_w_screen=None):
     """把符号画成一块以中心为基准的小面。
+
+    抗锯齿：先按 SS 倍尺寸绘制，再 `smoothscale` 缩回原尺寸（SS 见 `_ss_factor`）。
+    超采样只在缓存未命中时发生 —— 缓存在调用方（`draw_symbol`）完成，
+    命中后仍是单次 `blit`，每帧开销不变。
 
     返回 (surface, 符号中心在该面内的 x, y)。
     """
@@ -135,63 +145,115 @@ def _render_symbol(shape, fill_mode, side, size_px):
     points = shape_points(shape, (0.0, 0.0), size_px)
     solids = fill_polygons(shape, points, fill_mode)
 
-    pad = config.SYMBOL_LINE_WIDTH + 2
+    line_w = (config.SYMBOL_LINE_WIDTH if line_w_screen is None
+            else line_w_screen)
+    pad = line_w + 2
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
     left = int(math.floor(min(xs))) - pad
     top = int(math.floor(min(ys))) - pad
-    width = int(math.ceil(max(xs))) + pad - left
-    height = int(math.ceil(max(ys))) + pad - top
-    layer = pygame.Surface((max(1, width), max(1, height)), pygame.SRCALPHA)
+    width = max(1, int(math.ceil(max(xs))) + pad - left)
+    height = max(1, int(math.ceil(max(ys))) + pad - top)
 
-    local_points = [(x - left, y - top) for x, y in points]
+    ss = _ss_factor(size_px)
+    if ss <= 1:
+        layer = pygame.Surface((width, height), pygame.SRCALPHA)
+        local_points = [(x - left, y - top) for x, y in points]
+        local_solids = [[(x - left, y - top) for x, y in poly]
+                        for poly in solids]
+        _paint_symbol(layer, local_points, local_solids, color,
+                      scale=1.0, line_w_screen=line_w,
+                      shape=shape, fill_mode=fill_mode)
+        return layer, -left, -top
+
+    big = pygame.Surface((width * ss, height * ss), pygame.SRCALPHA)
+    big_points = [((x - left) * ss, (y - top) * ss) for x, y in points]
+    big_solids = [[((x - left) * ss, (y - top) * ss) for x, y in poly]
+                  for poly in solids]
+    _paint_symbol(big, big_points, big_solids, color,
+                  scale=float(ss), line_w_screen=line_w,
+                  shape=shape, fill_mode=fill_mode)
+    small = pygame.transform.smoothscale(big, (width, height))
+    return small, -left, -top
+
+def _paint_symbol(surface, points, solids, color,
+                  scale, line_w_screen, shape, fill_mode):
+    """在（可能已放大 `scale` 倍的）面上画符号本体：填充 → 描边 → 内部线。
+
+    `points` / `solids` 已是该面坐标系下的坐标；
+    `line_w_screen` 是屏幕像素线宽，本函数按 `scale` 放大后落笔。
+    """
     alpha_color = (color[0], color[1], color[2], config.SYMBOL_FILL_ALPHA)
     for poly in solids:
-        pygame.draw.polygon(layer, alpha_color,
-                            [(x - left, y - top) for x, y in poly])
+        pygame.draw.polygon(surface, alpha_color, poly)
 
-    pygame.draw.polygon(layer, color, local_points, config.SYMBOL_LINE_WIDTH)
-    _draw_extra_lines(layer, shape, local_points, fill_mode, color)
-    return layer, -left, -top
-
+    line_w = max(1, int(round(line_w_screen * scale)))
+    pygame.draw.polygon(surface, color, points, line_w)
+    _draw_extra_lines(surface, shape, points, fill_mode, color, line_w)
 
 def render_thumbnail(type_def, side, size_px):
     """面板「符号」列用的缩略符号面（内容居中）。
 
     与地图符号**共用**同一套几何 / 填充 / 缓存实现（`_render_symbol`），
     缓存 key 加 `"panel"` 前缀与地图上的尺寸区分。地图符号绘制规则不受影响。
+
+    ★ 保证返回的面是 (size_px, size_px) 的正方形，原符号按比例缩放至
+    最长边不超过 size_px 后居中。不同形状（菱形 / 正方形 / 矩形）在面板中
+    占据的尺寸完全一致，避免菱形因高度系数 1.4 而撑破行高。
     """
     shape = type_def.get("symbol_shape", SHAPE_SQUARE)
     fill_mode = type_def.get("symbol_fill", "hollow")
     size = int(round(size_px))
-    key = ("panel", shape, fill_mode, side, size)
+    key = ("panel_box", shape, fill_mode, side, size)
 
     cached = _SYMBOL_CACHE.get(key)
-    if cached is None:
-        cached = _render_symbol(shape, fill_mode, side, size)
-        if len(_SYMBOL_CACHE) >= _SYMBOL_CACHE_LIMIT:
-            _SYMBOL_CACHE.pop(next(iter(_SYMBOL_CACHE)))
-        _SYMBOL_CACHE[key] = cached
-    return cached[0]
+    if cached is not None:
+        return cached
 
+    # 1. 原尺寸下绘制符号（返回 Surface, ox, oy）
+    src_layer, _ox, _oy = _render_symbol(
+        shape, fill_mode, side, size,
+        line_w_screen=config.PANEL_SYMBOL_LINE_WIDTH,
+    )
+    src_w, src_h = src_layer.get_size()
+
+    # 2. 创建固定尺寸的正方形面
+    box = pygame.Surface((size, size), pygame.SRCALPHA)
+
+    # 3. 等比缩放：最长边不超过 size
+    scale = min(1.0, float(size) / max(1, src_w), float(size) / max(1, src_h))
+    if scale < 1.0:
+        new_w = max(1, int(round(src_w * scale)))
+        new_h = max(1, int(round(src_h * scale)))
+        scaled = pygame.transform.smoothscale(src_layer, (new_w, new_h))
+    else:
+        scaled = src_layer
+
+    # 4. 居中放置
+    dst_w, dst_h = scaled.get_size()
+    box.blit(scaled, ((size - dst_w) // 2, (size - dst_h) // 2))
+
+    if len(_SYMBOL_CACHE) >= _SYMBOL_CACHE_LIMIT:
+        _SYMBOL_CACHE.pop(next(iter(_SYMBOL_CACHE)))   # dict 保序 → FIFO
+    _SYMBOL_CACHE[key] = box
+    return box
 
 # 符号小面缓存：key = (外形, 填充, 阵营, 取整格边长)，缩略图 key 前置 "panel"
 _SYMBOL_CACHE = {}
 _SYMBOL_CACHE_LIMIT = 128
 
 
-def _draw_extra_lines(layer, shape, points, fill_mode, color):
-    """步兵的 X 线，以及弓骑的中间斜线。"""
+def _draw_extra_lines(surface, shape, points, fill_mode, color, line_w):
+    """步兵的 X 线，以及弓骑的中间斜线。线宽由调用方按超采样倍数放大后传入。"""
     if shape == SHAPE_RECT:
-        pygame.draw.line(layer, color, points[0], points[2], config.SYMBOL_LINE_WIDTH)
-        pygame.draw.line(layer, color, points[1], points[3], config.SYMBOL_LINE_WIDTH)
+        pygame.draw.line(surface, color, points[0], points[2], line_w)
+        pygame.draw.line(surface, color, points[1], points[3], line_w)
     elif fill_mode == "slash":
-        # 菱形内的一条「/」斜线：从左下边中点穿过中心到右上边中点
         p_top, p_right, p_bottom, p_left = points
-        pygame.draw.line(layer, color,
+        pygame.draw.line(surface, color,
                          _midpoint(p_left, p_bottom),
                          _midpoint(p_top, p_right),
-                         config.SYMBOL_LINE_WIDTH)
+                         line_w)
 
 
 # ============================================================
@@ -204,7 +266,8 @@ def draw_label(surface, center, text, shape, size_px, font_size):
     _, hh = extent(shape, size_px)
     font = widgets.get_font(font_size)
     widgets.draw_text(surface, text, (center[0], center[1] - hh - 2),
-                      font, _TEXT_COLOR, anchor="midbottom")
+                      font, _TEXT_COLOR, anchor="midbottom",
+                      outline=False, antialias=False)
 
 
 def draw_troops(surface, center, text, shape, size_px, font_size):
@@ -214,7 +277,8 @@ def draw_troops(surface, center, text, shape, size_px, font_size):
     _, hh = extent(shape, size_px)
     font = widgets.get_font(font_size)
     widgets.draw_text(surface, text, (center[0], center[1] + hh + 2),
-                      font, _TEXT_COLOR, anchor="midtop")
+                      font, _TEXT_COLOR, anchor="midtop",
+                      outline=False, antialias=False)
 
 
 def draw_bars(surface, center, morale, stamina, shape, size_px):
@@ -245,8 +309,17 @@ def draw_far_block(surface, center, side, size_px=None):
     pygame.draw.rect(surface, color, rect)
 
 
+# 选中高亮环缓存：key = (外形, 取整格边长 × 1.12, 颜色, 线宽)
+_HIGHLIGHT_CACHE = {}
+_HIGHLIGHT_CACHE_LIMIT = 64
+
+
 def draw_highlight(surface, center, shape, size_px, is_block=False):
-    """选中高亮：沿符号最外层描一圈（远 LOD 时围住小色块）。"""
+    """选中高亮：沿符号最外层描一圈（远 LOD 时围住小色块）。
+
+    高亮环单独走超采样 + 缓存；缓存在 `_highlight_layer` 里按
+    （外形 / 尺寸 / 颜色 / 线宽）复用，命中后仍是单次 `blit`。
+    """
     color = config.SELECT_HIGHLIGHT_COLOR
     width = config.SELECT_HIGHLIGHT_WIDTH
     if is_block:
@@ -255,5 +328,43 @@ def draw_highlight(surface, center, shape, size_px, is_block=False):
         rect.center = (int(round(center[0])), int(round(center[1])))
         pygame.draw.rect(surface, color, rect, width)
         return
-    points = shape_points(shape, center, size_px * 1.12)
-    pygame.draw.polygon(surface, color, points, width)
+
+    layer, ox, oy = _highlight_layer(shape, size_px, color, width)
+    surface.blit(layer, (int(round(center[0])) - ox,
+                         int(round(center[1])) - oy))
+
+
+def _highlight_layer(shape, size_px, color, width):
+    """以 (0, 0) 为中心的高亮环小面（超采样 + FIFO 缓存）。"""
+    scaled_size = size_px * 1.12
+    key = (shape, int(round(scaled_size)), color, width)
+    cached = _HIGHLIGHT_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    pts = shape_points(shape, (0.0, 0.0), scaled_size)
+    pad = width + 2
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    left = int(math.floor(min(xs))) - pad
+    top = int(math.floor(min(ys))) - pad
+    w = max(1, int(math.ceil(max(xs))) + pad - left)
+    h = max(1, int(math.ceil(max(ys))) + pad - top)
+
+    ss = _ss_factor(scaled_size)
+    if ss <= 1:
+        layer = pygame.Surface((w, h), pygame.SRCALPHA)
+        local = [(x - left, y - top) for x, y in pts]
+        pygame.draw.polygon(layer, color, local, width)
+    else:
+        big = pygame.Surface((w * ss, h * ss), pygame.SRCALPHA)
+        big_pts = [((x - left) * ss, (y - top) * ss) for x, y in pts]
+        pygame.draw.polygon(big, color, big_pts,
+                            max(1, int(round(width * ss))))
+        layer = pygame.transform.smoothscale(big, (w, h))
+
+    result = (layer, -left, -top)
+    if len(_HIGHLIGHT_CACHE) >= _HIGHLIGHT_CACHE_LIMIT:
+        _HIGHLIGHT_CACHE.pop(next(iter(_HIGHLIGHT_CACHE)))
+    _HIGHLIGHT_CACHE[key] = result
+    return result

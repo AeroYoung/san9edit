@@ -16,7 +16,6 @@ _FALLBACK_FORMAT = (
     "%(asctime)s.%(msecs)03d [%(levelname)-5s] [battle] %(name)s: %(message)s"
 )
 
-
 def _bootstrap_path():
     """把项目根（`shared/` 与 `battle/` 的父目录）加入 sys.path。
 

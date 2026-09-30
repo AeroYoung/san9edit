@@ -29,6 +29,14 @@ _SYMBOL_CELL_SCALE = 1.2  # 符号列缩略图边长 = 行高 × 此值
 _VALUE_LABEL_W = 84       # 情报组标签列宽
 _SCROLLBAR_W = 6
 
+# 右键菜单
+_MENU_ITEM_H = 26
+_MENU_PAD_X = 12
+_MENU_PAD_Y = 6
+_MENU_MIN_W = 140
+_MENU_BG = (44, 50, 62)
+_MENU_TEXT_DISABLED = (118, 124, 134)
+
 # 列定义：(key, 表头, 默认宽度权重, 对齐)
 _COLUMNS = (
     ("symbol", "", 34, "center"),
@@ -59,11 +67,12 @@ _GROUP_INDENT = 16
 class Panel:
     """右侧面板组。"""
 
-    def __init__(self, state, on_selection=None):
+    def __init__(self, state, on_selection=None, on_locate=None):
         self.state = state
         # on_selection(unit_ids, mode)：mode ∈ {"replace", "toggle", "range"}
         self.on_selection = on_selection
-
+        # on_locate(unit)：右键「定位到地图」→ 由 app 负责相机移动
+        self.on_locate = on_locate
         self.active_tab = 0
         self.group_dim = _DEFAULT_GROUP_DIM
         self.collapsed = set()          # 折叠的组 key
@@ -86,6 +95,7 @@ class Panel:
         self._dim_btns = []
         self._columns = []              # (key, 表头, 对齐, x, w)
         self._bg = None
+        self._context_menu = None      # (rect, [(label, enabled, callback), ...])
         self._viewport_key = None
 
     # ============================================================
@@ -280,10 +290,27 @@ class Panel:
     # ============================================================
     def handle_event(self, event):
         """返回 True = 事件已被面板消费（不再交给地图）。"""
+        # 0. 右键菜单打开时，拦截鼠标点击
+        if self._context_menu is not None:
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    self._handle_menu_click(event.pos)
+                    return True
+                if event.button == 3:
+                    self._close_context_menu()   # 关掉旧的，继续走下面重开
+            elif event.type == pygame.MOUSEWHEEL:
+                self._close_context_menu()
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if not self.point_inside(event.pos):
                 return False
             return self._on_click(event.pos)
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+            if not self.point_inside(event.pos):
+                return False
+            self._open_context_menu(event.pos)
+            return True
 
         if event.type == pygame.MOUSEMOTION and self._drag is not None:
             self._on_drag(event.pos)
@@ -301,7 +328,7 @@ class Panel:
             if self._list_rect.collidepoint(pygame.mouse.get_pos()):
                 self.scroll -= event.y * self.row_h * 3
                 self._clamp_scroll()
-            return True   # 面板内滚轮一律吞掉，不影响地图 zoom
+            return True
 
         return False
 
@@ -350,6 +377,75 @@ class Panel:
         if self._list_rect.collidepoint(pos):
             self._on_list_click(pos)
         return True
+
+    # ---------------- 右键菜单 ----------------
+    def _open_context_menu(self, pos):
+        if self._side() is None:
+            return          # 空 Tab 不弹
+        unit = None
+        if self._list_rect.collidepoint(pos):
+            entries, _ = self._entries()
+            index = int((pos[1] - self._list_rect.top + self.scroll) // self.row_h)
+            if 0 <= index < len(entries) and entries[index][0] == "row":
+                unit = entries[index][1]
+        items = self._build_menu_items(unit)
+        rect = self._make_menu_rect(pos, items)
+        self._context_menu = (rect, items)
+
+    def _close_context_menu(self):
+        self._context_menu = None
+
+    def _build_menu_items(self, unit):
+        items = []
+        if unit is not None:
+            items.append(("定位到地图", True,
+                          lambda u=unit: self._locate(u)))
+        items.append(("全部展开", True, self._expand_all))
+        items.append(("全部折叠", True, self._collapse_all))
+        return items
+
+    def _make_menu_rect(self, pos, items):
+        font = widgets.get_font(config.FONT_SIZE_PANEL_CELL)
+        w = max((font.size(label)[0] for label, _, _ in items), default=80)
+        w = max(_MENU_MIN_W, w + 2 * _MENU_PAD_X)
+        h = len(items) * _MENU_ITEM_H + 2 * _MENU_PAD_Y
+        x, y = pos
+        try:
+            sw, sh = pygame.display.get_surface().get_size()
+        except Exception:
+            sw = sh = 10 ** 6
+        x = max(0, min(x, sw - w - 4))
+        y = max(0, min(y, sh - h - 4))
+        return pygame.Rect(x, y, w, h)
+
+    def _handle_menu_click(self, pos):
+        """菜单内左键：命中项执行回调；返回 True（事件被吞）。"""
+        if self._context_menu is None:
+            return False
+        rect, items = self._context_menu
+        if rect.collidepoint(pos):
+            index = (pos[1] - rect.top - _MENU_PAD_Y) // _MENU_ITEM_H
+            if 0 <= index < len(items):
+                _label, enabled, cb = items[index]
+                self._close_context_menu()
+                if enabled and cb is not None:
+                    cb()
+                return True
+        self._close_context_menu()
+        return True
+
+    def _locate(self, unit):
+        if self.on_locate is not None:
+            self.on_locate(unit)
+
+    def _expand_all(self):
+        self.collapsed.clear()
+        self._clamp_scroll()
+
+    def _collapse_all(self):
+        entries, _ = self._entries()
+        self.collapsed = {e[1] for e in entries if e[0] == "group"}
+        self._clamp_scroll()
 
     def _on_list_click(self, pos):
         entries, _ = self._entries()
@@ -465,6 +561,20 @@ class Panel:
         self._draw_header(surface)
         self._draw_list(surface, selected)
         self._draw_info(surface, selected)
+        self._draw_context_menu(surface)
+
+    def _draw_context_menu(self, surface):
+        if self._context_menu is None:
+            return
+        rect, items = self._context_menu
+        pygame.draw.rect(surface, _MENU_BG, rect)
+        pygame.draw.rect(surface, config.PANEL_BORDER_COLOR, rect, 1)
+        font = widgets.get_font(config.FONT_SIZE_PANEL_CELL)
+        for i, (label, enabled, _cb) in enumerate(items):
+            y = rect.top + _MENU_PAD_Y + i * _MENU_ITEM_H + _MENU_ITEM_H // 2
+            color = widgets.TEXT_COLOR if enabled else _MENU_TEXT_DISABLED
+            widgets.draw_text(surface, label, (rect.left + _MENU_PAD_X, y),
+                              font, color, anchor="midleft", outline=False)
 
     def _draw_tabs(self, surface):
         font = widgets.get_font(config.FONT_SIZE_PANEL_TAB)

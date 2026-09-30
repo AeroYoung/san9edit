@@ -61,6 +61,7 @@ SIDE_COLOR = {                      # 阵营框色
     "blue": (60, 96, 196),
 }
 SYMBOL_LINE_WIDTH = 2               # 符号描边线宽（屏幕像素，不随 zoom 变）
+PANEL_SYMBOL_LINE_WIDTH = 3         # 面板缩略符号描边（屏幕像素，比地图符号粗）
 SYMBOL_FILL_ALPHA = 220             # 实心区填充 alpha（0–255）
 SYMBOL_FONT_SIZE_MIN = 11           # 兵种小字字号下限（远侧）
 SYMBOL_FONT_SIZE_MAX = 16           # 兵种小字字号上限（近侧）
@@ -79,6 +80,17 @@ SELECT_HIGHLIGHT_COLOR = (255, 220, 60)   # 选中高亮描边
 SELECT_HIGHLIGHT_WIDTH = 3
 SELECT_BOX_COLOR = (255, 220, 60, 80)     # 框选虚线框填充（半透明）
 
+
+# ---- 符号抗锯齿（步骤02 修订） ----
+# 超采样倍数：符号先按 SS 倍尺寸绘制，再 smoothscale 缩回原尺寸。
+# 1 = 关闭抗锯齿（行为同改动前）；建议 3（质量与内存平衡）。
+SYMBOL_SUPERSAMPLE = 3
+# 格边长超过此值时，超采样降为 SYMBOL_SUPERSAMPLE_LARGE。
+# 依据：大尺寸下锯齿相对不明显，降级可避免符号缓存吃内存。
+SYMBOL_SS_DOWNGRADE_PX = 96
+SYMBOL_SUPERSAMPLE_LARGE = 2
+
+
 # ============================================================
 # UI 字号（★ 全部 UI 字号只在这里定义，调用方从 config 取，不写字面量）
 # ============================================================
@@ -94,7 +106,7 @@ FONT_SIZE_MINIMAP = 14          # 小地图标注
 # ============================================================
 PANEL_WIDTH = 420
 PANEL_MARGIN = 20
-PANEL_BG_COLOR = (28, 32, 40, 220)        # 面板底板（RGBA 半透明）
+PANEL_BG_COLOR = (28, 32, 40, 240)        # 面板底板（RGBA 半透明）
 PANEL_BORDER_COLOR = (90, 100, 120)
 PANEL_CORNER_RADIUS = 8
 PANEL_TAB_HEIGHT = 36

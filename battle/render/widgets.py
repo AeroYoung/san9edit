@@ -69,15 +69,16 @@ def _load_font(size):
 # 文字
 # ============================================================
 def draw_text(surface, text, pos, font, color=TEXT_COLOR,
-              anchor="topleft", outline_color=TEXT_OUTLINE, outline=True):
+              anchor="topleft", outline_color=TEXT_OUTLINE, outline=True,
+              antialias=True):
     """画一行文字，可带 1px 描边（保证在任意地图底色上都可读）。
 
     返回文字矩形（屏幕坐标）。
     """
-    img = font.render(text, True, color)
+    img = font.render(text, antialias, color)
     rect = img.get_rect(**{anchor: pos})
     if outline and outline_color is not None:
-        shadow = font.render(text, True, outline_color)
+        shadow = font.render(text, antialias, outline_color)
         for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
             surface.blit(shadow, rect.move(dx, dy))
     surface.blit(img, rect)
