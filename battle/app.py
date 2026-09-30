@@ -21,6 +21,11 @@ from battle.render.hex_renderer import HexRenderer
 from battle.render.minimap import Minimap
 from battle.render.panel import Panel
 from battle.render.unit_layer import UnitLayer
+from battle.render import widgets
+from battle.sim.clock import Clock
+from battle.sim.command import MoveCommand
+from battle.sim.pathfinding import find_path
+from battle.sim.step import step as sim_step
 
 logger = logging.getLogger("battle.app")
 
@@ -79,13 +84,37 @@ def _main_loop() -> int:
 
     # ---------------- 运行状态 ----------------
     selected = set()          # 选中部队 id
-    is_playing = False        # 进行 / 暂停（本步不驱动模拟）
-    inter = {"box_start": None, "box_rect": None, "panning": False, "anchor": (0, 0)}
+    sim_clock = Clock()       # tick 时钟（启动即运行）
+    inter = {"box_start": None, "box_rect": None, "panning": False,
+             "anchor": (0, 0), "right_start": None, "target_mode": False}
+    motion = {}               # id → 旧 (q, r)：本 tick 位移插值用（渲染只读）
+    menu = {"rect": None, "items": []}
+    notice = {"text": "", "until": 0}
+
+    def show_notice(text):
+        notice["text"] = text
+        notice["until"] = pygame.time.get_ticks() + config.NOTICE_DURATION_MS
+        logger.debug("提示：%s", text)
+
+    def advance_sim():
+        """推进一个 tick，并记录本 tick 的位移（供渲染插值）。"""
+        before = {u.id: (u.q, u.r) for u in state.units.values()}
+        sim_step(state)
+        motion.clear()
+        for uid, pos in before.items():
+            unit = state.unit(uid)
+            if unit is not None and (unit.q, unit.r) != pos:
+                motion[uid] = pos
 
     def toggle_play():
-        nonlocal is_playing
-        is_playing = not is_playing
-        logger.debug("进行 / 暂停：%s", "进行" if is_playing else "暂停")
+        running = sim_clock.toggle()
+        logger.debug("进行 / 暂停：%s", "进行" if running else "暂停")
+
+    def step_once():
+        """单步：未暂停先自动暂停，再推进恰好一个 tick。"""
+        sim_clock.request_step()
+        advance_sim()
+        logger.debug("单步：tick = %s", state.tick)
 
     def apply_panel_selection(unit_ids, mode):
         """面板行点击 → 落到共用选中集。
@@ -109,10 +138,67 @@ def _main_loop() -> int:
         camera.center_on_world(wx, wy)
         logger.debug("面板定位到地图：%s %s", unit.id, (unit.q, unit.r))
 
+    # ---------------- 命令交互 ----------------
+    def enter_target_mode():
+        """进入目标格选择态（右键菜单「移动」与控制台「移动」按钮共用）。"""
+        if not selected:
+            show_notice("先选中部队，再点「移动」")
+            return
+        inter["target_mode"] = True
+        show_notice("选择目标格（Esc 取消）")
+
+    def issue_move(screen_pos):
+        """目标格选择态点击：给选中部队各下一道 MoveCommand。"""
+        inter["target_mode"] = False
+        wx, wy = camera.screen_to_world(*screen_pos)
+        target = hexgrid.world_to_axial(wx, wy, map_data.hex_size)
+        col, row = hexgrid.axial_to_offset(*target)
+        if not (0 <= col < map_data.cols and 0 <= row < map_data.rows):
+            show_notice("目标格在地图外，已取消")
+            return
+
+        orders = 0
+        for uid in selected:
+            unit = state.unit(uid)
+            if unit is None or unit.side != config.PLAYER_SIDE:
+                continue          # 敌方不下命令（命令过滤点）
+            path = find_path(state, unit, target)
+            if path is None:
+                logger.warning("目标不可达：%s → %s", unit.id, target)
+                show_notice("目标不可达：%s" % unit.id)
+                continue
+            if not path:
+                continue      # 已在目标格：不建空路径命令（否则命令列会空挂一个「移动」）
+            unit.command = MoveCommand(target, path)
+            orders += 1
+        if orders:
+            logger.debug("下达移动命令：%s 支 → %s", orders, target)
+
+    def open_map_menu(pos):
+        if inter["target_mode"] or not selected:
+            return
+        menu["items"] = [("移动", enter_target_mode)]
+        menu["rect"] = _menu_rect(pos, [label for label, _cb in menu["items"]])
+
+    def click_map_menu(pos):
+        """菜单内左键：命中项执行回调；一律关掉菜单。"""
+        index = _menu_index(menu["rect"], pos, len(menu["items"]))
+        item = menu["items"][index] if index is not None else None
+        menu["rect"] = None
+        menu["items"] = []
+        if item is not None:
+            item[1]()
+        return True
+
+    def close_map_menu():
+        menu["rect"] = None
+        menu["items"] = []
+
     panel = Panel(state, on_selection=apply_panel_selection,
                   on_locate=locate_on_map)
     minimap = Minimap(state, map_data)
-    console = Console(state, on_toggle_play=toggle_play)
+    console = Console(state, on_toggle_play=toggle_play, on_step=step_once,
+                      on_speed=sim_clock.set_speed, on_move=enter_target_mode)
     panel.layout((viewport_w, viewport_h))
     minimap.layout((viewport_w, viewport_h), panel.rect().width)
     console.layout((viewport_w, viewport_h), panel.rect().width,
@@ -134,6 +220,17 @@ def _main_loop() -> int:
                     camera.on_resize(viewport_w, viewport_h)
                     continue
 
+                # 地图右键菜单打开时优先处理（模态）
+                if menu["rect"] is not None:
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            click_map_menu(event.pos)
+                            continue
+                        if event.button == 3:
+                            close_map_menu()
+                    elif event.type == pygame.MOUSEWHEEL:
+                        close_map_menu()
+
                 # UI 层先消费（小地图 / 面板 / 控制台内的点击与滚轮不落到地图）
                 if (minimap.handle_event(event, camera)
                         or panel.handle_event(event) or console.handle_event(event)):
@@ -142,19 +239,27 @@ def _main_loop() -> int:
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_SPACE:
                         toggle_play()      # 与点击「进行 / 暂停」完全等价
+                    elif event.key == pygame.K_ESCAPE:
+                        if inter["target_mode"]:
+                            inter["target_mode"] = False
+                            show_notice("已取消移动")
+                        close_map_menu()
                     continue
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:              # 左键：选中 / 框选
+                    if event.button == 1:              # 左键：下令 / 选中 / 框选
+                        if inter["target_mode"]:
+                            issue_move(event.pos)
+                            continue
                         inter["box_start"] = event.pos
                         inter["box_rect"] = pygame.Rect(event.pos, (0, 0))
-                    elif event.button in (2, 3):       # 中键 / 右键：平移
+                    elif event.button in (2, 3):       # 中键 / 右键：平移（右键单击另出菜单）
                         inter["panning"] = True
                         inter["anchor"] = event.pos
+                        if event.button == 3:
+                            inter["right_start"] = event.pos
                     elif event.button in (4, 5):
-                        if _mouse_on_ui(event.pos, panel, console, minimap):
-                            pass    # 落在 UI 上：不缩放地图
-                        else:
+                        if not _mouse_on_ui(event.pos, panel, console, minimap):
                             factor = (config.ZOOM_STEP if event.button == 4
                                     else 1.0 / config.ZOOM_STEP)
                             camera.zoom_at(factor, *event.pos)
@@ -165,7 +270,15 @@ def _main_loop() -> int:
                                           camera, unit_layer, selected)
                         inter["box_start"] = None
                         inter["box_rect"] = None
-                    elif event.button in (2, 3):
+                    elif event.button == 3:
+                        inter["panning"] = False
+                        start = inter["right_start"]
+                        inter["right_start"] = None
+                        if (start is not None
+                                and abs(event.pos[0] - start[0]) <= _CLICK_TOLERANCE_PX
+                                and abs(event.pos[1] - start[1]) <= _CLICK_TOLERANCE_PX):
+                            open_map_menu(event.pos)   # 右键单击（未拖拽）→ 菜单
+                    elif event.button == 2:
                         inter["panning"] = False
 
                 elif event.type == pygame.MOUSEMOTION:
@@ -187,11 +300,16 @@ def _main_loop() -> int:
 
             screen.fill(config.COLOR_BG)
             hex_renderer.draw(screen, camera)
-            unit_layer.draw(screen, camera, selected, inter["box_rect"])
+            unit_layer.draw(screen, camera, selected, inter["box_rect"],
+                            motion, sim_clock.progress())
+            if inter["target_mode"]:
+                _draw_target_mark(screen, camera, map_data)
             panel.draw(screen, (viewport_w, viewport_h), selected)
             minimap.draw(screen, camera)
-            console.draw(screen, (viewport_w, viewport_h), is_playing,
-                         panel.rect().width, minimap.rect().width)
+            console.draw(screen, (viewport_w, viewport_h), not sim_clock.paused,
+                         panel.rect().width, minimap.rect().width, sim_clock.speed)
+            _draw_map_menu(screen, menu)
+            _draw_notice(screen, notice)
             pygame.display.flip()
 
         except Exception:
@@ -201,7 +319,76 @@ def _main_loop() -> int:
                 logger.critical("pygame 已不可用，退出")
                 return 1
 
-        clock.tick(config.FPS)
+        for _ in range(sim_clock.advance(clock.tick(config.FPS))):
+            advance_sim()      # 一帧可推进多次，防卡帧丢 tick
+
+# ------------------------------------------------------------
+# 地图右键菜单（只放「移动」一项）
+_MAP_MENU_ITEM_H = 26
+_MAP_MENU_PAD_X = 12
+_MAP_MENU_PAD_Y = 6
+_MAP_MENU_MIN_W = 120
+_MAP_MENU_BG = (44, 50, 62)
+
+
+def _menu_rect(pos, labels):
+    """按屏幕坐标算菜单矩形，并夹在窗口内。"""
+    font = widgets.get_font(config.FONT_SIZE_PANEL_CELL)
+    width = max(_MAP_MENU_MIN_W,
+                max(font.size(text)[0] for text in labels) + 2 * _MAP_MENU_PAD_X)
+    height = len(labels) * _MAP_MENU_ITEM_H + 2 * _MAP_MENU_PAD_Y
+    surface = pygame.display.get_surface()
+    max_x = max(0, (surface.get_width() if surface else 10 ** 6) - width - 4)
+    max_y = max(0, (surface.get_height() if surface else 10 ** 6) - height - 4)
+    return pygame.Rect(min(max(pos[0], 0), max_x),
+                       min(max(pos[1], 0), max_y), width, height)
+
+
+def _menu_index(rect, pos, count):
+    """菜单内命中项下标；未命中 → None。"""
+    if rect is None or not rect.collidepoint(pos):
+        return None
+    index = (pos[1] - rect.top - _MAP_MENU_PAD_Y) // _MAP_MENU_ITEM_H
+    return index if 0 <= index < count else None
+
+
+def _draw_map_menu(surface, menu):
+    rect = menu["rect"]
+    if rect is None:
+        return
+    pygame.draw.rect(surface, _MAP_MENU_BG, rect)
+    pygame.draw.rect(surface, config.PANEL_BORDER_COLOR, rect, 1)
+    font = widgets.get_font(config.FONT_SIZE_PANEL_CELL)
+    for index, (label, _callback) in enumerate(menu["items"]):
+        y = rect.top + _MAP_MENU_PAD_Y + index * _MAP_MENU_ITEM_H + _MAP_MENU_ITEM_H // 2
+        widgets.draw_text(surface, label, (rect.left + _MAP_MENU_PAD_X, y),
+                          font, widgets.TEXT_COLOR, anchor="midleft", outline=False)
+
+
+def _draw_target_mark(surface, camera, map_data):
+    """目标格选择态：给鼠标下的格描一圈，表示处于可点选状态。"""
+    wx, wy = camera.screen_to_world(*pygame.mouse.get_pos())
+    q, r = hexgrid.world_to_axial(wx, wy, map_data.hex_size)
+    center = hexgrid.axial_to_world(q, r, map_data.hex_size)
+    points = [camera.world_to_screen(px, py)
+              for px, py in hexgrid.hex_corners(center[0], center[1],
+                                                map_data.hex_size)]
+    pygame.draw.polygon(surface, config.TARGET_MARK_COLOR, points,
+                        config.TARGET_MARK_WIDTH)
+
+
+def _draw_notice(surface, notice):
+    """屏幕左上的短提示（如目标不可达），到时自动消失。"""
+    if not notice["text"] or pygame.time.get_ticks() > notice["until"]:
+        return
+    font = widgets.get_font(config.FONT_SIZE_CONSOLE)
+    text = font.render(notice["text"], True, widgets.TEXT_COLOR)
+    rect = pygame.Rect(0, 0, text.get_width() + 16, text.get_height() + 16)
+    rect.topleft = (config.CONSOLE_MARGIN, config.CONSOLE_MARGIN)
+    pygame.draw.rect(surface, _MAP_MENU_BG, rect, border_radius=6)
+    pygame.draw.rect(surface, config.PANEL_BORDER_COLOR, rect, 1, border_radius=6)
+    surface.blit(text, (rect.left + 8, rect.top + 8))
+
 
 # ------------------------------------------------------------
 def _finish_left_drag(start, end, camera, unit_layer, selected):

@@ -64,13 +64,22 @@ class UnitLayer:
     # ============================================================
     # 绘制
     # ============================================================
-    def draw(self, surface, camera, selected, box_rect=None):
-        """画全部可见单位 + 选中高亮 +（拖拽中的）框选虚线框。"""
+    def draw(self, surface, camera, selected, box_rect=None,
+             motion=None, progress=0.0):
+        """画路径 → 全部可见单位 → 选中高亮 →（拖拽中的）框选虚线框。
+
+        `motion` = `{unit_id: (旧 q, 旧 r)}`，`progress` = 本 tick 内进度 0.0–1.0；
+        两者由 `app.py` 持有（渲染层只读），用于帧间位置插值，不写任何 `Unit` 字段。
+        """
         lod = self.lod_of(camera)
         label_size, troop_size = self.font_sizes(camera)
         size_px = self.edge_px(camera)
 
-        for unit, center in self._visible_units(camera):
+        self._draw_paths(surface, camera, selected)
+
+        for unit, cell_center in self._visible_units(camera):
+            center = self._interpolated_center(unit, cell_center, camera,
+                                               motion, progress)
             type_def = unit.type_def or {}
             shape = type_def.get("symbol_shape", sym.SHAPE_SQUARE)
             is_selected = unit.id in selected
@@ -101,6 +110,60 @@ class UnitLayer:
         widgets.draw_alpha_rect(surface, box_rect, config.SELECT_BOX_COLOR)
         widgets.draw_dashed_rect(surface, config.SELECT_HIGHLIGHT_COLOR,
                                  box_rect, dash=(6, 4), width=1)
+
+    def _interpolated_center(self, unit, cell_center, camera, motion, progress):
+        """本 tick 内从旧格向当前格插值后的屏幕中心（无位移记录 → 格中心）。"""
+        if not motion or progress >= 1.0:
+            return cell_center
+        previous = motion.get(unit.id)
+        if previous is None or previous == (unit.q, unit.r):
+            return cell_center
+        fx, fy = hexgrid.axial_to_world(previous[0], previous[1], self.hex_size)
+        tx, ty = hexgrid.axial_to_world(unit.q, unit.r, self.hex_size)
+        return camera.world_to_screen(fx + (tx - fx) * progress,
+                                      fy + (ty - fy) * progress)
+
+    # ------------------------------------------------------------
+    # 路径预览（只画选中部队）
+    # ------------------------------------------------------------
+    def _draw_paths(self, surface, camera, selected):
+        for unit, cell_center in self._visible_units(camera):
+            if unit.id not in selected:
+                continue
+            command = unit.command
+            path = getattr(command, "path", None) if command is not None else None
+            if not path:
+                continue
+            points = [cell_center]
+            for q, r in path:
+                wx, wy = hexgrid.axial_to_world(q, r, self.hex_size)
+                points.append(camera.world_to_screen(wx, wy))
+            self._draw_dashed_polyline(surface, points)
+
+    def _draw_dashed_polyline(self, surface, points):
+        """沿折线画虚线（跨段连续，步长 = `config.PATH_DASH`）。"""
+        on, off = config.PATH_DASH
+        period = float(on + off)
+        traveled = 0.0
+        for (x0, y0), (x1, y1) in zip(points, points[1:]):
+            length = math.hypot(x1 - x0, y1 - y0)
+            if length <= 0:
+                continue
+            t = 0.0
+            while t < length:
+                phase = (traveled + t) % period
+                if phase < on:
+                    end = min(t + (on - phase), length)
+                    start_pt = (x0 + (x1 - x0) * t / length,
+                                y0 + (y1 - y0) * t / length)
+                    end_pt = (x0 + (x1 - x0) * end / length,
+                              y0 + (y1 - y0) * end / length)
+                    pygame.draw.line(surface, config.PATH_COLOR,
+                                     start_pt, end_pt, config.PATH_WIDTH)
+                    t = end
+                else:
+                    t += (period - phase)
+            traveled += length
 
     # ============================================================
     # 查询

@@ -24,6 +24,9 @@ class BattleState:
         self.cols = int(cols)
         self.rows = int(rows)
 
+        self.tick = 0          # 已推进的 tick 数
+        self.seed = None       # 随机种子占位（本步不消费，为战斗随机与存档预留）
+
         self.units = {}        # id → Unit
         self._by_pos = {}      # (q, r) → Unit
         self._by_col = {}      # q → list[Unit]（插入序；矩形筛选靠 r 比较）

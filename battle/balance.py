@@ -24,6 +24,7 @@ UNIT_TYPES = {
         "attack_cooldown": 12, "morale_hit": 1.5,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "diamond", "symbol_fill": "solid",
+        "collision_priority": 1,
     },
     "heavy_cavalry": {
         "key": "heavy_cavalry", "name": "重骑", "category": "骑",
@@ -35,6 +36,7 @@ UNIT_TYPES = {
         "attack_cooldown": 10, "morale_hit": 1.5,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "diamond", "symbol_fill": "top_half",
+        "collision_priority": 2,
     },
     "light_cavalry": {
         "key": "light_cavalry", "name": "轻骑", "category": "骑",
@@ -46,6 +48,7 @@ UNIT_TYPES = {
         "attack_cooldown": 8, "morale_hit": 1.2,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "diamond", "symbol_fill": "hollow",
+        "collision_priority": 3,
     },
     "horse_archer": {
         "key": "horse_archer", "name": "弓骑", "category": "骑",
@@ -57,6 +60,7 @@ UNIT_TYPES = {
         "attack_cooldown": 9, "morale_hit": 1.2,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "diamond", "symbol_fill": "slash",
+        "collision_priority": 4,
     },
 
     # ---------------- 步兵类（横长方形 + X） ----------------
@@ -70,6 +74,7 @@ UNIT_TYPES = {
         "attack_cooldown": 12, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "rect", "symbol_fill": "fill_three",
+        "collision_priority": 5,
     },
     "armored": {
         "key": "armored", "name": "甲士", "category": "步",
@@ -81,6 +86,7 @@ UNIT_TYPES = {
         "attack_cooldown": 10, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "rect", "symbol_fill": "fill_left_right",
+        "collision_priority": 6,
     },
     "light_armor": {
         "key": "light_armor", "name": "甲兵", "category": "步",
@@ -92,6 +98,7 @@ UNIT_TYPES = {
         "attack_cooldown": 9, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "rect", "symbol_fill": "fill_bottom",
+        "collision_priority": 7,
     },
     "levy": {
         "key": "levy", "name": "徒卒", "category": "步",
@@ -103,6 +110,7 @@ UNIT_TYPES = {
         "attack_cooldown": 8, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "rect", "symbol_fill": "hollow",
+        "collision_priority": 8,
     },
 
     # ---------------- 弓兵类（正方形） ----------------
@@ -116,6 +124,7 @@ UNIT_TYPES = {
         "attack_cooldown": 14, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "square", "symbol_fill": "upper_left_half",
+        "collision_priority": 9,
     },
     "archer": {
         "key": "archer", "name": "步弓", "category": "弓",
@@ -127,6 +136,7 @@ UNIT_TYPES = {
         "attack_cooldown": 10, "morale_hit": 1.0,
         "morale_kill": 8.0, "morale_rout": 5.0,
         "symbol_shape": "square", "symbol_fill": "hollow",
+        "collision_priority": 10,
     },
 }
 

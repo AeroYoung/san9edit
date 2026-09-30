@@ -76,6 +76,11 @@ class Unit:
     def attack_cooldown(self):
         return self._from_type("attack_cooldown", 0)
 
+    @property
+    def collision_priority(self):
+        """抢格优先级（越小越优先，兵种表 1–10）；未知兵种 → 最大号（最后处理）。"""
+        return self._from_type("collision_priority", 99)
+
     def _from_type(self, field, default):
         t = self.type_def
         return t[field] if t else default

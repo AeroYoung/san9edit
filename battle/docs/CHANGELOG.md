@@ -100,3 +100,40 @@
 - 面板底板 `PANEL_BG_COLOR` 的 alpha 由 220 提到 240
 - 滚轮与中 / 右键落在面板、控制台、小地图上时不再缩放 / 平移地图（`app.py::_mouse_on_ui`）
 - 启动窗口尺寸改为直接取桌面可用区域，不再与 `config` 的设计尺寸取较小值（`_fit_to_desktop` → `_startup_size`）
+
+---
+
+## 2026-10-01 · 步骤03 tick 时钟与移动命令
+
+### Added
+- `sim/clock.py`：`Clock` —— 暂停不累加时间、切档清零累计、一帧可推进多次、提供 tick 内进度
+- `sim/command.py`：抽象 `Command`（`label()`）+ `MoveCommand`（`target` + `path`）
+- `sim/pathfinding.py`：A* `find_path(state, unit, target)`，被占格高代价非禁行
+- `sim/spatial.py`：空间哈希（重建 / 按格查询 / 邻域查询）
+- `sim/step.py`：tick 主函数 —— 算意图 → 重算路径 → 按优先级统一结算 → 逐格推进
+- `balance.py`：十兵种各加 `collision_priority`（1–10，越小越优先）
+- `core/unit.py`：派生属性 `collision_priority`
+- `core/battle_state.py`：`tick` / `seed` 字段
+- 路径预览（选中部队虚线）与目标格选择态标记（`render/unit_layer.py`、`app.py`）
+- 控制台「单步」按钮与速度档 1x / 2x / 4x；「移动」按钮接目标格选择态（`render/console.py`）
+- 地图右键菜单（右键单击出，只放「移动」）（`app.py`）
+- 屏幕短提示（如目标不可达）（`app.py`）
+
+### Changed
+- 主循环改为时钟驱动：累计真实时间推进 tick，渲染帧率独立于 tick（`app.py`）
+- 棋子位置渲染加入帧间插值（渲染层只读，位移快照由 `app.py` 持有）（`render/unit_layer.py`）
+- 面板「当前命令」列与情报组显示 `Command.label()`，排序键同步（`render/panel.py`）
+- 控制台按钮在窗口过窄时按比例收缩，并裁剪到控制台矩形内（`render/console.py`）
+
+### Fixed
+- 同格两支部队：`step._advance` 在「一步没走且命令被清」时未把自己的格占回占位表，导致后处理的部队可走进该格（`sim/step.py`）
+
+---
+
+## 2026-10-01 · 步骤03 缺陷修复与 tick 取值调整
+
+### Changed
+- tick 长度与速度档位取值调整：`config.TICK_MS` = 2000，`SPEED_PRESETS` = `{1: 2000, 2: 1000, 4: 500}`（`config.py`）
+
+### Fixed
+- 目标格就是部队当前格时仍生成空路径移动命令，右侧面板「命令」列会空挂一个「移动」直到下一 tick —— `issue_move` 改为空路径不下令（`app.py`）

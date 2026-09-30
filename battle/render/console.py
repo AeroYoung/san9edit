@@ -22,14 +22,20 @@ _GAP = 16
 class Console:
     """底部控制台。"""
 
-    def __init__(self, state, on_toggle_play=None):
+    def __init__(self, state, on_toggle_play=None, on_step=None,
+                 on_speed=None, on_move=None):
         self.state = state
         self.on_toggle_play = on_toggle_play
+        self.on_step = on_step          # 单步
+        self.on_speed = on_speed        # 速度档：on_speed(档位)
+        self.on_move = on_move          # 「移动」按钮 → 进入目标格选择态
 
         self._rect = pygame.Rect(0, 0, 0, 0)
         self._bg = None
         self._layout_key = None
         self._play_btn = None
+        self._step_btn = None
+        self._speed_btns = []
         self._cmd_btns = []
 
     # ============================================================
@@ -73,6 +79,34 @@ class Console:
             cmd_h = max(16, int(cmd_h * shrink))
             block_h = rows * cmd_h + (rows - 1) * gap
 
+        # ---------------- 视口极窄时的兜底：按内宽等比收缩按钮，不溢出底板 ----------------
+        step_w, step_h = config.CONSOLE_STEP_BTN_SIZE
+        speed_w, speed_h = config.CONSOLE_SPEED_BTN_SIZE
+        speed_gap = config.CONSOLE_SPEED_BTN_GAP
+        speed_count = len(config.CONSOLE_SPEED_LABELS)
+
+        def _blocks(cw, spw, cgap, spgap):
+            cmd_block = per_row * cw + (per_row - 1) * cgap
+            speed_block = speed_count * spw + (speed_count - 1) * spgap
+            return cmd_block, speed_block
+
+        cmd_block_w, speed_block_w = _blocks(cmd_w, speed_w, gap, speed_gap)
+        natural_w = (play_w + step_w + speed_block_w + cmd_block_w
+                     + 3 * _GAP)
+        if natural_w > inner.width > 0:
+            k = inner.width / float(natural_w)
+            play_w = max(56, int(play_w * k))
+            step_w = max(38, int(step_w * k))
+            speed_w = max(20, int(speed_w * k))
+            cmd_w = max(32, int(cmd_w * k))
+            group_gap = max(4, int(_GAP * k))
+            gap = max(4, int(gap * k))
+            speed_gap = max(3, int(speed_gap * k))
+            cmd_block_w, speed_block_w = _blocks(cmd_w, speed_w, gap, speed_gap)
+            block_h = rows * cmd_h + (rows - 1) * gap
+        else:
+            group_gap = _GAP
+
         # ---------------- 进行 / 暂停 ----------------
         self._play_btn = widgets.Button(
             (inner.left, inner.centery - play_h // 2, play_w, play_h),
@@ -81,9 +115,24 @@ class Console:
             hover_bg_color=config.CONSOLE_PLAY_HOVER_BG,
         )
 
+        # ---------------- 单步 + 速度档 ----------------
+        self._step_btn = widgets.Button(
+            (self._play_btn.rect.right + group_gap,
+             inner.centery - step_h // 2, step_w, step_h),
+            "单步", font_size=config.FONT_SIZE_CONSOLE)
+
+        speed_left = self._step_btn.rect.right + group_gap
+        self._speed_btns = []
+        for index, (speed, label) in enumerate(config.CONSOLE_SPEED_LABELS):
+            rect = (speed_left + index * (speed_w + speed_gap),
+                    inner.centery - speed_h // 2, speed_w, speed_h)
+            self._speed_btns.append(
+                (speed, widgets.Button(rect, label,
+                                       font_size=config.FONT_SIZE_CONSOLE)))
+
         # ---------------- 命令按钮组 ----------------
         top = inner.centery - block_h // 2
-        cmd_left = self._play_btn.rect.right + _GAP
+        cmd_left = speed_left + speed_block_w + group_gap
 
         self._cmd_btns = []
         for index, label in enumerate(labels):
@@ -122,20 +171,33 @@ class Console:
     def _on_click(self, pos):
         for btn in self._cmd_btns:
             if btn.hit_test(pos):
-                logger.debug("命令按钮「%s」本步未接命令系统（disabled）", btn.label)
+                if btn.label == "移动" and self.on_move is not None:
+                    self.on_move()
+                else:
+                    logger.debug("命令按钮「%s」本步未接命令系统（disabled）", btn.label)
                 return True
 
         if self._play_btn.hit_test(pos):
             if self.on_toggle_play is not None:
                 self.on_toggle_play()
             return True
+        if self._step_btn.hit_test(pos):
+            if self.on_step is not None:
+                self.on_step()
+            return True
+        for speed, btn in self._speed_btns:
+            if btn.hit_test(pos):
+                if self.on_speed is not None:
+                    self.on_speed(speed)
+                return True
 
         return True   # 控制台内其它点击一律吞掉
 
     # ============================================================
     # 绘制
     # ============================================================
-    def draw(self, surface, viewport_size, is_playing, panel_width, minimap_width):
+    def draw(self, surface, viewport_size, is_playing, panel_width, minimap_width,
+             speed=None):
         key = (tuple(viewport_size), int(panel_width), int(minimap_width))
         if key != self._layout_key:
             self.layout(viewport_size, panel_width, minimap_width)
@@ -149,7 +211,16 @@ class Console:
         self._play_btn.hover_bg_color = (config.CONSOLE_PAUSE_HOVER_BG if is_playing
                                          else config.CONSOLE_PLAY_HOVER_BG)
 
+        # 视口极窄时按钮可能仍超出（收缩有下限）：裁到控制台矩形内，保证不涂到地图上
+        previous_clip = surface.get_clip()
+        surface.set_clip(self._rect)
         mouse = pygame.mouse.get_pos()
         self._play_btn.draw(surface, mouse)
+        self._step_btn.draw(surface, mouse)
+        for btn_speed, btn in self._speed_btns:
+            btn.bg_color = (config.CONSOLE_SPEED_ACTIVE_BG if btn_speed == speed
+                            else widgets.BUTTON_BG)
+            btn.draw(surface, mouse)
         for btn in self._cmd_btns:
             btn.draw(surface, mouse)
+        surface.set_clip(previous_clip)

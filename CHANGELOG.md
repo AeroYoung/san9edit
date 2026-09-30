@@ -269,3 +269,17 @@
 
 ### Changed
 - 兵棋作战模块步骤02 修订：面板拆双方 Tab + 情报组、控制台改版、新增小地图与窗口图标（battle/，详见 battle/docs/CHANGELOG.md）
+
+---
+
+## 2026-10-01 · 兵棋作战模块步骤03（tick 时钟与移动命令）
+
+### Added
+- 兵棋作战模块步骤03：tick 时钟、命令系统、A* 移动、路径预览与帧间插值（battle/，详见 battle/docs/CHANGELOG.md）
+
+---
+
+## 2026-10-01 · 兵棋作战模块步骤03 缺陷修复
+
+### Fixed
+- 兵棋作战模块步骤03 缺陷修复与 tick 取值调整（battle/，详见 battle/docs/CHANGELOG.md）

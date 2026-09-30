@@ -265,7 +265,7 @@ class Panel:
         if key == "stamina":
             return lambda u: u.stamina
         if key == "command":
-            return lambda u: ""
+            return lambda u: (u.command.label() if u.command is not None else "")
         return lambda u: u.id
 
     def _group_key(self, unit):
@@ -635,7 +635,7 @@ class Panel:
         if key == "stamina":
             return str(int(unit.stamina))
         if key == "command":
-            return ""
+            return unit.command.label() if unit.command is not None else ""
         return ""
 
     def _draw_list(self, surface, selected):
@@ -808,5 +808,5 @@ class Panel:
         if key == "status":
             return _STATUS_TEXT
         if key == "command":
-            return "（无）" if unit.command is None else str(unit.command)
+            return "（无）" if unit.command is None else unit.command.label()
         return ""
