@@ -1,86 +1,167 @@
 #!/usr/bin/env python3
-"""打包战斗模块步骤01评审代码。项目根运行：python pack_for_review.py"""
-import re
+# -*- coding: utf-8 -*-
+"""打包 battle/ 模块代码，输出 markdown，自动分卷。"""
 from pathlib import Path
+import json
 
 ROOT = Path(__file__).resolve().parent
-OUT_BASE = ROOT / "pack_for_review.md"
-MAX_SINGLE = 300 * 1024
-VOL_SIZE = 90 * 1024
+OUT_BASE = ROOT / "_step02_review"
+MAX_BYTES = 300 * 1024
+TARGET_BYTES = 90 * 1024
 
-EXPLICIT = [
-    "main.py",
-    "game/config/logging_setup.py",
-    "game/config/constants.py",
+CODE_FILES = [
+    "battle/__init__.py",
+    "battle/__main__.py",
+    "battle/config.py",
+    "battle/balance.py",
+    "battle/api.py",
+    "battle/app.py",
+    "battle/core/__init__.py",
+    "battle/core/hexgrid.py",
+    "battle/core/map_data.py",
+    "battle/render/__init__.py",
+    "battle/render/camera.py",
+    "battle/render/hex_renderer.py",
+    "battle/sim/__init__.py",
+    "battle/ai/__init__.py",
+    "battle/docs/步骤01需求.md",
+    "battle/docs/CHANGELOG.md",
 ]
 
-AUTO_SCAN_DIRS = ["game"]
-AUTO_SCAN_KEYWORD = "logging_setup"
-EXPECT_ABSENT = ["battle", "shared"]   # 预期不存在，正文标 [缺]
+JSON_SLICES = {
+    "battle/assets/maps/default.json": {
+        "head_keys": ["version", "id", "name", "cols", "rows",
+                      "hex_size", "orientation"],
+        "tiles_head": 3,
+        "tiles_tail": 3,
+    },
+}
 
-def collect_files():
-    files, seen = [], set()
-    for rel in EXPLICIT:
-        p = ROOT / rel
-        if p.exists():
-            files.append(p); seen.add(p)
-    for d in AUTO_SCAN_DIRS:
-        base = ROOT / d
-        if not base.exists():
-            continue
-        for p in sorted(base.rglob("*.py")):
-            if p in seen:
-                continue
-            try:
-                text = p.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
-            if AUTO_SCAN_KEYWORD in text:
-                files.append(p); seen.add(p)
-    return files
+FONT_DIR_REL = "battle/assets/fonts"
 
-def render(files):
-    parts = ["# 战斗模块步骤01 · 评审代码包\n\n", f"共 {len(files)} 个文件\n\n"]
-    for p in files:
-        rel = p.relative_to(ROOT)
-        try:
-            text = p.read_text(encoding="utf-8", errors="ignore")
-        except Exception as e:
-            parts.append(f"### {rel}\n\n[读取失败] {e}\n\n")
-            continue
-        parts.append(f"### {rel}\n\n```python\n{text}\n```\n\n")
-    for d in EXPECT_ABSENT:
-        if not (ROOT / d).exists():
-            parts.append(f"### {d}/\n\n[缺] 目录不存在（预期为空/待建）\n\n")
-    return "".join(parts)
 
-def split_and_write(text):
-    if len(text.encode("utf-8")) <= MAX_SINGLE:
-        OUT_BASE.write_text(text, encoding="utf-8")
-        return [OUT_BASE]
-    blocks = re.split(r"(?=^### )", text, flags=re.M)
-    header, chunks, cur = blocks[0], [], blocks[0]
-    for b in blocks[1:]:
-        if len((cur + b).encode("utf-8")) > VOL_SIZE and cur != header:
-            chunks.append(cur); cur = header + b
+def read_text(path):
+    try:
+        return Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    except Exception as exc:
+        return f"[读失败] {exc}"
+
+
+def slice_json(path, spec):
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return None
+    try:
+        data = json.loads(raw)
+    except Exception as exc:
+        return f"[JSON 解析失败] {exc}"
+
+    out = {}
+    for key in spec.get("head_keys", []):
+        if key in data:
+            out[key] = data[key]
+
+    tiles = data.get("tiles")
+    if isinstance(tiles, list):
+        h, t = spec.get("tiles_head", 3), spec.get("tiles_tail", 3)
+        if len(tiles) <= h + t:
+            out["tiles"] = tiles
         else:
-            cur += b
-    if cur:
-        chunks.append(cur)
+            out["tiles"] = (tiles[:h]
+                            + [f"... (省略 {len(tiles) - h - t} 条) ..."]
+                            + tiles[-t:])
+
+    for key, val in data.items():
+        if key not in out and key != "tiles":
+            out[key] = val
+
+    return json.dumps(out, ensure_ascii=False, indent=2)
+
+
+def build_sections():
+    sections = []
+    for rel in CODE_FILES:
+        p = ROOT / rel
+        content = read_text(p)
+        lang = "python" if rel.endswith(".py") else "text"
+        sections.append((rel, content, lang))
+
+    for rel, spec in JSON_SLICES.items():
+        content = slice_json(ROOT / rel, spec)
+        sections.append((rel, content, "json"))
+
+    font_dir = ROOT / FONT_DIR_REL
+    if font_dir.is_dir():
+        names = sorted(x.name for x in font_dir.iterdir())
+        body = "目录内容：\n" + "\n".join(f"- {n}" for n in names)
+        sections.append((FONT_DIR_REL + "/", body, "text"))
+    else:
+        sections.append((FONT_DIR_REL + "/", None, "text"))
+
+    return sections
+
+
+def render_markdown(sections):
+    out = ["# battle 模块代码打包（步骤02）"]
+    for rel, content, lang in sections:
+        out.append(f"\n### {rel}")
+        if content is None:
+            out.append(f"[缺] {rel}")
+            continue
+        fence = lang if lang in ("python", "json") else ""
+        out.append(f"```{fence}")
+        out.append(content.rstrip())
+        out.append("```")
+    return "\n".join(out) + "\n"
+
+
+def split_by_file(text):
+    marker = "\n### "
+    if marker not in text:
+        return text, []
+    head, *rest = text.split(marker)
+    return head, ["### " + chunk for chunk in rest]
+
+
+def write_output(text):
+    total = len(text.encode("utf-8"))
+    if total <= MAX_BYTES:
+        out = OUT_BASE.with_suffix(".md")
+        out.write_text(text, encoding="utf-8")
+        return [out]
+
+    head, blocks = split_by_file(text)
     outs = []
-    for i, c in enumerate(chunks, 1):
-        p = ROOT / f"pack_for_review_{i:02d}.md"
-        p.write_text(c, encoding="utf-8")
-        outs.append(p)
+    cur = head
+    idx = 1
+    for block in blocks:
+        candidate = cur + "\n" + block if cur else block
+        if len(candidate.encode("utf-8")) > TARGET_BYTES and cur != head:
+            path = OUT_BASE.parent / f"{OUT_BASE.name}_{idx:02d}.md"
+            path.write_text(cur, encoding="utf-8")
+            outs.append(path)
+            idx += 1
+            cur = block
+        else:
+            cur = candidate
+    if cur:
+        path = OUT_BASE.parent / f"{OUT_BASE.name}_{idx:02d}.md"
+        path.write_text(cur, encoding="utf-8")
+        outs.append(path)
     return outs
 
+
 def main():
-    text = render(collect_files())
-    outs = split_and_write(text)
-    print(f"输出 {len(outs)} 个文件：")
+    text = render_markdown(build_sections())
+    outs = write_output(text)
+    print("输出文件：")
     for p in outs:
-        print(f"  {p.name}  {p.stat().st_size/1024:.1f} KB")
+        print(f"  {p}  ({p.stat().st_size} bytes)")
     print("\n请把上述文件内容贴回对话。")
+
 
 if __name__ == "__main__":
     main()

@@ -2,6 +2,7 @@
 """战斗模块主程序：pygame 初始化 + 事件 + 主循环。
 
 日志初始化在 `__main__.py` 完成，本模块只从 `pygame.init()` 起步。
+渲染顺序：六宫格静态层 → 部队层 → 右侧面板组 → 底部控制台。
 """
 
 import logging
@@ -11,11 +12,17 @@ import sys
 import pygame
 
 from battle import config
+from battle.core.battle_state import BattleState
 from battle.core.map_data import MapDataError, load_map
 from battle.render.camera import Camera
+from battle.render.console import Console
 from battle.render.hex_renderer import HexRenderer
+from battle.render.panel import Panel
+from battle.render.unit_layer import UnitLayer
 
 logger = logging.getLogger("battle.app")
+
+_CLICK_TOLERANCE_PX = 4   # 位移 ≤ 此值算「单击」，否则算「框选」
 
 
 def run() -> int:
@@ -54,18 +61,53 @@ def _main_loop() -> int:
 
     viewport_w, viewport_h = screen.get_size()
     camera = Camera.for_map(map_data, viewport_w, viewport_h)
-    renderer = HexRenderer(map_data.cols, map_data.rows, map_data.hex_size)
+    hex_renderer = HexRenderer(map_data.cols, map_data.rows, map_data.hex_size)
 
-    logger.info(
-        "战斗模块启动：窗口 %s×%s，地图 %s（%s×%s 格，hex_size=%s），"
-        "初始 zoom=%.4f（范围 %.4f–%.4f）",
-        viewport_w, viewport_h, map_data.name, map_data.cols, map_data.rows,
-        map_data.hex_size, camera.zoom, camera.zoom_min, camera.zoom_max,
-    )
+    # 战斗状态：两侧部队数据各自载入
+    state = BattleState(map_data.cols, map_data.rows)
+    for side in ("red", "blue"):
+        path = config.UNIT_DATA_PATHS.get(side)
+        if path is not None:
+            state.from_json(path, side)
+    logger.info("战斗模块启动：地图 %s（%s×%s 格），部队 %s 支",
+                map_data.name, map_data.cols, map_data.rows, len(state.units))
+
+    unit_layer = UnitLayer(state, map_data)
+
+    # ---------------- 运行状态 ----------------
+    selected = set()          # 选中部队 id
+    is_playing = False        # 进行 / 暂停（本步不驱动模拟）
+    inter = {"box_start": None, "box_rect": None, "panning": False, "anchor": (0, 0)}
+
+    def toggle_play():
+        nonlocal is_playing
+        is_playing = not is_playing
+        logger.debug("进行 / 暂停：%s", "进行" if is_playing else "暂停")
+
+    def select_all():
+        selected.clear()
+        selected.update(u.id for u in state.units_of(config.PLAYER_SIDE))
+        logger.debug("全选：%s 支", len(selected))
+
+    def clear_selection():
+        selected.clear()
+        logger.debug("清空选择")
+
+    def select_one(unit_id):
+        """单击地图棋子 / 面板行的语义：己方 → 单选；空白或敌方 → 清空。"""
+        unit = state.unit(unit_id)
+        selected.clear()
+        if unit is not None and unit.side == config.PLAYER_SIDE:
+            selected.add(unit.id)
+
+    panel = Panel(state, on_select_unit=select_one)
+    console = Console(state, on_toggle_play=toggle_play,
+                      on_select_all=select_all,
+                      on_clear_selection=clear_selection)
+    panel.layout((viewport_w, viewport_h))
+    console.layout((viewport_w, viewport_h), panel.rect().width)
 
     clock = pygame.time.Clock()
-    dragging = False
-    last_pos = (0, 0)
 
     while True:
         try:
@@ -74,25 +116,46 @@ def _main_loop() -> int:
                     logger.info("收到退出事件，正常退出")
                     return 0
 
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == 1:
-                        dragging = True
-                        last_pos = event.pos
-                    elif event.button == 4:      # 旧式滚轮上
+                if event.type == pygame.VIDEORESIZE:
+                    screen = pygame.display.set_mode(
+                        (event.w, event.h), pygame.RESIZABLE)
+                    viewport_w, viewport_h = screen.get_size()
+                    camera.on_resize(viewport_w, viewport_h)
+                    continue
+
+                # UI 层先消费（面板 / 控制台内的点击与滚轮不落到地图）
+                if panel.handle_event(event) or console.handle_event(event):
+                    continue
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:              # 左键：选中 / 框选
+                        inter["box_start"] = event.pos
+                        inter["box_rect"] = pygame.Rect(event.pos, (0, 0))
+                    elif event.button in (2, 3):       # 中键 / 右键：平移
+                        inter["panning"] = True
+                        inter["anchor"] = event.pos
+                    elif event.button == 4:
                         camera.zoom_at(config.ZOOM_STEP, *event.pos)
-                    elif event.button == 5:      # 旧式滚轮下
+                    elif event.button == 5:
                         camera.zoom_at(1.0 / config.ZOOM_STEP, *event.pos)
 
                 elif event.type == pygame.MOUSEBUTTONUP:
-                    if event.button == 1:
-                        dragging = False
+                    if event.button == 1 and inter["box_start"] is not None:
+                        _finish_left_drag(inter["box_start"], event.pos,
+                                          camera, unit_layer, selected)
+                        inter["box_start"] = None
+                        inter["box_rect"] = None
+                    elif event.button in (2, 3):
+                        inter["panning"] = False
 
                 elif event.type == pygame.MOUSEMOTION:
-                    if dragging:
-                        dx = event.pos[0] - last_pos[0]
-                        dy = event.pos[1] - last_pos[1]
-                        camera.pan(dx, dy)
-                        last_pos = event.pos
+                    if inter["panning"]:
+                        camera.pan(event.pos[0] - inter["anchor"][0],
+                                   event.pos[1] - inter["anchor"][1])
+                        inter["anchor"] = event.pos
+                    elif inter["box_start"] is not None:
+                        inter["box_rect"] = _rect_between(
+                            inter["box_start"], event.pos)
 
                 elif event.type == pygame.MOUSEWHEEL:
                     mx, my = pygame.mouse.get_pos()
@@ -100,13 +163,13 @@ def _main_loop() -> int:
                               else 1.0 / config.ZOOM_STEP)
                     camera.zoom_at(factor, mx, my)
 
-                elif event.type == pygame.VIDEORESIZE:
-                    screen = pygame.display.set_mode(
-                        (event.w, event.h), pygame.RESIZABLE)
-                    camera.on_resize(*screen.get_size())
-
             screen.fill(config.COLOR_BG)
-            renderer.draw(screen, camera)
+            hex_renderer.draw(screen, camera)
+            unit_layer.draw(screen, camera, selected, inter["box_rect"])
+            panel.draw(screen, (viewport_w, viewport_h), selected)
+            console.draw(screen, (viewport_w, viewport_h),
+                         _selected_units(state, selected), is_playing,
+                         panel.rect().width)
             pygame.display.flip()
 
         except Exception:
@@ -117,6 +180,39 @@ def _main_loop() -> int:
                 return 1
 
         clock.tick(config.FPS)
+
+
+# ------------------------------------------------------------
+def _finish_left_drag(start, end, camera, unit_layer, selected):
+    """松手：位移小 → 单击（单选 / 清空）；位移大 → 框选玩家方单位。"""
+    if (abs(end[0] - start[0]) <= _CLICK_TOLERANCE_PX
+            and abs(end[1] - start[1]) <= _CLICK_TOLERANCE_PX):
+        unit = unit_layer.hit_test(start, camera)
+        selected.clear()
+        if unit is not None and unit.side == config.PLAYER_SIDE:
+            selected.add(unit.id)
+        return
+
+    rect = _rect_between(start, end)
+    hits = unit_layer.box_select(rect, camera, config.PLAYER_SIDE)
+    modifiers = pygame.key.get_mods()
+    if not modifiers & (pygame.KMOD_CTRL | pygame.KMOD_SHIFT):
+        selected.clear()
+    selected.update(u.id for u in hits)
+    logger.debug("框选：命中 %s 支，当前选中 %s 支", len(hits), len(selected))
+
+
+def _rect_between(a, b):
+    """由两点构造规范化的矩形（宽高非负）。"""
+    x0, x1 = sorted((a[0], b[0]))
+    y0, y1 = sorted((a[1], b[1]))
+    return pygame.Rect(x0, y0, x1 - x0, y1 - y0)
+
+
+def _selected_units(state, selected):
+    """选中集 → Unit 列表（按 id 升序）。"""
+    return sorted((state.unit(uid) for uid in selected if state.unit(uid)),
+                  key=lambda u: u.id)
 
 
 def _fit_to_desktop(width, height):

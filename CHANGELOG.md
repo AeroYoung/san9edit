@@ -255,3 +255,10 @@
 
 ### Fixed
 - `game/config/constants.py` 重复的 `import sys`
+
+---
+
+## 2026-09-30 · 兵棋作战模块步骤02（部队数据模型与兵棋符号）
+
+### Added
+- 兵棋作战模块步骤02：部队数据模型 + 兵棋符号 + 面板组 + 控制台（battle/，详见 battle/docs/CHANGELOG.md）

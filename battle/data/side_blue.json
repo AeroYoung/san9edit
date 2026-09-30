@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "side_blue",
+  "name": "蓝方",
+  "side": "blue",
+  "units": [
+    { "id": "b01", "side": "blue", "type": "cataphract",    "col": 198, "row": 143, "troops": 3000, "morale": 100.0, "stamina": 100.0, "facing": 3, "general_id": null },
+    { "id": "b02", "side": "blue", "type": "heavy_cavalry", "col": 198, "row": 147, "troops": 2800, "morale": 90.0,  "stamina": 85.0,  "facing": 3, "general_id": null },
+    { "id": "b03", "side": "blue", "type": "light_cavalry", "col": 198, "row": 151, "troops": 2200, "morale": 75.0,  "stamina": 65.0,  "facing": 3, "general_id": null },
+    { "id": "b04", "side": "blue", "type": "horse_archer",  "col": 198, "row": 155, "troops": 1800, "morale": 60.0,  "stamina": 45.0,  "facing": 3, "general_id": null },
+
+    { "id": "b05", "side": "blue", "type": "heavy_armor",   "col": 204, "row": 143, "troops": 3500, "morale": 100.0, "stamina": 100.0, "facing": 3, "general_id": null },
+    { "id": "b06", "side": "blue", "type": "armored",       "col": 204, "row": 147, "troops": 3000, "morale": 90.0,  "stamina": 85.0,  "facing": 3, "general_id": null },
+    { "id": "b07", "side": "blue", "type": "light_armor",   "col": 204, "row": 151, "troops": 2500, "morale": 75.0,  "stamina": 65.0,  "facing": 3, "general_id": null },
+    { "id": "b08", "side": "blue", "type": "levy",          "col": 204, "row": 155, "troops": 2000, "morale": 60.0,  "stamina": 45.0,  "facing": 3, "general_id": null },
+
+    { "id": "b09", "side": "blue", "type": "crossbow",      "col": 210, "row": 143, "troops": 1800, "morale": 100.0, "stamina": 100.0, "facing": 3, "general_id": null },
+    { "id": "b10", "side": "blue", "type": "archer",        "col": 210, "row": 147, "troops": 1600, "morale": 90.0,  "stamina": 85.0,  "facing": 3, "general_id": null },
+    { "id": "b11", "side": "blue", "type": "crossbow",      "col": 210, "row": 151, "troops": 1800, "morale": 75.0,  "stamina": 65.0,  "facing": 3, "general_id": null },
+    { "id": "b12", "side": "blue", "type": "archer",        "col": 210, "row": 155, "troops": 1600, "morale": 60.0,  "stamina": 45.0,  "facing": 3, "general_id": null }
+  ]
+}

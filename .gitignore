@@ -87,3 +87,4 @@ assets/portrait/
 .VSCodeCounter/
 build/
 dist/
+pack_for_review.py
