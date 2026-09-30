@@ -262,3 +262,10 @@
 
 ### Added
 - 兵棋作战模块步骤02：部队数据模型 + 兵棋符号 + 面板组 + 控制台（battle/，详见 battle/docs/CHANGELOG.md）
+
+---
+
+## 2026-09-30 · 兵棋作战模块步骤02 修订（UI 调整）
+
+### Changed
+- 兵棋作战模块步骤02 修订：面板拆双方 Tab + 情报组、控制台改版、新增小地图与窗口图标（battle/，详见 battle/docs/CHANGELOG.md）

@@ -149,12 +149,17 @@ class Button:
     `icon` 取 `"play"` / `"pause"` / None —— 图标几何绘制在文字左侧。
     """
 
-    def __init__(self, rect, label, enabled=True, font_size=12, icon=None):
+    def __init__(self, rect, label, enabled=True, font_size=None, icon=None,
+                 bg_color=None, hover_bg_color=None):
         self.rect = pygame.Rect(rect)
         self.label = label
         self.enabled = enabled
-        self.font_size = font_size
+        # 字号一律从 config 取，不写字面量
+        self.font_size = config.FONT_SIZE_CONSOLE if font_size is None else font_size
         self.icon = icon
+        self.bg_color = BUTTON_BG if bg_color is None else bg_color
+        self.hover_bg_color = (BUTTON_BG_HOVER if hover_bg_color is None
+                               else hover_bg_color)
         self.hovered = False
 
     # ---------------- 事件 ----------------
@@ -173,9 +178,9 @@ class Button:
         if not self.enabled:
             bg = BUTTON_BG_DISABLED
         elif self.hovered:
-            bg = BUTTON_BG_HOVER
+            bg = self.hover_bg_color
         else:
-            bg = BUTTON_BG
+            bg = self.bg_color
 
         pygame.draw.rect(surface, bg, self.rect,
                          border_radius=config.PANEL_CORNER_RADIUS - 2)

@@ -155,7 +155,27 @@ def _render_symbol(shape, fill_mode, side, size_px):
     return layer, -left, -top
 
 
-# 符号小面缓存：key = (外形, 填充, 阵营, 取整格边长)
+def render_thumbnail(type_def, side, size_px):
+    """面板「符号」列用的缩略符号面（内容居中）。
+
+    与地图符号**共用**同一套几何 / 填充 / 缓存实现（`_render_symbol`），
+    缓存 key 加 `"panel"` 前缀与地图上的尺寸区分。地图符号绘制规则不受影响。
+    """
+    shape = type_def.get("symbol_shape", SHAPE_SQUARE)
+    fill_mode = type_def.get("symbol_fill", "hollow")
+    size = int(round(size_px))
+    key = ("panel", shape, fill_mode, side, size)
+
+    cached = _SYMBOL_CACHE.get(key)
+    if cached is None:
+        cached = _render_symbol(shape, fill_mode, side, size)
+        if len(_SYMBOL_CACHE) >= _SYMBOL_CACHE_LIMIT:
+            _SYMBOL_CACHE.pop(next(iter(_SYMBOL_CACHE)))
+        _SYMBOL_CACHE[key] = cached
+    return cached[0]
+
+
+# 符号小面缓存：key = (外形, 填充, 阵营, 取整格边长)，缩略图 key 前置 "panel"
 _SYMBOL_CACHE = {}
 _SYMBOL_CACHE_LIMIT = 128
 

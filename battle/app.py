@@ -12,11 +12,13 @@ import sys
 import pygame
 
 from battle import config
+from battle.core import hexgrid
 from battle.core.battle_state import BattleState
 from battle.core.map_data import MapDataError, load_map
 from battle.render.camera import Camera
 from battle.render.console import Console
 from battle.render.hex_renderer import HexRenderer
+from battle.render.minimap import Minimap
 from battle.render.panel import Panel
 from battle.render.unit_layer import UnitLayer
 
@@ -47,6 +49,7 @@ def _main_loop() -> int:
 
     screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
     pygame.display.set_caption(config.WINDOW_TITLE)
+    pygame.display.set_icon(_make_app_icon())
 
     try:
         map_data = load_map(config.MAP_PATH)
@@ -84,28 +87,29 @@ def _main_loop() -> int:
         is_playing = not is_playing
         logger.debug("进行 / 暂停：%s", "进行" if is_playing else "暂停")
 
-    def select_all():
-        selected.clear()
-        selected.update(u.id for u in state.units_of(config.PLAYER_SIDE))
-        logger.debug("全选：%s 支", len(selected))
+    def apply_panel_selection(unit_ids, mode):
+        """面板行点击 → 落到共用选中集。
 
-    def clear_selection():
+        mode：`"replace"`（单击，替换）/ `"toggle"`（Ctrl，切换）/ `"range"`（Shift，区间替换）。
+        面板只报「点了哪些行、用什么语义」，选中集始终由 app 持有。
+        """
+        if mode == "toggle":
+            for uid in unit_ids:
+                if uid in selected:
+                    selected.discard(uid)
+                else:
+                    selected.add(uid)
+            return
         selected.clear()
-        logger.debug("清空选择")
+        selected.update(unit_ids)
 
-    def select_one(unit_id):
-        """单击地图棋子 / 面板行的语义：己方 → 单选；空白或敌方 → 清空。"""
-        unit = state.unit(unit_id)
-        selected.clear()
-        if unit is not None and unit.side == config.PLAYER_SIDE:
-            selected.add(unit.id)
-
-    panel = Panel(state, on_select_unit=select_one)
-    console = Console(state, on_toggle_play=toggle_play,
-                      on_select_all=select_all,
-                      on_clear_selection=clear_selection)
+    panel = Panel(state, on_selection=apply_panel_selection)
+    minimap = Minimap(state, map_data)
+    console = Console(state, on_toggle_play=toggle_play)
     panel.layout((viewport_w, viewport_h))
-    console.layout((viewport_w, viewport_h), panel.rect().width)
+    minimap.layout((viewport_w, viewport_h), panel.rect().width)
+    console.layout((viewport_w, viewport_h), panel.rect().width,
+                   minimap.rect().width)
 
     clock = pygame.time.Clock()
 
@@ -123,8 +127,14 @@ def _main_loop() -> int:
                     camera.on_resize(viewport_w, viewport_h)
                     continue
 
-                # UI 层先消费（面板 / 控制台内的点击与滚轮不落到地图）
-                if panel.handle_event(event) or console.handle_event(event):
+                # UI 层先消费（小地图 / 面板 / 控制台内的点击与滚轮不落到地图）
+                if (minimap.handle_event(event, camera)
+                        or panel.handle_event(event) or console.handle_event(event)):
+                    continue
+
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        toggle_play()      # 与点击「进行 / 暂停」完全等价
                     continue
 
                 if event.type == pygame.MOUSEBUTTONDOWN:
@@ -167,9 +177,9 @@ def _main_loop() -> int:
             hex_renderer.draw(screen, camera)
             unit_layer.draw(screen, camera, selected, inter["box_rect"])
             panel.draw(screen, (viewport_w, viewport_h), selected)
-            console.draw(screen, (viewport_w, viewport_h),
-                         _selected_units(state, selected), is_playing,
-                         panel.rect().width)
+            minimap.draw(screen, camera)
+            console.draw(screen, (viewport_w, viewport_h), is_playing,
+                         panel.rect().width, minimap.rect().width)
             pygame.display.flip()
 
         except Exception:
@@ -184,17 +194,20 @@ def _main_loop() -> int:
 
 # ------------------------------------------------------------
 def _finish_left_drag(start, end, camera, unit_layer, selected):
-    """松手：位移小 → 单击（单选 / 清空）；位移大 → 框选玩家方单位。"""
+    """松手：位移小 → 单击（选中该格单位 / 点空白清空）；位移大 → 框选（不过滤阵营）。
+
+    Ctrl / Shift + 框选 → 结果追加到现有选中集。
+    """
     if (abs(end[0] - start[0]) <= _CLICK_TOLERANCE_PX
             and abs(end[1] - start[1]) <= _CLICK_TOLERANCE_PX):
         unit = unit_layer.hit_test(start, camera)
         selected.clear()
-        if unit is not None and unit.side == config.PLAYER_SIDE:
+        if unit is not None:
             selected.add(unit.id)
         return
 
     rect = _rect_between(start, end)
-    hits = unit_layer.box_select(rect, camera, config.PLAYER_SIDE)
+    hits = unit_layer.box_select(rect, camera, None)
     modifiers = pygame.key.get_mods()
     if not modifiers & (pygame.KMOD_CTRL | pygame.KMOD_SHIFT):
         selected.clear()
@@ -213,6 +226,20 @@ def _selected_units(state, selected):
     """选中集 → Unit 列表（按 id 升序）。"""
     return sorted((state.unit(uid) for uid in selected if state.unit(uid)),
                   key=lambda u: u.id)
+
+
+def _make_app_icon():
+    """几何绘制的窗口图标：圆角底板 + 平顶六边形轮廓（不读外部文件）。"""
+    size = int(config.APP_ICON_SIZE)
+    icon = pygame.Surface((size, size), pygame.SRCALPHA)
+    pygame.draw.rect(icon, config.APP_ICON_BG, icon.get_rect(),
+                     border_radius=max(2, size // 6))
+
+    radius = size * 0.30
+    corners = hexgrid.hex_corners(size / 2.0, size / 2.0, radius)
+    pygame.draw.polygon(icon, config.APP_ICON_FG, corners,
+                        max(2, size // 12))
+    return icon
 
 
 def _fit_to_desktop(width, height):

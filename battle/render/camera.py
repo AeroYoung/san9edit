@@ -76,6 +76,15 @@ class Camera:
         self.cy = ay - (sy - self.viewport_h / 2.0) / self.zoom
         self._clamp_center()
 
+    def center_on_world(self, x, y):
+        """把相机中心设为世界坐标 (x, y)，并夹取到地图范围内。
+
+        供小地图定位使用 —— 外部只走这个公开方法，不直接改 cx / cy。
+        """
+        self.cx = float(x)
+        self.cy = float(y)
+        self._clamp_center()
+
     def on_resize(self, width, height):
         """窗口尺寸变化：重算视口并重夹缩放与中心。"""
         self.viewport_w = int(width)
