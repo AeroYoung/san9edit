@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from tkinter import messagebox
 from typing import Optional
 
-from game.config.rules import max_number_soldiers
-
 from .list.panel import GenericListPanel
 from .list.columns import Column
 from .list.context_menu import MenuItem
@@ -37,8 +35,8 @@ class CharacterRow:
     politics: int
     charisma: int
     coords: Optional[tuple]
-    official_text: str = ""      # ★ 外官官职（多个用「、」连接；无 → 空）
-    soldiers_cap: int = 0        # ★ 兵力上限（由统率派生，见 config/rules.py）
+    official_text: str = ""      # ★ 武官 + 外官串联（见 Character.job_label）；无 → 空
+    soldiers_cap: int = 0        # ★ 兵力上限（由统率 + 武官系数派生）
 
     @property
     def display_name(self):
@@ -79,32 +77,22 @@ class CharacterRow:
             politics=ch.politics,
             charisma=ch.charisma,
             coords=coords,
-            official_text=cls._official_text(ch, world),
-            soldiers_cap=max_number_soldiers(ch.leadership),
+            official_text=ch.job_label(world),
+            soldiers_cap=ch.soldiers_cap,
         )
-
-    @staticmethod
-    def _official_text(ch, world):
-        """该人物的全部外官官名（按行政区 id 排序，用「、」连接）；无 → 空串。"""
-        if world is None:
-            return ""
-        return "、".join(o.get("name", "")
-                         for o in world.officials_of_character(ch.id))
-
 
 COLUMNS = (
     Column("faction", "势力", 60, "center", lambda r: r.faction_name),
     Column("node",    "所在", 76, "center", lambda r: r.node_name),
     Column("role",    "身份", 48, "center", lambda r: r.role or "—"),
-    # 官职：外官官名（无 → 留空）。声明序在「身份」后
-    Column("official", "官职", 76, "center", lambda r: r.official_text),
+    Column("official", "官职", 88, "center", lambda r: r.official_text),
     Column("lead",    "统",   34, "center", lambda r: r.leadership,   sort_numeric=True),
     Column("might",   "武",   34, "center", lambda r: r.might,        sort_numeric=True),
     Column("int",     "智",   34, "center", lambda r: r.intelligence, sort_numeric=True),
     Column("pol",     "政",   34, "center", lambda r: r.politics,     sort_numeric=True),
     Column("cha",     "魅",   34, "center", lambda r: r.charisma,     sort_numeric=True),
     # 登场：显示 ✓/✗，排序按 bool（升序 = ✓ 在前）。声明序最后一位
-    # 兵力上限：由统率派生的只读值（见 config/rules.py）。声明序在「登场」前
+    # 兵力上限：由统率 + 武官系数派生的只读值。声明序在「登场」前
     Column("soldiers", "兵力上限", 68, "center",
            lambda r: r.soldiers_cap, sort_numeric=True),
     Column("appeared", "登场", 50, "center",
@@ -282,9 +270,9 @@ class CharacterPanel(GenericListPanel):
         if self.edit_session is None or world is None or not rows:
             return
         logger.debug("移动到据点：人数=%d", len(rows))
-        from game.ui.dialogs.move_to_node import move_characters
-        if move_characters(self, world, rows, self.edit_session,
-                           self._open_dialog):
+        from game.ui.dialogs.move_to_node import dialog_move_characters
+        if dialog_move_characters(self, world, rows, self.edit_session,
+                                  self._open_dialog):
             self._notify_edit(keep_view=True)
 
     def _copy_id(self, cid):

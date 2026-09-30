@@ -30,7 +30,9 @@
 | 据点人物数 | World.count_characters_by_node | ★ 按所属 node 聚合，未登场不计（§3.5） |
 | 外官 | World.officials / core/official_title.py | ★ 行政区 id(2/4/6 位) → 官名 + 人物；一区一官，一人可多职 |
 | 位阶 rank | rules.RANK_* / military_title.rank_of | ★ 1–32，数字越小越尊贵；「官职体系」窗口按它排序（§5.26） |
-| 武官 | Character.military_title / core/military_title.py | ★ **荣誉头衔**，与行政区外官独立；一人最多一个；rank < 26 势力内唯一（§3.3） |
+| 武官 | Character.military_title / core/military_title.py | ★ **荣誉头衔**，与行政区外官独立；一人最多一个；rank < 26 势力内唯一；**已可编辑 + 已落盘**（§3.3、§5.20） |
+| 官职标签 | Character.job_label(world) | ★ 武官 + 外官串联的只读显示文本，连接词按 rank 选「领 / 兼 / 行」（§3.3） |
+| 兵力上限 | Character.soldiers_cap / compute_soldiers_cap | ★ 只读派生值 = 统率曲线 × 武官 rank 系数；不落盘、不可编辑（§3.3） |
 | 官职体系窗口 | ui/job_system_window.py::JobSystemWindow | ★ 「情报」菜单打开的人物 / 官职双模式总览（§5.26） |
 | 势力兵力 | Faction.troops | ★ 派生值：名下据点 troops 求和 + 所属部队求和（部队项恒 0，§3.2） |
 | 势力兵力口径 | —— | ★ Σ node.troops (owner=本势力) + Σ troop.troops（Troop 未建模，见 §8.4） |
@@ -128,7 +130,7 @@
 
 - 居中基准 = **游戏主窗口**（`self._top = master.winfo_toplevel()`），不是右侧面板。
 - 窗口宽固定 600，高自适应（`resizable(False, True)`）；最小高 640。
-- 内容分区：只读形态 = 官职 + 头像 + 五维雷达图 / 关系 / 生平；编辑形态 = 基础（左头像 + 右字段）/ 五维 / 归属 / 外官 / 关系 / 生平 + 底部「保存 / 取消」。
+- 内容分区：只读形态 = 官职行（`job_label`）/ 关系 / 生平（**不再画头像与雷达图**）；编辑形态 = 基础（左头像 + 右字段，含只读「官职」行）/ 五维 / 归属 / **官职（左武官 + 右外官）** / 关系 / 生平 + 底部「保存 / 取消」。
 - 内容装在 Canvas 里，纵向 / 横向滚动条按「内容 vs 视口」自动出现。
 - 五维雷达图用 **tkinter Canvas** 画（不用 Pillow，避免跨平台字体文件路径问题）。
 - 关系区 8 字段全画；姓名带表字（display_name），不带势力。
@@ -186,19 +188,20 @@
 | 项目名称 | 暗耻三国志（APP_TITLE） |
 | 定位 | 三国类回合制策略游戏原型，玩法参照光荣《三国志 IX》 |
 | 程序入口 | main.py → MainWindow().run() |
-| 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报窗口（Pillow 头像 + 五维雷达图 + 关系）；官职体系窗口（按人物 / 按官职 + 位阶）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + undo/redo + 增量保存）；全流程日志 |
+| 核心功能 | 中国全图矢量渲染 + 缩放平移 + 光标精确反查州 / 郡 / 县 / 势力；旬回合时钟 + 顶部信息栏 / 菜单；右侧 4 Tab 面板（势力 / 据点 / 人物 / 部队）+ 通用列表框架（排序 / 嵌套分组 / 搜索 / 右键 / 双向定位）+ 面板列可配置；人物情报 / 编辑人物窗口（Pillow 头像 + 五维雷达图 + 关系 + 武官 / 外官）；官职体系窗口（按人物 / 按官职 + 位阶）；设置窗口；剧本系统 + 剧本编辑（据点 / 势力 / 人物登场 + 武官 + undo/redo + 增量保存）；全流程日志 |
 | 运行环境 | Python 3 + 标准库 tkinter + Pillow（第三方，仅人物情报窗口的头像用；雷达图/关系区纯 Canvas/Widget） |
 | 数据来源 | assets/map.geojson：13 州 / 106 郡 / **1152 县**；roads.geojson；water.geojson；mountains.geojson（未接入）；characters.json：1049 人；assets/portrait/：739 张头像 |
-| 剧本来源 | scenarios/default.json（190 年 · 州郡外官；54 势力 / 1049 人物全覆盖 / 616 据点 / 53 条外官） |
+| 剧本来源 | scenarios/default.json（190 年 · 州郡外官；54 势力 / 1049 人物全覆盖 / 616 据点 / 54 条外官 / 221 人武官头衔） |
 | 用户数据 | userdata/settings.json；userdata/logs/ |
 
 **当前完成度（粗粒度）：**
 
 - ✅ 地图 / 渲染：州郡县三级边界 + 道路 + 水域 + 图层显隐 + 县名避让；县面势力染色（唯一着色图层，不吃 LOD）；县点选 + hover 高亮（5 开关）；地图 ⇄ 列表双向定位；精确反查州 · 郡 · 县 · 势力
 - ✅ 面板：4 面板共享 panels/list/ 框架（列 / 排序 / 嵌套分组 / 搜索 / 多选 / 右键菜单）+ 列顺序与显隐可配置；势力色块；兵力 / 据点数 / 人物数三列现算（兵力是派生值不落盘，人物数未登场不计）；据点面板「主官」列与据点情报三项右键仍是占位
-- ✅ 人物情报窗口：Pillow 头像 + Canvas 五维雷达图 + 关系区（8 字段，可点击跳转）+ 生平占位
-- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（54 势力 / 1049 人物 / 616 据点 / 53 条外官 / 221 人武官头衔）+ 三层加载 + character_id_range 仅老剧本兼容
-- ✅ 官职体系：外官位阶 rank（州 / 郡 / 县，郡级按县 level 分数分等）+ 武官 32 rank 官名表 + 官职体系窗口（只读总览，暂不可编辑）
+- ✅ 人物情报 / 编辑人物窗口：Pillow 头像 + Canvas 五维雷达图 + 关系区（8 字段，可点击跳转）+ 生平占位 + 只读「官职」行 + 武官下拉（只读形态只显示官职行 + 关系 + 生平）
+- ✅ 剧本系统：characters.json 1049 人（31 字段，含 node / location 分离）+ 190 剧本（54 势力 / 1049 人物 / 616 据点 / 54 条外官 / 221 人武官头衔）+ 三层加载 + character_id_range 仅老剧本兼容
+- ✅ 官职体系：外官位阶 rank（州 / 郡 / 县，郡级按县 level 分数分等）+ 武官 32 rank 官名表（含兵力上限系数）+ 官职体系窗口（只读总览）+ **武官编辑**（编辑人物窗口下拉 + 势力内唯一性校验）
+- ✅ 派生值：兵力上限（统率曲线 × 武官系数）+ 官职标签（武官 + 外官按 rank 串联），均为只读、不落盘
 - ✅ 剧本编辑：APP_MODE 编译期切换 + 据点 / 势力编辑（共用流程 + 郡治互斥）+ 人物登场开关 + undo/redo + 增量保存 + 未保存提示；编辑入口统一标识（edit=True / set_edit_enabled）
 - ✅ 设置窗口：主题 / 地图样式 / 图层 / 面板列 多 Tab
 - ✅ 日志：会话文件 + session id + sys/tk 异常钩子 + LOG_ENABLED 编译期总开关
@@ -224,7 +227,7 @@ san9edit/
 │   ├── water.geojson                  河流 / 湖泊
 │   └── mountains.geojson              山地（已下载，未接入渲染）
 ├── scenarios/
-│   └── default.json                   190 剧本（50 势力 / 1049 人物 / 611 据点 / 49 条外官）
+│   └── default.json                   190 剧本（54 势力 / 1049 人物 / 616 据点 / 54 条外官 / 221 人武官）
 ├── tests/                             单元测试
 │   ├── test_composite_command.py      CompositeCommand 顺序 / 逆序语义
 │   ├── test_scenario_writer.py        serialize / diff / save 增量写回
@@ -232,7 +235,11 @@ san9edit/
 │   ├── test_list_grouping.py          组头计数 / 固定组序 / 行优先排序 / 登场列排序
 │   ├── test_list_reconcile.py         就地刷新（含子分组消失的回归）
 │   ├── test_move_to_node.py           移动到据点：单人规则 / 命令生成
-│   └── test_official.py               官名规则 / officials 加载与查询
+│   ├── test_official.py               官名规则 / officials 加载与查询 / serialize + diff
+│   ├── test_edit_extensions.py        势力新建 · 删除级联 / 据点易主级联 / 外官编辑
+│   ├── test_column_arrange.py         列排列规则（新列就近插入，§8.3 第 26 条）
+│   ├── test_faction_vassal.py         附庸三字段：容错 / clamp / 加载期损坏 / 颜色派生
+│   └── test_build_scenario_vassal.py  跑真实 map.geojson：地盘划分 / 按据点定外官
 ├── tools/                             离线脚本（不参与运行时，保持 print 输出）
 │   ├── build_scenario_190.py          生成 190 年默认剧本（FACTIONS 常量 + 人物分配）
 │   ├── 头像.py                        头像批量重命名 / 复制 / 对账（顶部 APPLY 开关）
@@ -248,10 +255,11 @@ san9edit/
     ├── config/                        配置层（无业务逻辑）
     │   ├── constants.py               路径常量 + 窗口常量 + APP_MODE + LOG_ENABLED
     │   ├── rules.py                   ★ 游戏运行策略常量（唯一调参入口，纯数据、不 import game.*）
-    │   │                              武官官名表 MILITARY_TITLES / 唯一性分界 UNIQUE_MAX_RANK
+    │   │                              武官表 MILITARY_TITLES {rank: (系数, 官名)} / 唯一性分界 UNIQUE_MAX_RANK
     │   │                              / 外官位阶 RANK_* + 郡金字塔 COUNTY_RANK_THRESHOLDS
     │   │                              / 县级 CITY_RANK_BY_LEVEL / 州牧州 MU_STATES
     │   │                              / 五维缺省 DEFAULT_STAT / 附庸值 VASSAL_VALUE_*
+    │   │                              / 兵力上限曲线 SOLDIERS_CAP_*（基准统率·基准兵力·下限·陡度·无武官系数）
     │   │                              / 势力显示色 DONGZHUO_* + HUE_STEP / MAX_HUE_SHIFT
     │   ├── style.py                   主题 THEME / 字号 FONT_SIZES / 地图样式 MAP_STYLE
     │   │                              / 分级显隐 CITY_LEVEL_MIN_SCALE / 图层 LAYER_VISIBILITY
@@ -265,10 +273,11 @@ san9edit/
     │   ├── world.py                   World：势力 / 人物 / 据点的聚合容器 + 查询 + 统计
     │   ├── faction.py                 Faction：势力（stance 相对玩家）+ gold/food/troops 派生
     │   ├── character.py               Character：人物（31 字段，node / location 分离）
+    │   │                              + 派生只读值 soldiers_cap / job_label(world)
     │   ├── node.py                    Node：县 = 据点（静态 + 动态 owner/troops/gold/food）
     │   ├── scenario.py                剧本加载（三层人物 + character_id_range + 应用登场状态 + 外官）
     │   ├── official_title.py          ★ 外官官名生成 + 位阶 rank（州 / 郡 / 县，纯函数）
-    │   ├── military_title.py          ★ 武官反查 + 唯一性校验接口（官名表在 config/rules.py）
+    │   ├── military_title.py          ★ 武官反查 + 唯一性校验 + 兵力系数接口（官名表在 config/rules.py）
     │   ├── territory.py               郡级势力统计（保留，暂不消费）
     │   ├── edit_session.py            ★ Command / CompositeCommand / EditSession
     │   ├── edit_commands.py           ★ NodeEditCommand / FactionEditCommand / CharacterEditCommand
@@ -290,7 +299,8 @@ san9edit/
         │                              + reload_panel_columns()
         ├── settings_window.py         设置窗口（多 Tab + 折叠分组 + 草稿 + 保存）
         │                              +「面板列」tab + 8 个方法
-        ├── character_info_window.py   人物情报 / 编辑人物窗口（头像 + 五维雷达图 + 关系 + 生平占位）
+        ├── character_info_window.py   人物情报 / 编辑人物窗口（头像 + 五维雷达图 + 关系 + 生平占位
+        │                              + 官职只读行 + 武官下拉 / 外官区）
         │                              （据点情报已并入编辑据点弹窗，见 §5.21 EditDialog）
         ├── job_system_window.py       ★ 官职体系窗口（按人物 / 按官职 + 位阶，只读）
         ├── dialogs/pick_list.py      ★ 通用单选列表（弹窗挑一行用：单选 / 无右键 / 不分组）
@@ -423,7 +433,7 @@ def troops(self):
 |---|---|
 | Node | 从零写全 7 字段：owner / troops / gold / food / type / level / is_capital |
 | Faction | name / color / prestige / stance / independent / overlord_id / vassal_value（不写 gold / food / troops） |
-| Character | 全 31 字段（含 portrait / appeared / faction / node / location / role） |
+| Character | 全 31 字段（含 portrait / appeared / faction / node / location / role / **military_title**） |
 
 理由见 §8.3 第 43 条：加新的可编辑静态字段时，写 / 读 / 显示三处必须同步。
 
@@ -431,7 +441,7 @@ def troops(self):
 
 四位 id（"0001"–"1049"）。静态来自 characters.json，动态由剧本覆盖。
 
-**字段一览（类内 32 项，其中剧本动态 6 项；to_dict 仍只写 31 项 —— military_title 不落盘）**
+**字段一览（31 个字段 + id，其中剧本动态 6 项；to_dict 写全 31 项 —— military_title 已进序列化）**
 
 | 分组 | 字段 | 汉语 | 类型 |
 |---|---|---|---|
@@ -451,10 +461,32 @@ def troops(self):
 ★ military_title 字段（武官）：
 
 - 含义 = 荣誉头衔，与行政区外官（`World.officials`）**互相独立**；一人最多一个。
-- 官名表与 rank 见 `config/rules.py`（32 个 rank / 84 个官名，反查与校验在 `core/military_title.py`）；rank < 26 的官名在同一势力内唯一。
-- **只加载、不落盘**：`from_dict` 读（老剧本无 → None），`to_dict` **不写**，不参与 EditSession 的 diff。
-- 保存时剧本里原有的 `military_title` 由 `ScenarioWriter` 的 `deepcopy(raw)` 天然保留（§9.3）。
-- 目前**只读**：编辑入口与唯一性校验（`is_title_free` / `is_title_free_global`）尚未接入 UI。
+- 官名表与 rank 见 `config/rules.py`；表结构是 `{rank: (兵力上限系数, (官名, ...))}`（32 个 rank / 84 个官名），反查与系数查询在 `core/military_title.py`；rank < 26 的官名在同一势力内唯一。
+- **已进序列化**：`from_dict` 读（老剧本无 → None），`to_dict` 写（与 appeared / faction / node / location / role 同构），参与 EditSession 的 diff 与增量保存（§9.3）。
+- **可编辑**：编辑人物窗口「官职」组左栏的武官下拉（`SearchableCombobox`，label = `位阶 官名`，已被本势力占用的 rank < 26 官名带「（已占用）」后缀）；保存走 `CharacterEditCommand`，落盘前用 `is_title_free(world, title, faction_id, exclude_cid)` 再校验一次（§5.20）。
+- 唯一的校验是「同势力内不重复」（rank < 26）；在野（`faction` 为空）人物**不校验** —— 无势力就无从谈势力内唯一，下拉也不标「（已占用）」。
+
+★ `military_title` 相关派生只读值（都**不进** `to_dict` / 不参与 diff）：
+
+| 成员 | 说明 |
+|---|---|
+| `compute_soldiers_cap(leadership, military_title=None)`（staticmethod） | 纯函数：曲线 `base = BASE_FORCE × (L / BASE_LEADERSHIP) ** EXPONENT`，结果 `max(MIN_FORCE, int(base × 系数))`；无武官 / rank 未知 → `SOLDIERS_CAP_NO_TITLE_FACTOR`。property 与编辑窗口的实时预览**共用这一份**公式，不要两处各写 |
+| `soldiers_cap`（property） | `= compute_soldiers_cap(self.leadership, self.military_title)`；改领导力或武官后下次读取现算，无 setter |
+| `job_label(world)` | 武官 + 外官串联的官职文本（见下） |
+| `_officials_with_rank(world)` | `[(官名, 数字 rank), ...]`，rank 升序、None 排最后；`job_label` 的内部依赖 |
+
+★ `job_label(world)` 的连接规则（只读派生，不进序列化）：
+
+| 情况 | 结果 |
+|---|---|
+| 两者皆无 | `""` |
+| 只有武官 | 武官名 |
+| 只有外官 | 外官名按 rank 升序用「、」连接（不套连接词） |
+| 两者都有 | 武官与**第一个**外官之间按 rank 选连接词：武 < 外 → `、领`；武 = 外 → `、兼`；武 > 外 → `行`；其余外官仍用「、」 |
+| rank 无法判定（world 缺失 / 数据不全） | 退化为 `／` 连接 |
+
+- 外官 rank 口径与「官职体系」窗口一致：2 位键 → 州级、4 位键 → 郡级（需郡分数）、6 位键 → 按据点 level 走 `city_rank_by_level`。
+- 郡分数（`compute_county_ranks`）需要全量扫县点，结果缓存在 `world._county_ranks_cache` —— **编辑 `node.level` 后该缓存会过期**（本轮只读派生，不主动失效，见 §8.3 第 61 条）。
 
 ★ 基础数据里的废弃字段（location_name / affiliation）：
 
@@ -474,8 +506,9 @@ def troops(self):
 |---|---|
 | is_ruler() / is_free() / is_appeared(year) / is_alive(year) | 语义判断 |
 | display_name() | 带表字的展示名（人物情报窗口标题 / 关系区姓名仍用） |
-| from_dict(cid, d) / to_dict() | JSON 双向（31 key） |
-| apply_override(data) | 剧本覆盖（hasattr 防脏数据，只覆盖显式出现的 key） |
+| from_dict(cid, d) / to_dict() | JSON 双向（31 key，含 military_title） |
+| apply_override(data) | 剧本覆盖（hasattr 防脏数据，只覆盖显式出现的 key；`military_title` 已在 `__init__` 里 → hasattr 为 True，剧本显式写了就会被加载） |
+| compute_soldiers_cap(l, title) / soldiers_cap / job_label(world) | ★ 只读派生值，见上 |
 
 ★ appeared 字段（bool）：
 
@@ -508,7 +541,7 @@ def troops(self):
 - 与 Character 无关：**不加** `Character.official` 字段，也不进 `characters` 段（外官以 region 为键）。
 - **可编辑**：officials 段参与 `serialize` / `diff`（与 factions / characters / nodes 同构）；
   增删改一律走 `OfficialSetCommand` / `OfficialRemoveCommand`（§10.2），`save` 仍靠 `deepcopy(raw)` 保留未改动条目。
-- UI 展示：据点「主官」列、州郡组头、人物「官职」列 + 情报窗口，编辑入口在「编辑人物」窗口的外官区（§5.23）。
+- UI 展示：据点「主官」列、州郡组头、人物「官职」列（★ 走 `Character.job_label()`，武官 + 外官串联）+ 情报窗口，编辑入口在「编辑人物」窗口的「官职」组右栏外官区（§5.20 / §5.23）。
 
 **查询：**
 
@@ -695,9 +728,9 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
   "start": { "year": 190, "month": 1, "xun": 1 },
   "player_faction": "0521",
   "factions": { "…54 家…" },
-  "characters": { "…1049 条，写 5 字段（appeared/faction/node/location/role），按 id 排序…" },
+  "characters": { "…1049 条，写 5–6 字段（appeared/faction/node/location/role + 可选的 military_title），按 id 排序…" },
   "nodes": { "…616 条…" },
-  "officials": { "…49 条，键为行政区 id…" }
+  "officials": { "…54 条，键为行政区 id…" }
 }
 ```
 
@@ -707,7 +740,7 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 |---|---|
 | character_id_range | 老剧本可写 [1, 1000] 或省略；190 剧本**不写** |
 | factions | name / color / prestige / stance / independent / overlord_id / vassal_value（不写 gold / food / troops） |
-| characters | appeared / faction / node / location / role（全量 1049 人） |
+| characters | appeared / faction / node / location / role + **military_title**（可选；190 剧本 221 人有值）（全量 1049 人） |
 | nodes | owner / troops / gold / food；个别条目额外带 is_capital / level |
 | officials | name（已拼好的完整官名）/ character_id / rank（`州` / `郡` / `县`） |
 
@@ -716,7 +749,7 @@ city   = { id, name, coords: [x, y], is_capital: bool, level: int(1–10), type:
 - nodes 的 is_capital / level 是**可选字段**，解析端必须容错（`_apply_node_overrides` 用 `in` 判断）。
 - characters 的 appeared 也是**可选字段**：不写 → 默认 true（老剧本兼容）。
 - officials 段整体**可选**：老剧本没有 → `World.officials` 为空 dict，UI 一律显示空 /「—」。
-- officials 改 World 的口径与编辑无关：**不入 serialize / diff**（不可编辑），`save` 的 `deepcopy(raw)` 天然保留该段。
+- officials **入 serialize / diff**（与 factions / characters / nodes 同构，见 §3.5）：增删改走 `OfficialSetCommand` / `OfficialRemoveCommand`；未改动的条目仍由 `save` 的 `deepcopy(raw)` 保留原值。
 
 **officials 一区一官**：键唯一 → 一个行政区只能有一个外官；同一人物可担任多个外官（以 region 为键天然支持）。
 键的层级即 rank：2 位 = 州、4 位 = 郡、6 位 = 县。
@@ -824,7 +857,9 @@ TERRITORY_MAX_CITIES = {"李傕": 1, "郭汜": 1}              # 上限县数（
    且满足 `might > politics 且 might > intelligence` 的，按 `might_tier(might)` 落到 rank 26–32 的低阶头衔。
 
 未分配的人 `military_title` 为 null。运行结束打印各头衔人数供人工确认。
-分配结果随剧本落盘（`characters` 段每人的 `military_title`，见 §4.4）。
+分配结果随剧本落盘（`characters` 段每人的 `military_title`，见 §4.4），并**参与 serialize / diff** —— 编辑器里改武官会照常增量写回该字段（§9.3）。
+
+★ 武官同时是**兵力上限系数**的来源：`MILITARY_TITLES[rank][0]` 从 rank 1 的 4.35 递减到 rank 32 的 1.02，乘在统率曲线上（§3.3）。改这张表的影响面是「人物面板兵力上限列 + 编辑人物窗口的兵力上限行」，不需要动剧本数据。
 
 ### 4.7 头像资产
 
@@ -1311,8 +1346,9 @@ class CharacterInfoWindow(tk.Toplevel):
         # master 仍传 panel（保留 transient 关系）
         # self._top = master.winfo_toplevel()    ← 居中基准 / 跳转窗口 master
         # session 有值 → 编辑形态；None → 只读形态
-        # 只读：官职行（world.officials_of_character）→ 头像 + 雷达图 → 关系 → 生平
-        # 编辑：基础（左头像 + 右字段）→ 五维 → 归属 → 外官 → 关系 → 生平 + 底部保存/取消
+        # 只读：官职行（character.job_label(world)）→ 关系 → 生平（不画头像 / 雷达图）
+        # 编辑：基础（左头像 + 右字段，含只读「官职」行）→ 五维 → 归属
+        #       → 官职（左武官下拉 + 右外官）→ 关系 → 生平 + 底部保存/取消
         # title = f"{character.display_name()} — 人物情报 / 编辑人物"
         #       未登场（appeared=False）→ 追加「（未登场）」后缀
         # 宽固定 600，高自适应（resizable(False, True)）；最小高 640
@@ -1326,8 +1362,13 @@ class CharacterInfoWindow(tk.Toplevel):
     def _save(self):                        # ★ 君主守卫 → CharacterEditCommand → on_saved
     def _on_wheel(self, event):             # 滚轮滚动
     def _group_body(self, wrap, title):     # 关系 / 生平：编辑形态用 CollapsibleSection
-    def _build_portrait(self, parent):      # 头像框
-    def _build_radar(self, parent):         # ★ 雷达图（Canvas）
+    def _build_military_title(self, parent): # ★ 武官下拉（SearchableCombobox，label = "位阶 官名"）
+    def _military_title_options(self):      # ★ 选项列表（含「（无）」+ 已占用后缀）
+    def _military_label_for(self, title):   # 官名 → 下拉 label
+    def _parse_military_label(self, label): # 下拉 label → 官名（"（无）" → None）
+    def _refresh_job(self):                 # ★ 外官 / 武官变化后重刷「官职」只读行
+    def _build_portrait(self, parent):      # 头像框（编辑形态左栏）
+    def _build_radar(self, parent):         # ★ 雷达图（Canvas，编辑形态五维区）
     def _redraw_radar(self):                # ★ delete("all") 后整块重画
     def _edit_stat(self, attr):             # ★ 点轴标签 → 输入框改该维数值
     def _axis_angles(self):                 # 5 轴角度：-90° + i * 72°
@@ -1376,17 +1417,44 @@ class CharacterInfoWindow(tk.Toplevel):
 **编辑形态（MODE_EDIT，`session` 有值）：**
 
 - 标题「XXX — 编辑人物」；按 `CollapsibleSection` 分组：**基础**（左栏头像 + 右栏
-  姓名 / 字 / 性别下拉「男·女」/ 登场勾选 / **出生年**输入 / **年龄**只读）、**五维**（雷达图 + 轴标签）、
-  **归属**（势力**可搜索下拉** + 所属按钮，同一行 → `pick_node` 据点单选窗）、
-  **外官（N）**（逐行列官名 + 行政区 id，带「编辑外官」按钮）。
+  姓名 / 字 / **官职**只读 / 性别下拉「男·女」/ 登场勾选 / **出生年**输入 / **年龄**只读 / **兵力上限**只读）、
+  **五维**（雷达图 + 轴标签）、**归属**（势力**可搜索下拉** + 所属按钮，同一行 → `pick_node` 据点单选窗）、
+  **官职**（左栏武官下拉 + 右栏**外官（N）**逐行列官名 + 行政区 id，带「编辑外官」按钮）。
+- **基础区的行序**：姓名(0) / 字(1) / **官职(2)** / 性别(3) / 登场(4) / 出生年(5) / 年龄(6) / 兵力上限(7)。
+  「官职」行插在(2)位之后，其后各行 `add_row` 的序号相应顺延 —— 加行时必须整段改序号，不能只加一行。
+- **「官职」行是只读 `tk.Text`**（不是 Entry / Label）：`wrap="char"` + 高度按文本长度算（`_CHARS_PER_LINE = 24`），
+  内容 = `ch.job_label(world)`；虽只读但仍可拖选 + Ctrl+C（§8.3 第 59 条）。
+  外官 / 武官保存后走 `_refresh_job()` 重刷文本与高度。
 - **年龄是只读派生值**：随「出生年」输入实时刷新（`world.year − 出生年`）；出生年为空或非整数 → "—"，
   负数也显示 "—"。年龄**不提交**，保存时提交出生年。
+- **兵力上限是只读派生值**：`compute_soldiers_cap(统率, military_title)`；改五维里的「统」或换武官后即时重算
+  （走 Character 的类方法，不在窗口里另写公式）。
 - **五维没有独立输入框**：数值只存在 `self._stats`，点雷达图轴标签 → `simpledialog.askinteger`
   （int，0–100）→ 改 `self._stats` → `_redraw_radar()`；**不写 World**，保存时随其它字段一起提交。
 - 关系区 / 生平区在编辑形态下也套 `CollapsibleSection`（默认展开）；只读形态保持「标题 + 正文」平铺。
 - 「保存 / 取消」在滚动容器**最底部**（保存 / 取消按钮 + 状态消息行）。
 - 「保存」统一收集变化 → `CharacterEditCommand`；君主守卫（必须保持登场 / 需先解散势力）在保存前拦截。
 - 「编辑外官」的 `open_dialog` 必须等弹窗关闭（`self.wait_window(dlg)`），否则读到的 `dlg.ok` 恒为 False。
+
+**官职组（左武官 / 右外官）：**
+
+- 布局：`job.columnconfigure(0, weight=1, uniform="jobcol")` + `columnconfigure(1, weight=2, uniform="jobcol")`，
+  左栏武官、右栏外官，都 `sticky="new"`。
+- 左栏「武官」下拉：`SearchableCombobox`，选项 = `"（无）"` + `military_title.all_titles()` 全部官名，
+  label 形如 `"26 军司马"`（`位阶 官名`；`rank_of` 查不到时退化为裸官名）。
+- **已占用后缀**：本势力内 `is_unique(title)` 且 `is_title_free(world, title, ch.faction, exclude_cid=ch.id)` 为假
+  → label 追加「（已占用）」。**允许选中**，在保存时拒绝。
+- 在野（`faction` 为空）不标占用、保存也不查重 —— 无势力就无从谈「势力内唯一」。
+- 保存路径：`_collect_changes` 里先 `normalize()` 再 `_parse_military_label()` 反解出官名，变化了才进 `old / new`；
+  `_save` 里对 `new["military_title"]` 再查一次 `is_title_free`，命中重复 → 红字提示、**不提交命令**、窗口不关。
+- 右栏外官：标题 `_official_title()`（带人数），正文 `_refresh_officials()`，下方「编辑外官」按钮。
+  ★ **在野人物（无 faction）该按钮置 `disabled`** —— 无实控区域，没有可任命的外官。
+
+**只读形态（`session` 为 None）：**
+
+- 只有「官职：<`job_label`>」一行（有值才画）+ 关系区 + 生平区。
+- ★ **不再画头像与雷达图**（原先的「头像 + 五维雷达图」块已移除）；`_build_portrait` / `_build_radar`
+  现在只被编辑形态调用，不要误删这两个方法。
 
 **窗口：**
 
@@ -1414,7 +1482,7 @@ class CharacterInfoWindow(tk.Toplevel):
   + `faction_sections(fields, info, side_image, side_caption)`（基本情况 / 可编辑信息 / 独立·附庸，由 `_basic_section` / `_editable_section` / `_vassal_section` 构造）；`faction_fields(world, faction)` 运行期补宗主选项与显示色，`overlord_options()` 只列独立势力 |
 | node_edit.py | `edit_node(parent, world, node, session, open_dialog) -> bool`（含郡治互斥；分组弹窗 + 滚动 + `_make_link_handler` 实体链接） |
 | faction_edit.py | `edit_faction(parent, world, faction, session, open_dialog) -> bool`（分组弹窗 + 独立/附庸联动 `_make_linkage(fields)`；`_make_link_handler` 实体链接） |
-| move_to_node.py | `move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`；另导出 `pick_node(parent, world, title)` 通用据点选择窗（详见 §5.23） |
+| move_to_node.py | `dialog_move_characters(parent, world, rows, session, open_dialog) -> bool` + `MoveToNodeDialog`（据点单选 + 信息块）+ `plan_moves()` 纯逻辑 + `build_commands()`；另导出 `pick_node(parent, world, title)` 通用据点选择窗（详见 §5.23） |
 | pick_list.py | `PickList`：GenericListPanel 的裁剪副本（`SELECT_MODE=browse` / 无分组 / 无右键 / 禁用 Ctrl+A），列与取值由构造参数给 |
 | faction_lifecycle.py | `create_faction(...)` / `delete_faction(...)` + 两个弹窗；`plan_delete()` / `build_create_commands()` / `build_delete_commands()` 纯逻辑（★ `plan_delete()` 顺带算出 `vassal_ids`，删宗主时名下附庸自动独立） |
 | node_owner.py | `change_node_owner(...)` + `ChangeOwnerDialog`；`plan_owner_changes()` / `person_change()` / `build_commands()` 纯逻辑 |
@@ -1479,9 +1547,9 @@ class CharacterInfoWindow(tk.Toplevel):
 **character_panel.py** — PANEL_KEY = "character"，DEFAULT_GROUP = ("faction",)
 
 - 行模型 CharacterRow：id / name / family_name / sex / faction_id / faction_name / node_id / node_name / role / **appeared** / 五维 / coords / **soldiers_cap**。
-- COLUMNS：势力 60 / 所在 76 / 身份 48 / **官职 76** / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34 / **兵力上限 68** / 登场 50；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
-- 「官职」列 = `world.officials_of_character(id)` 的官名，多个按行政区顺序用「、」连接，无外官**留空**（不是「—」）。
-- 「兵力上限」列 = `rules.max_number_soldiers(leadership)` 的**派生值**，不落盘、不可编辑（改统率自动跟着变）；数字排序。
+- COLUMNS：势力 60 / 所在 76 / 身份 48 / **官职 88** / 统 34 / 武 34 / 智 34 / 政 34 / 魅 34 / **兵力上限 68** / 登场 50；NAME_COLUMN = 姓名（110，左对齐，`lambda r: r.name` —— 去表字）。
+- 「官职」列 = `Character.job_label(world)` —— **武官 + 外官串联**（连接词按 rank 选「领 / 兼 / 行」，见 §3.3）；两者皆无 → **留空**（不是「—」）。列宽 76 → 88（串联后文本更长）。
+- 「兵力上限」列 = `Character.soldiers_cap` 的**派生值**（统率曲线 × 武官 rank 系数），不落盘、不可编辑（改统率或改武官自动跟着变）；数字排序。
 - ★ 用户在设置窗口存过列顺序时，新列按 §8.3 第 26 条**插在声明位置附近**（不是甩到末尾）——「官职」会落在「身份」后、「兵力上限」落在「登场」前，无需手动去「面板列」tab 上移。
 - GROUP_DIMS：faction(势力，默认) / node(所在) / role(身份) / sex(性别) / **appear(登场 → 已登场 / 未登场)**。默认分组维持 ("faction",)，不强制先按登场分。
 - `priority_name()`：返回玩家势力名，用于分组置顶（只对最外层生效）。
@@ -1489,9 +1557,9 @@ class CharacterInfoWindow(tk.Toplevel):
 - 外官区：「编辑外官」按钮 → `official_edit.edit_officials`。open_dialog 必须**等弹窗关闭**再返回
   （`lambda: self.wait_window(dlg)`），否则读到的 `dlg.ok` 恒为 False、命令不执行。
 - 「人物情报」在 MODE_EDIT 下打开的是**编辑人物**窗口（`CharacterInfoWindow(session=...)`）：
-  姓名 / 字 / 性别 / 五维 / 登场 / 势力 / 所属 / 所在可编辑 + 外官区（`official_edit`）；
+  姓名 / 字 / 性别 / 五维 / 登场 / 势力 / 所属 / 所在可编辑 + **武官下拉** + 外官区（`official_edit`）；
   MODE_GAME 传 `session=None` → 标题回落「人物情报」，纯只读。
-  - 「移动到据点」→ `_move_to_node(selected_rows)` → `dialogs/move_to_node.py::move_characters`（弹窗模态，走 `_open_dialog`）。弹窗内是据点面板的**裁剪副本**（`NodePickList`：`SELECT_MODE="browse"` 强制单选、`GROUP_DIMS={}` 无分组条、`context_menu_items` 返回空 = 无右键、`_on_select_all` 返回 "break" = 禁用 Ctrl+A），列配置与据点面板共享（`PANEL_KEY="node"`）。
+  - 「移动到据点」→ `_move_to_node(selected_rows)` → `dialogs/move_to_node.py::dialog_move_characters`（弹窗模态，走 `_open_dialog`）。弹窗内是据点面板的**裁剪副本**（`NodePickList`：`SELECT_MODE="browse"` 强制单选、`GROUP_DIMS={}` 无分组条、`context_menu_items` 返回空 = 无右键、`_on_select_all` 返回 "break" = 禁用 Ctrl+A），列配置与据点面板共享（`PANEL_KEY="node"`）。
   - 单人规则见 `plan_moves()`：君主只能去自己的据点（否则阻断 + 提示）；非君主 → 目标有主则 faction 跟随 owner、无主则下野；`node` / `location` 一起改；`role` 不动；未登场人物 + 目标有主会询问是否同时设为登场。
   - 命令复用 `CharacterEditCommand`（多人包 `CompositeCommand("移动到据点")`），`old/new` 只含真正变化的字段；已在目标 / 被阻断者不进命令。
   - 开关标签按右键那行的 appeared 现状态决定：已登场 →「设为未登场」，未登场 →「设为登场」。
@@ -1673,6 +1741,8 @@ load_characters 兼容 `{id: {...}}` / `{"characters": {...}}` / `[...]` 三种�
 
 `JobSystemWindow(master, world, font_family=...)`。构造时算一次 `compute_county_ranks(world.nodes.values())` 存 `_county_ranks`（郡 rank 查表基准）；尺寸 1000×720，对主窗口居中，Escape 关闭。**窗口本身不做单例**，由 `MainWindow._open_job_system_window` 保证。
 
+★ 本窗口的 `_county_ranks` 与 `Character._officials_with_rank` 用的 `world._county_ranks_cache` 是**两份各自缓存**（同一算法 `compute_county_ranks`，口径一致）；本窗口是构造时算一次的快照，人物窗口走的是 world 上的缓存（§8.3 第 61 条）。
+
 **顶部控制栏：** `按人物 / 按官职` 单选 + 「单元格显示位阶」勾选（仅模式一可用）+「显示全部外官（含无人担任）」勾选（仅模式二可用）。切模式会清空排序状态。搜索框 `KeyRelease` 即刷新（模式一匹配人名，模式二匹配官职名或担任者姓名）。
 
 **模式一「按人物」（默认）—— `_refresh_person_mode()`**
@@ -1785,7 +1855,7 @@ tools/build_scenario_190.py
 | 据点分组切换 | GroupBar._toggle → on_change → NodePanel.refresh |
 | 人物列头点击 | _on_heading_click → refresh |
 | 人物右键 → 定位到据点 | MenuItem「定位到据点」 → GenericListPanel.locate_on_map |
-| 人物右键 → 移动到据点 | MenuItem「移动到据点」(edit=True) → CharacterPanel._move_to_node(selected_rows) → dialogs.move_to_node.move_characters → MoveToNodeDialog（_open_dialog 模态）→ plan_moves → build_commands → session.execute → _notify_edit(keep_view=True) |
+| 人物右键 → 移动到据点 | MenuItem「移动到据点」(edit=True) → CharacterPanel._move_to_node(selected_rows) → dialogs.move_to_node.dialog_move_characters → MoveToNodeDialog（_open_dialog 模态）→ plan_moves → build_commands → session.execute → _notify_edit(keep_view=True) |
 | 人物右键 → 人物情报 | CharacterPanel._open_info_window(row) → world.character(row.id) → CharacterInfoWindow(self, ch, world=world, ...) |
 | ★ 情报窗加载头像 | _find_portrait_path() 拼 {id}-{name}.{ext} → Image.open → convert("RGB") → thumbnail → ImageTk.PhotoImage → self._photo 保引用 |
 | ★ 情报窗画雷达图 | _build_radar() → Canvas 硬编码坐标画 5 层五边形 + 轴线 + 数据多边形，无 winfo_width 查询 |
@@ -1865,7 +1935,7 @@ tools.characters.314      ──── assets/characters.json
 
 编辑链路：面板/地图右键 → dialogs.{node_edit,faction_edit} → EditDialog（数据驱动）→ Command → EditSession.execute → 面板刷新 + 地图重绘 + 标题刷新。 UI 层不得直接改 World，一切经 Command（§8.3 第 36 条）。
 
-人物情报链路：人物面板右键「人物情报」→ CharacterInfoWindow(panel, ch, world, ...) → 主窗口居中 → 四区（头像/雷达图/关系/生平）。点关系人 → _open_character → 新 CharacterInfoWindow(self._top, ch, world=self.world, ...)。雷达图纯 Canvas；头像走 Pillow；关系区查 world.character。
+人物情报链路：人物面板右键「人物情报」→ CharacterInfoWindow(panel, ch, world, ...) → 主窗口居中 → 编辑形态四区（头像 / 雷达图 / 关系 / 生平）+ 基础 / 归属 / 官职组，只读形态三区（官职行 / 关系 / 生平）。点关系人 → _open_character → 新 CharacterInfoWindow(self._top, ch, world=self.world, ...)。雷达图纯 Canvas；头像走 Pillow；关系区查 world.character；武官下拉走 `military_title`，官职行走 `Character.job_label`。
 
 兵力链路：势力面板 fetch_rows → FactionRow.from_faction(f) → f.troops property → 遍历 world.nodes（_nodes_ref）求 owner 匹配的 troops 之和。势力编辑弹窗 FACTION_FIELDS → Field("troops", "readonly") → EditDialog._build_field 走 getattr(faction, "troops") 读 property。
 
@@ -1945,10 +2015,15 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | Character.appeared 默认 | True | 老剧本无该字段 → 全部登场 |
 | 登场判定分界 | year − birth_year ≥ 16 | 另有「已分配势力 → true」优先 |
 | 190 剧本势力 / 人物 / 据点 | 54 / 1049 / 616 | 定稿 |
-| 190 剧本外官 | 53 条（州 13 / 郡 35 / 县 5） | 一区一官；汉阳郡两名太守取其一 |
+| 190 剧本外官 | 54 条（州 13 / 郡 35 / 县 6） | 一区一官；汉阳郡两名太守取其一 |
 | 190 剧本武官 | 221 人 | 军司马 107 / 军假司马 47 / 军曲候 25 / 假候 19 / 队率 5 / 屯长 4 + 君主史实武官 |
 | 位阶 rank 范围 | 1–32 | 数字越小越尊贵；{1:大将军 … 32:什长} |
 | 武官唯一性分界 | rules.UNIQUE_MAX_RANK = 26 | rank < 26 的官名**势力内唯一**；≥ 26（军司马及以下）不限量 |
+| 武官 rank 系数 | rules.MILITARY_TITLES[rank][0]：1→4.35 … 26→1.05 … 32→1.02 | 乘在兵力上限曲线上；单调递减 |
+| 兵力上限基准统率 / 兵力 | SOLDIERS_CAP_BASE_LEADERSHIP = 50 / BASE_FORCE = 1000 | 50 统率对应 1000 兵（系数 1.0 时） |
+| 兵力上限曲线陡度 / 下限 | SOLDIERS_CAP_EXPONENT = 2.2 / MIN_FORCE = 200 | `base = 1000 × (L/50) ** 2.2`；结果不低于 200 |
+| 兵力上限无武官系数 | SOLDIERS_CAP_NO_TITLE_FACTOR = 1.0 | 无武官 / rank 未知时的兜底；统率越界先 clamp 到 1–100 |
+| 兵力上限样例 | 统 50 / 无武官 = 1000；统 50 + 大将军 = 4350；统 100 / 无武官 = 4594；统 100 + 大将军 = 19987 | 只读派生，不进剧本 |
 | 郡级 rank 阈值 | 85 / 60 / 45 / 28 → rank 16/17/18/19/20 | 郡分数 = Σ(11 − 县 level)，从高到低命中即止 |
 | 郡级 rank 固定特例 | 0707 河南尹 = 14；0703 京兆尹 = 15 | 脱离分数查表 |
 | 州级 rank | 司隶校尉 10 / 州牧 11 / 州刺史 12 | 郡级属国都尉 = 21 |
@@ -2039,7 +2114,9 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 人物面板状态持久化 | 不支持 |
 | Character.location 运行时变更 | 未实现（字段已存，无逻辑） |
 | Character.node 归属变更 | 未实现 |
-| 武官编辑 / 唯一性校验 | 只有常量表 + `is_title_free` / `is_title_free_global` 接口，无 UI 入口（§5.26 窗口只读） |
+| 武官编辑 | 已接入（编辑人物窗口左栏下拉 + 保存时势力内唯一性校验）；跨势力重名只在 `is_title_free_global` 里备着，UI 不拦 |
+| 官职标签的自动派生 | `job_label` 是只读拼接，无「按官职反查该改谁」的逻辑 |
+| 人物情报窗口（只读） | 只显示官职行 + 关系 + 生平；头像与雷达图已从只读形态移除（编辑形态仍有） |
 | 同名武官引发的势力对立 | 只写进注释约定，无任何逻辑实现（`core/military_title.py`） |
 | 人物面板势力分组顺序可调 | 未实现（目前仅玩家置顶 + 其余字典序） |
 | hover 近邻兜底显示势力 | 未实现（见 §8.3 第 17 条） |
@@ -2079,7 +2156,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | 县的人口 / 兵役 / 特产等内政数据 | 无 |
 | 势力间外交关系矩阵 | 无，只有 stance（相对玩家的单一值） |
 | 山地数据 | mountains.geojson 已下载但未接入 GeoData |
-| 剧本 nodes 覆盖 | 555 / 1152 县，其余县无主 |
+| 剧本 nodes 覆盖 | 616 / 1152 县，其余县无主 |
 
 ### 8.3 逻辑与性能限制（★ 永久约束）
 
@@ -2169,7 +2246,12 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 
 58. ★ 可搜索下拉必须在控件销毁**之前** `normalize()`：`SearchableCombobox.normalize()` 读写的文本属于控件自身，`EditDialog._ok()` 里必须在 `destroy()` 前遍历 `self._widgets` 逐个 normalize；人物窗口在 `_collect_changes` 里先 normalize 再取值。晚于 destroy → `TclError`，且非法输入会被当合法值提交。规则：恰是某选项 → 保留；唯一匹配 → 补全；多匹配 / 无匹配 → 回退上次有效值。全量选项与过滤后选项分开存（`_all_values` vs 当前 `values`），下拉展开后必须还原全量。
 
-59. ★ 只读文本一律用**只读 Entry / Text**，不用 Label：用户需要鼠标拖选 + Ctrl+C 复制（生僻字打不出来）。EditDialog 的 readonly 字段走 `_readonly_entry`（`state="readonly"`，非 `disabled`），info 块走 `tk.Text`（`<Key>` 只放行 Ctrl+C / Ctrl+A，其余 `"break"`）。**不要**为了「简洁」改回 Label —— 改名只是显示，改不回可复制能力。
+59. ★ 只读文本一律用**只读 Entry / Text**，不用 Label：用户需要鼠标拖选 + Ctrl+C 复制（生僻字打不出来）。EditDialog 的 readonly 字段走 `_readonly_entry`（`state="readonly"`，非 `disabled`），info 块走 `tk.Text`（`<Key>` 只放行 Ctrl+C / Ctrl+A，其余 `"break"`）。**不要**为了「简洁」改回 Label —— 改名只是显示，改不回可复制能力。编辑人物窗口的「官职」行同理走只读 `tk.Text`（`state="disabled"`，够用，见 §5.20）。
+
+**派生值（兵力上限 / 官职标签 / 武官）**
+
+60. ★ 兵力上限与官职标签都是**只读派生值**，两者都**不进 `to_dict` / 不参与 diff**：`Character.soldiers_cap`（property）与 `Character.job_label(world)` 现算，无 setter；`military_title` 本身则是**真正落盘**的字段（与 appeared 同构）。三者别混：**武官可编辑、可保存；兵力上限与官职标签只是显示**。公式与系数只在 `config/rules.py` + `Character.compute_soldiers_cap` 里各一份，编辑窗口的实时预览必须调类方法，**不要**在 UI 里复制一份曲线。
+61. ★ `job_label` 依赖的郡分数缓存 `world._county_ranks_cache` **会过期**：郡级外官 rank 要用 `compute_county_ranks(world.nodes.values())`（全量扫县点），结果挂在 world 上缓存。改 `node.level` 后该缓存不失效 —— 本轮只读派生、无人消费等级，暂不处理。将来若让「官职」列参与编辑联动，必须在 `NodeEditCommand` 里补一次失效（或按 §3.7 的口径统一改成现算）。注意「官职体系」窗口走的是自己的 `_county_ranks`（构造时算一次），两处口径当前一致。
 
 ### 8.4 建议的下一步
 
@@ -2181,9 +2263,8 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 - ★ **部队面板落地**：TroopPanel 目前只 fetch_rows 返回 []；与人物面板同构接入
 - ★ **附庸值 100 / 0 的运行时语义**：100 = 融入宗主（并吞势力、据点与人物易主），0 = 自动独立。当前只存储不消费（加载时 clamp 到 1–99），实现时必须走 CompositeCommand 保证 undo
 - 实现「出征 / 调动」：改 Character.location，不动 node（与「移动到据点」的编制变更区分开 —— 当时需要重新评估「人物移动时是否改所在」，见 §8.3 第 50 条）
-- ★ **武官编辑落地**：编辑人物窗口加「武官」下拉（`military_title.all_titles()`），保存走 `CharacterEditCommand`；
-  校验用 `is_title_free(world, title, faction_id, exclude_cid)` 拦「势力内重复」。
-  **注意**：`military_title` 现在不进 `to_dict` / 不参与 diff（§3.3），要能编辑必须先补齐序列化三处（写 / 读 / 显示，§8.3 第 43 条口径）
+- ~~★ **武官编辑落地**~~：已实现（编辑人物窗口左栏下拉 + 保存时 `is_title_free` 拦截，`military_title` 已进序列化）。**遗留**：跨势力重名（`is_title_free_global`）未接 UI；在野人物选武官不查重
+- 「官职体系」窗口的武官列可以顺手带上位阶 / 系数展示（当前只读总览）
 - 人物情报窗口单例化（同一人物只开一个窗口，重复右键聚焦已开窗口）
 - 人物情报窗口生平数据源（拼装式编年？静态文本？）
 - 人物情报窗口雷达图 hover / 数值 tooltip / 点击轴突出
@@ -2233,7 +2314,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 
 - 写元字段 version / id / name / desc / start{year,month,xun} / player_faction，可选 character_id_range。
 - factions / characters / nodes 三段用各类 to_dict()。
-- Faction.to_dict **不含** gold / food / troops（派生值）；Node.to_dict 写全 7 字段；Character.to_dict 全 31 字段（含 appeared）。
+- Faction.to_dict **不含** gold / food / troops（派生值）；Node.to_dict 写全 7 字段；Character.to_dict 全 31 字段（含 appeared / **military_title**；`soldiers_cap` / `job_label` 是派生值，不写）。
 
 `diff(current, baseline) -> {section: {id: {field: (old, new)}}}`：
 
@@ -2443,11 +2524,12 @@ class OfficialRemoveCommand(Command):    # 删除外官
 - 约定：`old_values / new_values` 均为 `{field: value}` dict，**只含真正变化的字段**（由 EditDialog.get_changed 保证）。
 - do 遍历 new_values `setattr`，undo 遍历 old_values `setattr`；构造时 `dict()` 拷贝一份。
 - 命令类**没有** get_changed 方法。
-- CharacterEditCommand 的两个用法：
+- CharacterEditCommand 的用法：
   - 人物面板「设为登场 / 未登场」开关 —— `{"appeared": bool}`；
   - 「移动到据点」—— `{"node": …, "location": …, "faction": …}`（只含真正变化的字段，
-    多人包 `CompositeCommand("移动到据点")`，见 dialogs/move_to_node.py::move_characters）。
-  将来的完整人物编辑（CHARACTER_FIELDS）沿用同一个命令。
+    多人包 `CompositeCommand("移动到据点")`，见 dialogs/move_to_node.py::dialog_move_characters）。
+  - 编辑人物窗口「保存」—— 任意字段子集，含 `{"military_title": …}`（旧值 None 表示原本无武官）；
+    武官的势力内唯一性由窗口在提交前用 `is_title_free` 校验，命令本身不做校验。
 - 级联一律由调用方包 `CompositeCommand`：势力新建（势力 + 君主 + 都城 owner）、
   势力删除（外官 + 人物下野 + 据点改无主 + 势力摘除）、据点易主（owner + 可选人物归属）、
   外官编辑（外官增删 + 可选的移动到治所 / 变更势力）。
@@ -2463,7 +2545,9 @@ class OfficialRemoveCommand(Command):    # 删除外官
 | tests/test_list_grouping.py | 组头计数 / 固定组序 / 行优先排序 / 登场列排序 |
 | tests/test_list_reconcile.py | 就地刷新（含子分组消失的回归） |
 | tests/test_move_to_node.py | 移动到据点：单人规则 / 命令生成 |
-| tests/test_official.py | 官名规则 / officials 加载与查询 / 不进 serialize |
+| tests/test_official.py | 官名规则 / officials 加载与查询 / **参与 serialize + diff** / 增删改命令与 undo |
+| tests/test_edit_extensions.py | 势力新建 / 删除级联、据点易主级联、外官编辑（含 undo） |
+| tests/test_column_arrange.py | 列排列规则（§8.3 第 26 条：新列落在声明位置附近、用户顺序优先） |
 | tests/test_faction_vassal.py | 三字段容错与 clamp / serialize+diff+save / 加载期损坏（无宗主·宗主不存在·宗主本身是附庸·成环·独立带宗主）/ 颜色派生 / 编辑联动与删宗主级联 / 宗主分组取值 |
 | tests/test_build_scenario_vassal.py | 跑真实 map.geojson：刘备只占三县 / 董卓名单据点解析 / 按据点定外官（郡治→太守，否则第一个「城」→县令）/ `derive_vassals()` 规则 |
 

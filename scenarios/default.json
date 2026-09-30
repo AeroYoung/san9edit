@@ -2340,9 +2340,9 @@
     },
     "0231": {
       "appeared": true,
-      "faction": "0952",
-      "node": "060101",
-      "location": "060101",
+      "faction": "0925",
+      "node": "110501",
+      "location": "110501",
       "role": "一般",
       "military_title": "军司马"
     },
@@ -2524,9 +2524,9 @@
     },
     "0254": {
       "appeared": true,
-      "faction": "0952",
-      "node": "060101",
-      "location": "060101",
+      "faction": "0736",
+      "node": "070701",
+      "location": "070701",
       "role": "一般",
       "military_title": "军司马"
     },
@@ -12854,6 +12854,11 @@
       "name": "陇西太守",
       "character_id": "0969",
       "rank": "郡"
+    },
+    "070723": {
+      "name": "伊阙关都尉",
+      "character_id": "0301",
+      "rank": "县"
     }
   }
 }

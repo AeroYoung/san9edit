@@ -213,3 +213,28 @@
 
 ### Fixed
 - README §1 完成度清单的 190 剧本数字过期（势力 50 → 54、据点 611 → 616、外官 49 → 53），与 §4.5 对齐
+
+---
+
+## 2026-09-30 · 武官落盘与兵力上限系数
+
+### Added
+- 武官兵力上限系数：`MILITARY_TITLES` 由 `{rank: (官名, …)}` 改为 `{rank: (系数, (官名, …))}`（rank 1 = 4.35 → rank 32 = 1.02），新增 `SOLDIERS_CAP_NO_TITLE_FACTOR`（`config/rules.py`）
+- 武官系数反查 `factor_of_rank` / `factor_of_title`（`core/military_title.py`）
+- 兵力上限派生值 `Character.compute_soldiers_cap(leadership, military_title)`（静态纯函数）+ `soldiers_cap` property（`core/character.py`）
+- 官职标签 `Character.job_label(world)` + `_officials_with_rank(world)`：武官 + 外官按 rank 串联，连接词取「、领 / 、兼 / 行」（`core/character.py`）
+- 编辑人物窗口「官职」组：左武官可搜索下拉（label = `位阶 官名`，本势力已占用标「（已占用）」）+ 右外官区；保存时校验势力内唯一性（`ui/character_info_window.py`）
+- 基础组只读「官职」行（可拖选 / Ctrl+C），高度随文本自动换行（`ui/character_info_window.py`）
+- 190 剧本新增外官 070723「伊阙关都尉」（`scenarios/default.json`）
+
+### Changed
+- `Character.military_title` 由「不进 to_dict / 不参与 diff」改为**进序列化**，与 appeared / faction / node / location / role 同构（`core/character.py`）
+- 兵力上限改为「统率曲线 × 武官 rank 系数」派生，原 `max_number_soldiers` 的调用点改走 `compute_soldiers_cap`（`ui/character_info_window.py`、`panels/character_panel.py`）
+- 人物面板「官职」列改走 `job_label`（武官 + 外官串联，两者皆无仍留空），列宽 76 → 88（`panels/character_panel.py`）
+- 人物情报窗口只读形态不再画头像与五维雷达图，只保留「官职」行 + 关系 + 生平（`ui/character_info_window.py`）
+- `move_to_node.move_characters` 更名为 `dialog_move_characters`（`ui/dialogs/move_to_node.py`、`panels/character_panel.py`）
+- 190 剧本 0231 / 0254 的势力与据点调整（`scenarios/default.json`）
+- README 同步：§0 / §1 / §2 / §3.3 / §3.5 / §4.6 / §5.15 / §5.20 / §5.23 / §5.26 / §6.5 / §7.3 / §8.3 / §8.4 / §10.2
+
+### Removed
+- `config/rules.py::max_number_soldiers`，由 `Character.compute_soldiers_cap` 取代

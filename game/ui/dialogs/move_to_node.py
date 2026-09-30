@@ -133,7 +133,7 @@ def build_commands(plan: MovePlan) -> list:
             for m in plan.moves if m.new]
 
 
-def move_characters(parent, world, rows, session, open_dialog) -> bool:
+def dialog_move_characters(parent, world, rows, session, open_dialog) -> bool:
     """人物面板「移动到据点」共用流程。返回 True = 已执行命令（调用方负责刷新）。
 
     步骤：守卫 → 开弹窗（模态）→ 弹窗内完成 登场询问 + 二次确认 →

@@ -20,7 +20,10 @@
     is_title_free_global(world, title, exclude_cid=None)
                                         → 全剧本内该官名是否还没被占用（跨势力）
 
-                                        
+系数接口（供 Character.soldiers_cap 用）：
+    factor_of_rank(rank)                → 该 rank 的兵力上限系数；未知 → None
+    factor_of_title(title)              → 该官名的兵力上限系数；未知 / None → None
+                                        （调用方对 None 用 SOLDIERS_CAP_NO_TITLE_FACTOR 兜底）
 """
 
 from typing import Optional
@@ -30,24 +33,41 @@ from game.config.rules import MILITARY_TITLES, UNIQUE_MAX_RANK
 
 
 # 反查表（模块导入时构建一次）
-_RANK_BY_TITLE = {}
-for _r, _titles in MILITARY_TITLES.items():
+_RANK_BY_TITLE = {}     # 官名 → rank
+_FACTOR_BY_RANK = {}    # rank → 系数
+for _r, (_f, _titles) in MILITARY_TITLES.items():
+    _FACTOR_BY_RANK[_r] = _f
     for _t in _titles:
         _RANK_BY_TITLE[_t] = _r
-del _r, _titles, _t
+del _r, _f, _titles, _t
+
 
 def all_titles() -> tuple:
     """全部武官官名（按 rank 升序）。"""
     out = []
     for rank in sorted(MILITARY_TITLES):
-        out.extend(MILITARY_TITLES[rank])
+        out.extend(MILITARY_TITLES[rank][1])
     return tuple(out)
+
 
 def rank_of(title) -> Optional[int]:
     """官名 → rank；未知官名 → None。"""
     if not title:
         return None
     return _RANK_BY_TITLE.get(title)
+
+
+def factor_of_rank(rank) -> Optional[float]:
+    """rank → 兵力上限系数；rank 为 None 或未知 → None。"""
+    if rank is None:
+        return None
+    return _FACTOR_BY_RANK.get(rank)
+
+
+def factor_of_title(title) -> Optional[float]:
+    """官名 → 兵力上限系数；None / 未知官名 → None。"""
+    return factor_of_rank(rank_of(title))
+
 
 def is_unique(title) -> bool:
     """该官名是否「势力内唯一」（rank < UNIQUE_MAX_RANK）。未知官名 → False。
@@ -56,6 +76,7 @@ def is_unique(title) -> bool:
     """
     r = _RANK_BY_TITLE.get(title)
     return r is not None and r < UNIQUE_MAX_RANK
+
 
 def is_title_free(world, title, faction_id, exclude_cid=None) -> bool:
     """该势力内该官名是否还没被占用。
@@ -79,6 +100,7 @@ def is_title_free(world, title, faction_id, exclude_cid=None) -> bool:
             return False
     return True
 
+
 def is_title_free_global(world, title, exclude_cid=None) -> bool:
     """全剧本内该官名是否还没被占用（跨势力）。
 
@@ -100,6 +122,7 @@ def is_title_free_global(world, title, exclude_cid=None) -> bool:
         if getattr(c, "military_title", None) == title:
             return False
     return True
+
 
 def title_label(title) -> str:
     """展示用文本（当前原样返回，将来可加位阶前缀）。"""

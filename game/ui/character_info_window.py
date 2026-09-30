@@ -18,7 +18,6 @@ import tkinter as tk
 from tkinter import simpledialog, ttk
 
 from game.config import constants as C
-from game.config.rules import max_number_soldiers
 from game.config.style import THEME, FONT_SIZES
 from game.core.faction_color import faction_display_color
 from game.core.utils import darken_color, lighten_color
@@ -131,20 +130,15 @@ class CharacterInfoWindow(tk.Toplevel):
         if self.session is not None:
             self._build_editor(host)
         else:
-            # 只读模式：官职 + 头像 + 雷达图
-            officials = (self.world.officials_of_character(self.character.id)
-                         if self.world is not None else [])
-            if officials:
+            job = (self.character.job_label(self.world)
+                   if self.world is not None else "")
+            if job:
                 tk.Label(
                     host,
-                    text="官职：" + "、".join(o.get("name", "") for o in officials),
+                    text="官职：" + job,
                     bg=THEME["panel_bg"], fg=BODY_FG,
                     font=(self.font_family, FONT_SIZES["panel_body"]),
                 ).pack(pady=(6, 6))
-            top = tk.Frame(host, bg=THEME["panel_bg"])
-            top.pack(padx=16, pady=4, fill="x")
-            self._build_portrait(top)
-            self._build_radar(top)
 
         # 关系区
         tk.Frame(host, bg=THEME["status_sep"], height=1).pack(
@@ -273,32 +267,50 @@ class CharacterInfoWindow(tk.Toplevel):
         self._edit_vars["family_name"] = self._family_var
         add_row(1, "字", tk.Entry(right, textvariable=self._family_var, width=12))
 
+        # 官职（只读派生：武官 + 外官，连接词按 rank 决定；见 Character.job_label）
+        # 只读 Text（非 Entry / Label）→ 可换行 + 可拖选 + Ctrl+C 复制（§8.3 第 59 条）
+        job_value = ch.job_label(self.world)
+        _CHARS_PER_LINE = 24
+        _lines = max(1, (len(job_value) + _CHARS_PER_LINE - 1) // _CHARS_PER_LINE)
+        self._job_text = tk.Text(
+            right, width=1, height=_lines, wrap="char",
+            bg=THEME["panel_bg"], fg=BODY_FG, bd=0,
+            highlightthickness=0, padx=0, pady=0,
+            font=(self.font_family, FONT_SIZES["panel_body"]),
+            cursor="xterm",
+        )
+        self._job_text.insert("1.0", job_value)
+        self._job_text.configure(state="disabled")
+        tk.Label(right, text="官职", bg=THEME["panel_bg"], fg=BODY_FG,
+                 anchor="e",
+                 font=(self.font_family, FONT_SIZES["panel_body"])
+                 ).grid(row=2, column=0, sticky="ne", padx=(0, 8), pady=3)
+        self._job_text.grid(row=2, column=1, sticky="ew", pady=3)
         ch_sex = ch.sex if ch.sex in SEX_CHOICES else SEX_CHOICES[0]
         self._sex_var = tk.StringVar(value=ch_sex)
         self._edit_vars["sex"] = self._sex_var
         sex_box = ttk.Combobox(right, textvariable=self._sex_var,
                                state="readonly", values=list(SEX_CHOICES),
                                width=8)
-        add_row(2, "性别", sex_box)
-
+        add_row(3, "性别", sex_box)
         self._appeared_var = tk.BooleanVar(value=bool(ch.appeared))
         appeared_box = tk.Checkbutton(
             right, text="已登场", variable=self._appeared_var,
             bg=THEME["panel_bg"], fg=BODY_FG,
             activebackground=THEME["panel_bg"],
             font=(self.font_family, FONT_SIZES["panel_body"]))
-        add_row(3, "登场", appeared_box)
+        add_row(4, "登场", appeared_box)
 
         # 出生年（可编辑）
         self._birth_var = tk.StringVar(
             value="" if ch.birth_year is None else str(ch.birth_year))
         self._edit_vars["birth_year"] = self._birth_var
-        add_row(4, "出生年", tk.Entry(right, textvariable=self._birth_var,
+        add_row(5, "出生年", tk.Entry(right, textvariable=self._birth_var,
                                        width=12))
 
         # 年龄（只读，与出生年联动：剧本年份 − 出生年）
         self._age_var = tk.StringVar(value="—")
-        add_row(5, "年龄", tk.Label(
+        add_row(6, "年龄", tk.Label(
             right, textvariable=self._age_var,
             bg=THEME["panel_bg"], fg=BODY_FG,
             font=(self.font_family, FONT_SIZES["panel_body"])))
@@ -321,7 +333,7 @@ class CharacterInfoWindow(tk.Toplevel):
 
         # 兵力上限（只读，与统率联动：改五维里的「统」即时重算）
         self._soldiers_cap_var = tk.StringVar(value="—")
-        add_row(6, "兵力上限", tk.Label(
+        add_row(7, "兵力上限", tk.Label(
             right, textvariable=self._soldiers_cap_var,
             bg=THEME["panel_bg"], fg=BODY_FG,
             font=(self.font_family, FONT_SIZES["panel_body"])))
@@ -365,11 +377,38 @@ class CharacterInfoWindow(tk.Toplevel):
             command=self._pick_node)
         self._node_btn.pack(side="left", fill="x", expand=True)
 
-        # ---------------- 外官 ----------------
-        self._official_body = section(self._official_title())
+        # ---------------- 官职（左武官 / 右外官） ----------------
+        job = section("官职")
+        job.columnconfigure(0, weight=1, uniform="jobcol")
+        job.columnconfigure(1, weight=2, uniform="jobcol")
+
+        # 左栏：武官
+        left_job = tk.Frame(job, bg=THEME["panel_bg"])
+        left_job.grid(row=0, column=0, sticky="new", padx=(0, 12))
+        tk.Label(left_job, text="武官", bg=THEME["panel_bg"], fg=BODY_FG,
+                 anchor="w",
+                 font=(self.font_family, FONT_SIZES["panel_body"], "bold")
+                 ).pack(anchor="w")
+        self._build_military_title(left_job)
+
+        # 右栏：外官
+        right_job = tk.Frame(job, bg=THEME["panel_bg"])
+        right_job.grid(row=0, column=1, sticky="new")
+        tk.Label(right_job, text=self._official_title(),
+                 bg=THEME["panel_bg"], fg=BODY_FG, anchor="w",
+                 font=(self.font_family, FONT_SIZES["panel_body"], "bold")
+                 ).pack(anchor="w")
+        self._official_body = tk.Frame(right_job, bg=THEME["panel_bg"])
+        self._official_body.pack(fill="x")
         self._refresh_officials()
-        tk.Button(self._official_body, text="编辑外官", width=10,
-                  command=self._edit_officials).pack(anchor="w", pady=(4, 0))
+        self._official_edit_btn = tk.Button(
+            right_job, text="编辑外官", width=10,
+            command=self._edit_officials)
+        self._official_edit_btn.pack(anchor="w", pady=(4, 0))
+        # 在野（无势力）→ 无实控区域，外官编辑入口禁用（需求 4-C）
+        if not ch.faction:
+            self._official_edit_btn.configure(state="disabled")
+
 
     def _official_title(self):
         count = len(self.world.officials_of_character(self.character.id))
@@ -410,6 +449,62 @@ class CharacterInfoWindow(tk.Toplevel):
             self._location_id = node_id
             self._node_btn.configure(text=self._node_text())
 
+    # ------------------------------------------------------------
+    # 武官（官职组左栏）
+    # ------------------------------------------------------------
+    def _military_label_for(self, title):
+        """官名 → 下拉 label（'位阶 官名'）。None / 空 → '（无）'。"""
+        if not title:
+            return "（无）"
+        from game.core import military_title as mt
+        r = mt.rank_of(title)
+        return f"{r} {title}" if r is not None else title
+
+    def _military_title_options(self):
+        """下拉选项：'（无）' + 全部武官，label = '位阶 官名'。
+
+        本势力内已被占用的官名（rank < UNIQUE_MAX_RANK）加「（已占用）」后缀。
+        """
+        from game.core import military_title as mt
+        ch = self.character
+        opts = ["（无）"]
+        for title in mt.all_titles():
+            label = self._military_label_for(title)
+            occupied = (
+                ch.faction
+                and mt.is_unique(title)
+                and not mt.is_title_free(self.world, title, ch.faction,
+                                         exclude_cid=ch.id)
+            )
+            if occupied:
+                label += "（已占用）"
+            opts.append(label)
+        return opts
+
+    def _parse_military_label(self, label):
+        """下拉 label → 官名。'（无）' / 空 → None。"""
+        if not label or label == "（无）":
+            return None
+        text = label.replace("（已占用）", "").strip()
+        # '位阶 官名' → 取空格后的部分；否则原样
+        parts = text.split(" ", 1)
+        return parts[1] if len(parts) == 2 else text
+
+    def _build_military_title(self, parent):
+        """武官下拉：可搜索 + 带位阶 + 已占用标后缀。"""
+        self._mil_var = tk.StringVar(
+            value=self._military_label_for(self.character.military_title))
+        self._mil_combo = SearchableCombobox(
+            parent, self._military_title_options(),
+            textvariable=self._mil_var, width=22)
+        self._mil_combo.pack(anchor="w", fill="x")
+        # 提示行（保留占位，将来若切到方案 B 可用）
+        self._mil_warn = tk.Label(
+            parent, text="", bg=THEME["panel_bg"], fg="#B03A2E",
+            anchor="w", justify="left", wraplength=200,
+            font=(self.font_family, FONT_SIZES["panel_body"] - 1))
+        self._mil_warn.pack(anchor="w", pady=(2, 0))
+
     def _edit_officials(self):
         from game.ui.dialogs.official_edit import edit_officials
 
@@ -426,6 +521,7 @@ class CharacterInfoWindow(tk.Toplevel):
             if callable(self.on_saved):
                 self.on_saved()
             self._refresh_officials()
+            self._refresh_job()
             self._edit_msg.configure(text="外官已保存", fg="#1E7A3C")
 
     def _collect_changes(self):
@@ -457,6 +553,17 @@ class CharacterInfoWindow(tk.Toplevel):
             if getattr(ch, "birth_year", None) != birth_new:
                 old["birth_year"] = getattr(ch, "birth_year", None)
                 new["birth_year"] = birth_new
+
+        # 武官下拉：先规范化，再反解析为官名
+        try:
+            self._mil_combo.normalize()
+        except tk.TclError:
+            pass
+        new_title = self._parse_military_label(self._mil_var.get())
+        if (ch.military_title or None) != new_title:
+            old["military_title"] = ch.military_title
+            new["military_title"] = new_title
+
 
         # 势力下拉先规范化（防脏值）
         try:
@@ -494,12 +601,26 @@ class CharacterInfoWindow(tk.Toplevel):
             self._edit_msg.configure(text="君主需先解散势力", fg="#B03A2E")
             return
 
+        # 武官唯一性校验（需求 5-B：允许选中，保存时拒绝）
+        if "military_title" in new:
+            new_title = new["military_title"]
+            if new_title and ch.faction:
+                from game.core import military_title as mt
+                if not mt.is_title_free(self.world, new_title, ch.faction,
+                                        exclude_cid=ch.id):
+                    self._edit_msg.configure(
+                        text=f"武官「{new_title}」已被本势力其他人占用，无法保存",
+                        fg="#B03A2E")
+                    return
+
         self.session.execute(CharacterEditCommand(ch.id, old, new))
         if callable(self.on_saved):
             self.on_saved()
         warning = ("（该人物当前担任外官将保留，"
                    "请在据点情报窗口确认冲突）" if "faction" in new else "")
         self._edit_msg.configure(text="已保存" + warning, fg="#1E7A3C")
+        # 武官变化 → 同步刷新「官职」只读行
+        self._refresh_job()
 
     # ------------------------------------------------------------
     def _build_portrait(self, parent):
@@ -599,8 +720,25 @@ class CharacterInfoWindow(tk.Toplevel):
 
     def _refresh_soldiers_cap(self):
         """兵力上限是统率的派生值（见 config/rules.py），此处只读展示。"""
-        cap = max_number_soldiers(self._stats.get("leadership", 0))
+        cap = type(self.character).compute_soldiers_cap(
+            self._stats.get("leadership", 0),
+            getattr(self.character, "military_title", None),
+        )
         self._soldiers_cap_var.set(str(cap))
+
+    def _refresh_job(self):
+        """外官保存后重刷官职行文本 + 高度。"""
+        if not hasattr(self, "_job_text"):
+            return
+        t = self._job_text
+        t.configure(state="normal")
+        t.delete("1.0", "end")
+        t.insert("1.0", self.character.job_label(self.world))
+        t.configure(state="disabled")
+        # 按新文本重算行数
+        _CHARS_PER_LINE = 24
+        n = len(t.get("1.0", "end-1c"))
+        t.configure(height=max(1, (n + _CHARS_PER_LINE - 1) // _CHARS_PER_LINE))
 
     def _axis_angles(self):
         return [-math.pi / 2 + i * (2 * math.pi / 5) for i in range(5)]

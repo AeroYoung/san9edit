@@ -104,7 +104,11 @@
       "Bash(python -m compileall -q game tools tests)",
       "Bash(python -m compileall -q game/ui/panels/character_panel.py game/ui/character_info_window.py game/config/rules.py)",
       "Bash(python -m pytest tests -q)",
-      "Bash(python -m compileall -q game/ui/settings_window.py game/ui/panels/list/panel.py game/ui/panels/list/columns.py game/ui/panels/faction_panel.py)"
+      "Bash(python -m compileall -q game/ui/settings_window.py game/ui/panels/list/panel.py game/ui/panels/list/columns.py game/ui/panels/faction_panel.py)",
+      "Bash(git status *)",
+      "Bash(ls *.md)",
+      "Bash(ls doc/)",
+      "Bash(ls battle/docs/)"
     ]
   }
 }

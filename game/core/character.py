@@ -18,14 +18,21 @@ id 为四位数字字符串（"0001"–"1049"），全局唯一。
     两者都是据点 id，不是城池名。
 
 武官（military_title）：
-    荣誉头衔，独立于行政区外官；常量表见 core/military_title.py。
+    荣誉头衔，独立于行政区外官；常量表见 config/rules.py（MILITARY_TITLES）。
     本轮只做骨架（加载能读、内存有字段），不进 to_dict / 不参与 diff，
     保存时靠 ScenarioWriter 的 deepcopy(raw) 天然保留剧本里的原值。
 
-五维缺省值等可调常量见 game/config/rules.py。
+五维缺省值 / 兵力上限曲线常量见 game/config/rules.py。
 """
 
-from game.config.rules import DEFAULT_STAT
+from game.config.rules import (
+    DEFAULT_STAT,
+    SOLDIERS_CAP_BASE_LEADERSHIP,
+    SOLDIERS_CAP_BASE_FORCE,
+    SOLDIERS_CAP_MIN_FORCE,
+    SOLDIERS_CAP_EXPONENT,
+    SOLDIERS_CAP_NO_TITLE_FACTOR,
+)
 
 
 def _safe_int(v, default=0):
@@ -168,6 +175,121 @@ class Character:
         return self.name
 
     # ============================================================
+    # 派生属性（只读，不进 to_dict / 不参与 diff）
+    # ============================================================
+    @staticmethod
+    def compute_soldiers_cap(leadership, military_title=None) -> int:
+        """纯函数：按统率 + 武官给出兵力上限。
+
+        property（soldiers_cap）与「编辑人物」窗口的实时预览共用此逻辑，
+        避免两处各写一份公式。
+
+        曲线与系数常量见 config/rules.py：
+            - SOLDIERS_CAP_BASE_LEADERSHIP / BASE_FORCE / MIN_FORCE / EXPONENT
+            - MILITARY_TITLES[rank][0] 为该 rank 的系数
+            - SOLDIERS_CAP_NO_TITLE_FACTOR 为无武官 / 未知 rank 的兜底系数
+        """
+        L = max(1, min(100, int(leadership)))
+        base = (SOLDIERS_CAP_BASE_FORCE
+                * (L / SOLDIERS_CAP_BASE_LEADERSHIP) ** SOLDIERS_CAP_EXPONENT)
+        # 延迟 import：避免 core 模块间的导入期耦合。
+        from game.core import military_title as mt
+        factor = mt.factor_of_title(military_title)
+        if factor is None:
+            factor = SOLDIERS_CAP_NO_TITLE_FACTOR
+        return max(SOLDIERS_CAP_MIN_FORCE, int(base * factor))
+
+    @property
+    def soldiers_cap(self) -> int:
+        """按统率 + 武官 rank 系数给出的兵力上限（只读派生值）。
+
+        修改 leadership 或 military_title 后自动反映（下次读取时现算）。
+        """
+        return self.compute_soldiers_cap(self.leadership, self.military_title)
+
+    def job_label(self, world) -> str:
+        """武官 + 外官串联的官职标签（只读派生，不进序列化）。
+
+        规则（需求）：
+            - 外官按 rank 升序（最尊贵在前）；rank 未知的排最后。
+            - 无外官 → 只显示武官。
+            - 无武官 → 外官直接用「、」连接，不套连接词。
+            - 两者都有 → 武官与**第一个**外官之间按 rank 选连接词
+              （武<外 → 领；武=外 → 兼；武>外 → 行），其余外官用「、」。
+            - rank 无法判定（world 缺失 / 数据不全）→ 退化为「／」连接。
+            - 两者皆无 → ""。
+        """
+        mil = self.military_title or ""
+        offs = self._officials_with_rank(world)
+        off_titles = [t for t, _r in offs]
+
+        if not mil and not off_titles:
+            return ""
+        if not mil:
+            return "、".join(off_titles)
+        if not off_titles:
+            return mil
+
+        from game.core import military_title as mt
+        mil_rank = mt.rank_of(mil)
+        first_title, first_rank = offs[0]
+        if mil_rank is None or first_rank is None:
+            conn = "／"
+        elif mil_rank < first_rank:
+            conn = "、领"
+        elif mil_rank == first_rank:
+            conn = "、兼"
+        else:
+            conn = "行"
+        return f"{mil}{conn}{first_title}" + \
+               ("".join("、" + t for t in off_titles[1:]))
+
+    def _officials_with_rank(self, world):
+        """返回 [(官名, 数字 rank), ...]，按 rank 升序（None 排最后）。
+
+        约定「一个人可有多个外官」——一条不命中返回 []；world 为 None → []。
+        rank 不可判定时保留该条（排在末尾）。
+        """
+        if world is None or not getattr(world, "officials", None):
+            return []
+        from game.core.official_title import (
+            compute_county_ranks, official_rank_of_title, city_rank_by_level,
+        )
+        # 郡级 rank 需要郡分数：全量扫一遍县点，缓存到 world 上。
+        # 注意：编辑 node.level 后此缓存会过期；本轮只读派生，暂不主动失效
+        # （与 job_system_window 构造时算一次的口径一致）。
+        county_ranks = getattr(world, "_county_ranks_cache", None)
+        if county_ranks is None:
+            county_ranks = compute_county_ranks(world.nodes.values())
+            try:
+                world._county_ranks_cache = county_ranks
+            except Exception:
+                pass
+
+        out = []
+        for rid, item in world.officials.items():
+            if item.get("character_id") != self.id:
+                continue
+            title = item.get("name") or ""
+            if not title:
+                continue
+            n = len(rid or "")
+            if n == 2:
+                r = official_rank_of_title(title, rid)
+            elif n == 4:
+                r = official_rank_of_title(title, rid, county_ranks)
+            elif n == 6:
+                node = world.node(rid)
+                r = city_rank_by_level(node.level) if node is not None else None
+            else:
+                r = None
+            out.append((title, r))
+
+        # rank 升序；None 排最后
+        out.sort(key=lambda x: (x[1] is None, x[1] if x[1] is not None else 0))
+        return out
+
+    # ============================================================
     # 工厂 / 序列化
     # ============================================================
     @classmethod
@@ -211,9 +333,7 @@ class Character:
     def to_dict(self):
         """转回 dict（存档 / 调试用）。
 
-        ★ 本轮不含 military_title：不进序列化，不参与 diff，不写回剧本。
-          保存时剧本里原有的 military_title 由 ScenarioWriter 的 deepcopy(raw)
-          天然保留。
+        ★ military_title 已进序列化（与 appeared / faction / node / location / role 同构）。
         """
         return {
             "name": self.name,                                # 姓名
@@ -246,6 +366,7 @@ class Character:
             "node": self.node,                                # 所属
             "location": self.location,                        # 所在
             "role": self.role,                                # 身份
+            "military_title": self.military_title,            # ★ 武官（本轮进序列化）
         }
 
     def apply_override(self, data):
