@@ -238,3 +238,20 @@
 
 ### Removed
 - `config/rules.py::max_number_soldiers`，由 `Character.compute_soldiers_cap` 取代
+
+---
+
+## 2026-09-30 · 日志抽离到 shared/ 与兵棋作战模块骨架
+
+### Added
+- 跨模块共享包 `shared/`：`shared/logging_setup.py` 为日志系统单一定义源（自含 `PROJECT_ROOT` / `USER_DATA_DIR` / `LOG_DIR` / `LOG_ENABLED` / `_MAX_LOG_FILES`，导出 `setup_logging` / `install_sys_excepthook` / `install_tk_excepthook` / `get_session_id` / `get_log_file_path`）
+- 兵棋作战模块骨架（`battle/`，详见 battle/docs/CHANGELOG.md）
+
+### Changed
+- `game/config/logging_setup.py` 改为显式 re-export 薄壳，实现迁至 `shared/logging_setup.py`（既有 import 路径与行为不变）
+- `game/config/constants.py` 的 `LOG_DIR` / `LOG_ENABLED` 改为从 `shared.logging_setup` 导入，不再本地定义
+- 「日志总开关只在 constants.py 改」的约定改为：只在 `shared/logging_setup.py` 改
+- README 同步：§0 / §1 / §2 / §5.2 / §5.6 / §6.5 / §7 / §8.3
+
+### Fixed
+- `game/config/constants.py` 重复的 `import sys`

@@ -63,9 +63,9 @@
 | 弹窗分组布局 | FieldGroup.layout | ★ rows（默认）/ two_cols / inline 三种排版（§9.4） |
 | 可搜索下拉 | ui/widgets/searchable_combo.py::SearchableCombobox | ★ 输入关键字实时过滤；normalize() 把非法输入纠正为合法选项 |
 | 弹窗链接标记 | [[c:id\|名]] / [[f:id\|名]] / [[n:id\|名]] | ★ info 块里的可点实体引用，点击回调 on_link_click(kind, entity_id)（§9.4） |
-| 日志系统 | logging_setup.py / LOG_DIR | ★ 每次启动一个文件，DEBUG，保留 30 个（§5.6） |
-| 日志总开关 | LOG_ENABLED（constants.py） | ★ 编译期一键关闭全部日志（§5.6）；风格同 APP_MODE |
-| session id | logging_setup._SESSION_ID | ★ 8 位十六进制，每行日志前缀，区分多次启动 |
+| 日志系统 | shared/logging_setup.py / LOG_DIR | ★ 跨模块单一定义源（主游戏与 battle 共用）；每次启动一个文件，DEBUG，保留 30 个（§5.6） |
+| 日志总开关 | LOG_ENABLED（shared/logging_setup.py） | ★ 编译期一键关闭全部日志（§5.6）；风格同 APP_MODE |
+| session id | shared/logging_setup._SESSION_ID | ★ 8 位十六进制，每行日志前缀，区分多次启动 |
 | 异常钩子 | install_sys_excepthook / install_tk_excepthook | ★ 未捕获异常 + tkinter 回调异常统一入日志 |
 | 未保存提示 | MainWindow._refresh_title | ★ 编辑后窗口标题追加 " *"，回到 baseline 自动消除 |
 | 应用登场状态 | ScenarioLoader._apply_appeared | ★ 第三层：只读 appeared，不删人（§3.6） |
@@ -151,7 +151,7 @@
 
 **「日志开关」约定：**
 
-- LOG_ENABLED 是编译期开关，风格同 APP_MODE，只在 constants.py 里改。
+- LOG_ENABLED 是编译期开关，风格同 APP_MODE，只在 shared/logging_setup.py 里改。
 - True：正常建目录 + 写文件 + 挂 2 个异常钩子 + 保留 30 个。
 - False：不建目录、不清理旧日志、不挂 FileHandler、不挂任何异常钩子，`logging.disable(CRITICAL)`。
 - 关闭时未捕获异常交回 Python / Tk 默认 stderr（不静默吞掉）。
@@ -206,6 +206,7 @@
 - ✅ 设置窗口：主题 / 地图样式 / 图层 / 面板列 多 Tab
 - ✅ 日志：会话文件 + session id + sys/tk 异常钩子 + LOG_ENABLED 编译期总开关
 - ⚠️ 骨架：回合与资源；设置窗口「游戏」tab
+- ⚠️ 兵棋作战模块：独立子模块，详见 battle/docs/模块说明.md
 - ❌ 空实现：内政 / 军事 / 外交 / 存档 / 读档 / 新游戏 / 部队面板与 Troop 模型
 
 ---
@@ -218,6 +219,10 @@ san9edit/
 ├── README.md                          本文档
 ├── 需求文档.md                        当前需求（正式，按轮次替换）
 ├── 备忘文档.md                        Prompt 备忘草稿
+├── shared/                            ★ 跨模块共享（主游戏级）
+│   ├── __init__.py                    空
+│   └── logging_setup.py               ★ 日志系统单一定义源（路径 + 开关 + 5 个对外符号）
+├── battle/                            兵棋作战模块（独立运行，详见 battle/docs/模块说明.md）
 ├── assets/                            静态数据
 │   ├── map.geojson                    ★ 中国全图（自定义嵌套结构，非标准 GeoJSON）：13 州 / 106 郡 / 1152 县
 │   ├── characters.json                1049 位人物基础数据（29 字段）
@@ -253,7 +258,7 @@ san9edit/
 │   └── logs/                          运行日志（app_YYYYMMDD_HHMMSS.log，保留 30 个）
 └── game/                              运行时主包
     ├── config/                        配置层（无业务逻辑）
-    │   ├── constants.py               路径常量 + 窗口常量 + APP_MODE + LOG_ENABLED
+    │   ├── constants.py               路径常量 + 窗口常量 + APP_MODE（LOG_DIR / LOG_ENABLED 转发自 shared）
     │   ├── rules.py                   ★ 游戏运行策略常量（唯一调参入口，纯数据、不 import game.*）
     │   │                              武官表 MILITARY_TITLES {rank: (系数, 官名)} / 唯一性分界 UNIQUE_MAX_RANK
     │   │                              / 外官位阶 RANK_* + 郡金字塔 COUNTY_RANK_THRESHOLDS
@@ -267,7 +272,7 @@ san9edit/
     │   ├── settings_manager.py        设置加载 / 保存 / 就地写回 style 模块
     │   ├── settings_schema.py         设置窗口元数据（Tabs / Groups / Items）
     │   │                              + get_panel_columns_meta()
-    │   └── logging_setup.py           ★ 日志初始化 + sys/tk 异常钩子 + LOG_ENABLED 总开关
+    │   └── logging_setup.py           ☆ re-export 薄壳 → shared/logging_setup.py（实现已迁出）
     ├── core/                          核心数据层（与 UI 无关）
     │   ├── game_state.py              回合 / 日期 / 玩家势力 / 资源（信息栏数据源）
     │   ├── world.py                   World：势力 / 人物 / 据点的聚合容器 + 查询 + 统计
@@ -893,7 +898,7 @@ def main():
 
 ### 5.2 game/config/constants.py
 
-全部常量共 15 个：
+全部常量共 13 个（另有 2 个转发自 `shared.logging_setup`）：
 
 | 常量 | 值 | 说明 |
 |---|---|---|
@@ -910,8 +915,8 @@ def main():
 | MIN_WINDOW_SIZE | (1024, 640) | 元组 |
 | MODE_EDIT / MODE_GAME | "edit" / "game" | 应用模式 |
 | APP_MODE | MODE_EDIT | 全局开关：编译期切换 |
-| LOG_DIR | PROJECT_ROOT / "userdata" / "logs" | |
-| LOG_ENABLED | True | False = 不建目录 / 不写文件 / 不装异常钩子 |
+| LOG_DIR | （转发）shared.logging_setup.LOG_DIR | 唯一权威定义在 shared/logging_setup.py |
+| LOG_ENABLED | （转发）shared.logging_setup.LOG_ENABLED | False = 不建目录 / 不写文件 / 不装异常钩子 |
 
 ### 5.3 game/config/style.py
 
@@ -971,7 +976,9 @@ min_scale / max_scale 单位是像素/度；低于 min 或达到 max 均隐藏�
 - 查询辅助：groups_of_tab / items_of_group / group_of / paths_of_group / group_meta。
 - `get_panel_columns_meta() -> {panel_key: [(col_key, col_title), ...]}`：惰性 import 四个 Panel 类读其 COLUMNS；每个面板独立 try/except 降级。NAME_COLUMN（#0）不返回（锁定必显）。
 
-### 5.6 game/config/logging_setup.py
+### 5.6 shared/logging_setup.py（主游戏侧薄壳：game/config/logging_setup.py）
+
+★ **单一定义源**在项目根 `shared/logging_setup.py`（跨模块共享，主游戏与 `battle/` 共用）；`game/config/logging_setup.py` 只做**显式 re-export**（不用 `import *`），不含实现，既有 import 路径与行为不变。路径与开关自含，不 import `game.*` / `battle.*`（避免循环）。
 
 ```python
 setup_logging() -> Path | None    # 初始化，返回本次会话的 log 文件路径
@@ -992,7 +999,7 @@ class _SessionFilter              # 给每条 record 注入 record.session
 - KeyboardInterrupt 交回原生 `sys.__excepthook__`，不吞 Ctrl+C。
 - 重复初始化保护：先清空 root 已有 handler。
 
-★ LOG_ENABLED 编译期总开关（三处入口判断，其余模块不感知）：
+★ LOG_ENABLED 编译期总开关（三处入口判断，其余模块不感知；**只改 `shared/logging_setup.py` 一处**）：
 
 ```python
 def setup_logging():
@@ -1886,7 +1893,7 @@ tools/build_scenario_190.py
 ### 6.5 模块协作关系
 
 ```text
-main.py ── config.logging_setup（setup_logging / sys hook / LOG_ENABLED）
+main.py ── shared.logging_setup（setup_logging / sys hook / LOG_ENABLED；game.config.logging_setup 为薄壳）
    │
    └─ ui.main_window ──┬─ config.settings_manager ─ config.style
                        │                            └ config.settings_schema
@@ -1927,8 +1934,8 @@ main.py ── config.logging_setup（setup_logging / sys hook / LOG_ENABLED）
                                           │   └─ ui.character_info_window
                                           └─ panels.troop_panel ────┘
                                           └─ reload_panel_columns()
-                       config.constants ──── LOG_ENABLED / APP_MODE
-                       config.logging_setup ──── userdata/logs/*.log
+                       config.constants ──── LOG_ENABLED（转发 shared）/ APP_MODE
+                       shared.logging_setup ──── userdata/logs/*.log
 tools.build_scenario_190  ──── scenarios/default.json
 tools.头像                 ──── assets/portrait/*
 tools.characters.314      ──── assets/characters.json
@@ -1939,7 +1946,7 @@ tools.characters.314      ──── assets/characters.json
 
 兵力链路：势力面板 fetch_rows → FactionRow.from_faction(f) → f.troops property → 遍历 world.nodes（_nodes_ref）求 owner 匹配的 troops 之和。势力编辑弹窗 FACTION_FIELDS → Field("troops", "readonly") → EditDialog._build_field 走 getattr(faction, "troops") 读 property。
 
-日志：所有模块 logger = logging.getLogger(__name__)，根 logger 只挂一个 FileHandler（userdata/logs/）。LOG_ENABLED=False 时整条链路静默。
+日志：实现单一定义源在 shared/logging_setup.py（主游戏与 battle 共用），所有模块 logger = logging.getLogger(__name__)，根 logger 只挂一个 FileHandler（userdata/logs/）。LOG_ENABLED=False 时整条链路静默。
 ```
 
 ---
@@ -1969,14 +1976,13 @@ MODE_EDIT = "edit"     # 剧本编辑模式
 MODE_GAME = "game"     # 游戏模式（未实现）
 APP_MODE  = MODE_EDIT  # 全局开关：编译期切换
 
-# 日志
-LOG_ENABLED = True     # ★ 编译期日志总开关：False 一键关闭全部日志
-LOG_DIR = PROJECT_ROOT / "userdata" / "logs"
+# 日志（唯一权威定义在 shared/logging_setup.py，此处只转发）
+from shared.logging_setup import LOG_DIR, LOG_ENABLED
 ```
 
 APP_MODE 只被 MainWindow.__init__ 读一次（self.editable），其余模块读 `edit_session is not None`（§8.3 第 42 条）。
 
-LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感知。
+LOG_ENABLED 只被 shared/logging_setup.py 读（三处入口），其余模块不感知。
 
 ### 7.2 设置窗口可改
 
@@ -2048,7 +2054,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | APP_MODE 默认 | MODE_EDIT（= "edit"） | 编译期切换 |
 | EditSession.max_depth | 5 | undo 栈深度，超出裁剪最旧命令 |
 | ScenarioWriter 元字段 | version/id/name/desc/start/player_faction/character_id_range | 不参与 diff |
-| 日志目录 | userdata/logs/ | constants.LOG_DIR |
+| 日志目录 | userdata/logs/ | shared.logging_setup.LOG_DIR（constants 转发） |
 | 日志文件名 | app_YYYYMMDD_HHMMSS.log | 秒级唯一，每次启动一个 |
 | _MAX_LOG_FILES | 30 | 超出删最旧（_cleanup_old_logs） |
 | 日志级别 | 文件 DEBUG；无控制台 handler | 只挂 FileHandler，终端静默 |
@@ -2056,7 +2062,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 | session id | 8 位十六进制 | uuid.uuid4().hex[:8] |
 | 日志时间格式 | %Y-%m-%d %H:%M:%S | Formatter(datefmt=…) |
 | install_tk_excepthook 时机 | Tk() 之后立即 | 越早越好，构造期回调异常才抓得到 |
-| LOG_ENABLED 默认 | True | 编译期开关，风格同 APP_MODE |
+| LOG_ENABLED 默认 | True | 编译期开关，风格同 APP_MODE；定义在 shared/logging_setup.py |
 | 未保存提示格式 | `APP_TITLE [- 剧本文件名] [ *]` | 唯一刷新入口 _sync_undo_redo_state → _refresh_title |
 | 未保存星号 | " *"（空格 + 星号） | 编辑后出现；undo 回 baseline / 保存 / 加载后消失 |
 | 地图右键「编辑势力」显示条件 | 该据点有 owner 且 world.factions 里存在 | 无势力 / 脏 owner → 不显示该项 |
@@ -2221,7 +2227,7 @@ LOG_ENABLED 只被 logging_setup.py 读（三处入口），其余模块不感�
 45. ★ 日志一律用 %s 惰性格式化，禁止 f-string：正例 `logger.info("加载剧本：%s", path)`；反例 `logger.info(f"加载剧本：{path}")`（日志未输出时也白拼字符串）。高频路径不打日志：_process_motion / find_location_detail / _on_location_change / draw_full。
 46. ★ 两个异常钩子的安装时机：setup_logging() + install_sys_excepthook() 必须在 MainWindow() 之前（main.py 里）；install_tk_excepthook(root) 必须紧跟 Tk() 之后（越早越好，构造期的回调异常才抓得到）。sys.excepthook 接不到 tkinter 回调异常，必须单独覆盖 Tk.report_callback_exception。
 47. ★ _SessionFilter 挂 handler，不挂 logger：`handler.addFilter(_SessionFilter())` —— filter 在 handler 上才会给每条 record 注入 session；格式化串用 %(session)s。挂错地方会导致 KeyError: 'session'。
-48. ★ LOG_ENABLED 是编译期开关：默认 True（保持原行为）。False 时：不建 userdata/logs/、不清理旧日志、不挂 FileHandler、`logging.disable(logging.CRITICAL)`、`_LOG_FILE_PATH = None`；也不接管 sys.excepthook / Tk.report_callback_exception，交回原生 stderr（不静默吞异常）。只改 constants.py 一处，其余模块不感知；**不要**散落 `if LOG_ENABLED` 判断——只在 logging_setup.py 三处入口判断。风格与 APP_MODE 一致：编译期，运行时不可切。
+48. ★ LOG_ENABLED 是编译期开关：默认 True（保持原行为）。False 时：不建 userdata/logs/、不清理旧日志、不挂 FileHandler、`logging.disable(logging.CRITICAL)`、`_LOG_FILE_PATH = None`；也不接管 sys.excepthook / Tk.report_callback_exception，交回原生 stderr（不静默吞异常）。只改 shared/logging_setup.py 一处，其余模块不感知；**不要**散落 `if LOG_ENABLED` 判断——只在 shared/logging_setup.py 三处入口判断。风格与 APP_MODE 一致：编译期，运行时不可切。
 49. ★ 未保存提示只有一个刷新入口：`MainWindow._refresh_title` 是唯一读 `edit_session.is_dirty()` 渲染标题的地方；所有 dirty 状态变化点都经 `_sync_undo_redo_state → _refresh_title`。覆盖路径：_load_scenario / on_edit_executed / _on_undo / _on_redo / _save_to_path。**不要**在任何其他方法里直接改 `root.title()`。星号格式固定 " *"（空格 + 星号），不做 i18n。每次调用 is_dirty() 会做一次 serialize + diff，成本可接受（只在用户动作时触发）。
 
 **人物移动**

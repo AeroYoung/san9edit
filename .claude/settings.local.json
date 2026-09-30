@@ -108,7 +108,22 @@
       "Bash(git status *)",
       "Bash(ls *.md)",
       "Bash(ls doc/)",
-      "Bash(ls battle/docs/)"
+      "Bash(ls battle/docs/)",
+      "Bash(mkdir -p assets/fonts data saves)",
+      "Bash(python -c \"import pygame; print\\('pygame', pygame.version.ver\\)\")",
+      "Bash(python -V)",
+      "Bash(pip install *)",
+      "Bash(py -0)",
+      "Bash(py -m pygame --version)",
+      "Bash(SDL_VIDEODRIVER=dummy python -)",
+      "Bash(rm -f battle/_frame_default.png battle/_frame_mid.png battle/_frame_far.png)",
+      "Bash(ls battle/*.png)",
+      "Bash(SDL_VIDEODRIVER=dummy timeout 5 python -m battle)",
+      "Bash(echo \"（被 timeout 终止，退出码 $? = 124 表示窗口持续运行中）\")",
+      "Bash(rm -f battle/_lod_on.png battle/_lod_off.png)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(awk 'NR>=1900 && NR<=2560' README.md)",
+      "Bash(grep -n '^```markdown$\\\\|^# `battle/docs' battle/docs/模块说明.md)"
     ]
   }
 }

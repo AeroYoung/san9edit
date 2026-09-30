@@ -7,7 +7,7 @@ PROJECT_ROOT 通过 __file__ 定位，从任何目录启动都能找到 assets/�
 from pathlib import Path
 import sys
 
-import sys
+from shared.logging_setup import LOG_DIR, LOG_ENABLED
 
 if getattr(sys, "frozen", False):
     # PyInstaller 打包后：只读资源在 _internal 下，由 _MEIPASS 指向
@@ -43,5 +43,5 @@ APP_MODE = MODE_EDIT   # 全局开关：编译期切换
 # ============================================================
 # 日志
 # ============================================================
-LOG_DIR = USER_DATA_DIR / "logs"
-LOG_ENABLED = True   # False = 一键关闭全部日志（不建目录、不写文件、不装异常钩子）
+# LOG_DIR / LOG_ENABLED 的唯一权威定义在 shared/logging_setup.py，
+# 此处按原样转发（值不变，便于既有代码继续 `constants.LOG_DIR` 取用）。
